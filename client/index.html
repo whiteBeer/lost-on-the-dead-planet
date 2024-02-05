@@ -1,0 +1,50 @@
+<html>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<body id="game" style="width: 100%; height: 100%;">
+    Mouse Move!
+</body>
+
+<script>
+    const socket = io();
+    const colors = ["blue", "red", "green"];
+    document.getElementById('game').onmousemove = (params) => {
+        const coords = {
+            pageX: params.pageX,
+            pageY: params.pageY
+        };
+        socket.emit('playerMoved', coords);
+        movePlayer({...coords, socketId: "me"});
+    };
+    socket.on('playerMoved', (params) => {
+        if (params.socketId !== socket.id) {
+            movePlayer(params);
+        }
+    });
+    socket.on('userDisconnected', (params) => {
+        document.getElementById("game").removeChild(document.getElementById(params.socketId));
+    });
+
+    function movePlayer (params) {
+        const $el = document.createElement("div");
+        const $oldEl = document.getElementById(params.socketId);
+        const $cont = document.getElementById('game');
+        const $players = document.getElementsByClassName("player");
+        $el.id = params.socketId;
+        $el.className = "player";
+        $el.style.left = params.pageX + "px";
+        $el.style.top = params.pageY + "px";
+        $el.style.width = "50px";
+        $el.style.height = "50px";
+        $el.style.borderRadius = "50px";
+        $el.style.backgroundColor = colors[0];
+        $el.style.position = "fixed";
+        if ($oldEl) {
+            $cont.replaceChild($el, $oldEl);
+        } else {
+            $cont.appendChild($el);
+        }
+    }
+</script>
+</html>
