@@ -8,41 +8,54 @@
 
 <script>
     const socket = io();
-    const colors = ["blue", "red", "green"];
     document.getElementById('game').onmousemove = (params) => {
         const coords = {
             pageX: params.pageX,
             pageY: params.pageY
         };
-        socket.emit('playerMoved', coords);
         movePlayer({...coords, socketId: "me"});
+        socket.emit('playerMoved', coords);
     };
+
+    socket.on('allPlayers', (players) => {
+        players.forEach(player => {
+            if (player.socketId !== socket.id) {
+                movePlayer(player);
+            }
+        });
+    });
+
     socket.on('playerMoved', (params) => {
         if (params.socketId !== socket.id) {
             movePlayer(params);
+        } else {
+            document.getElementById("me").style.backgroundColor = params.color;
         }
     });
+
     socket.on('userDisconnected', (params) => {
         document.getElementById("game").removeChild(document.getElementById(params.socketId));
     });
 
     function movePlayer (params) {
-        const $el = document.createElement("div");
         const $oldEl = document.getElementById(params.socketId);
-        const $cont = document.getElementById('game');
-        const $players = document.getElementsByClassName("player");
-        $el.id = params.socketId;
-        $el.className = "player";
-        $el.style.left = params.pageX + "px";
-        $el.style.top = params.pageY + "px";
-        $el.style.width = "50px";
-        $el.style.height = "50px";
-        $el.style.borderRadius = "50px";
-        $el.style.backgroundColor = colors[0];
-        $el.style.position = "fixed";
+        const size = 50;
         if ($oldEl) {
-            $cont.replaceChild($el, $oldEl);
+            $oldEl.style.left = (params.pageX - size/2) + "px";
+            $oldEl.style.top = (params.pageY - size/2) + "px";
         } else {
+            const $el = document.createElement("div");
+            const $cont = document.getElementById('game');
+            const $players = document.getElementsByClassName("player");
+            $el.id = params.socketId;
+            $el.className = "player";
+            $el.style.left = (params.pageX - size/2) + "px";
+            $el.style.top = (params.pageY - size/2) + "px";
+            $el.style.width = size + "px";
+            $el.style.height = size + "px";
+            $el.style.borderRadius = size + "px";
+            $el.style.backgroundColor = params.color || "grey";
+            $el.style.position = "fixed";
             $cont.appendChild($el);
         }
     }
