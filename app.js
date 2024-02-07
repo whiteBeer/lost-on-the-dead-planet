@@ -11,7 +11,7 @@ const io = new Server(server, {
     }
 });
 
-const colors = ["red", "blue", "green", "#8F3A84", "#212121"];
+const colors = ["red", "blue", "white", "#8F3A84", "#212121"];
 let players = [];
 
 io.on('connection', (socket) => {

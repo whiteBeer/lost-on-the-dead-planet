@@ -5,8 +5,8 @@ export class Player {
     app = null;
     socketId = null;
     pixiObj = null;
-    speed = 5;
-    playerW = 20;
+    speed = 3;
+    playerW = 16;
     playerH = 40;
 
     constructor (app, params = {}) {
@@ -35,11 +35,13 @@ export class Player {
     }
 
     setColor (color) {
-        this.pixiObj.children[0]
-            .clear()
-            .beginFill(color)
-            .drawRect( 0, 0, this.playerW, this.playerH)
-            .endFill();
+        try {
+            this.pixiObj.children[0]
+                .clear()
+                .beginFill(color)
+                .drawRect( 0, 0, this.playerW, this.playerH)
+                .endFill();
+        } catch (e) {}
     }
 
     getCoords () {
