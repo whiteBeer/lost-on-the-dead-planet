@@ -1,62 +1,95 @@
-import { io } from "socket.io-client";
-import _ from 'lodash';
+import * as PIXI from "pixi.js";
+import Player from "./classes/Player";
+import Control from "./classes/Control";
+import {io} from "socket.io-client";
+
+let players = [];
 
 export function App () {
-    const socket = io.connect('http://localhost:7789');
-    const $cont = document.getElementById('game');
-    $cont.onmousemove = (params) => {
-        const coords = {
-            pageX: params.pageX,
-            pageY: params.pageY
-        };
-        movePlayer({...coords, socketId: "me"});
-        socket.emit('playerMoved', coords);
-    };
+    const socket = io.connect('http://178.21.11.153:7789');
+    const app = new PIXI.Application({
+        background: '#1099bb',
+        resizeTo: window,
+    });
 
-    socket.on('allPlayers', (players) => {
-        players.forEach(player => {
+    const mePlayer = new Player(app, {color: "grey"});
+    players.push(mePlayer);
+    const control = new Control(app);
+
+    app.stage.addChild(mePlayer.pixiObj);
+
+    control.onKey("KeyW", (delta) => {
+        mePlayer.moveY(-mePlayer.speed * delta);
+        socket.emit('playerMoved', mePlayer.getCoords());
+    });
+    control.onKey("KeyS", (delta) => {
+        mePlayer.moveY(mePlayer.speed * delta);
+        socket.emit('playerMoved', mePlayer.getCoords());
+    });
+    control.onKey("KeyA", (delta) => {
+        mePlayer.moveX(-mePlayer.speed * delta);
+        socket.emit('playerMoved', mePlayer.getCoords());
+    });
+    control.onKey("KeyD", (delta) => {
+        mePlayer.moveX(mePlayer.speed * delta);
+        socket.emit('playerMoved', mePlayer.getCoords());
+    });
+    control.onMouseMove(() => {
+        socket.emit('playerMoved', mePlayer.getCoords());
+    });
+
+    app.ticker.add((delta) => {
+        mePlayer.refreshRotationAngleToMouse(control.getMouseCoords());
+    });
+
+    /////
+
+    socket.emit('playerMoved', mePlayer.getCoords());
+    socket.on('allPlayers', (backendPlayers) => {
+        backendPlayers.forEach(player => {
             if (player.socketId !== socket.id) {
-                movePlayer(player);
+                let anotherPlayer = new Player(app, {
+                    x: player.pageX,
+                    y: player.pageY,
+                    color: player.color,
+                    socketId: player.socketId
+                });
+                players.push(anotherPlayer);
+                app.stage.addChild(anotherPlayer.pixiObj);
             }
         });
     });
 
     socket.on('playerMoved', (params) => {
         if (params.socketId !== socket.id) {
-            movePlayer(params);
+            let player = players.find(el => el.socketId === params.socketId);
+            if (player) {
+                player.moveTo(params.pageX, params.pageY, params.rotation);
+            } else {
+                let anotherPlayer = new Player(app, {
+                    x: params.pageX,
+                    y: params.pageY,
+                    color: params.color,
+                    socketId: params.socketId
+                });
+                players.push(anotherPlayer);
+                app.stage.addChild(anotherPlayer.pixiObj);
+            }
         } else {
-            document.getElementById("me").style.backgroundColor = params.color;
+            mePlayer.setColor(params.color);
         }
     });
 
     socket.on('userDisconnected', (params) => {
-        document.getElementById("game").removeChild(document.getElementById(params.socketId));
+        let player = players.find(el => el.socketId === params.socketId);
+        if (player) {
+            player.remove();
+            players = players.filter(el => el.socketId !== params.socketId);
+        }
     });
 
-    return document.createElement('div');
 
-    function movePlayer(params) {
-        const $oldEl = document.getElementById(params.socketId);
-        const size = 50;
-        if ($oldEl) {
-            $oldEl.style.left = (params.pageX - size / 2) + "px";
-            $oldEl.style.top = (params.pageY - size / 2) + "px";
-        } else {
-            const $el = document.createElement("div");
-            const $cont = document.getElementById('game');
-            const $players = document.getElementsByClassName("player");
-            $el.id = params.socketId;
-            $el.className = "player";
-            $el.style.left = (params.pageX - size / 2) + "px";
-            $el.style.top = (params.pageY - size / 2) + "px";
-            $el.style.width = size + "px";
-            $el.style.height = size + "px";
-            $el.style.borderRadius = size + "px";
-            $el.style.backgroundColor = params.color || "grey";
-            $el.style.position = "fixed";
-            $cont.appendChild($el);
-        }
-    }
+    return app.view;
 }
 
 export default App;
