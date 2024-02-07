@@ -6,14 +6,11 @@ const PORT = 7789;
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
+    allowEIO3: true,
     cors: {
-        origin: "*",
-        allowedHeaders: [
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Methods",
-            "Access-Control-Allow-Headers"
-        ],
-    }
+        origin: true,
+        credentials: true
+    },
 });
 
 const colors = ["red", "blue", "green", "#8F3A84", "#212121"];
