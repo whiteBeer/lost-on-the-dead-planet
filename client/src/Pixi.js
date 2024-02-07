@@ -6,7 +6,7 @@ import {io} from "socket.io-client";
 let players = [];
 
 export function Pixi () {
-    const socket = io.connect('http://localhost:7789');
+    const socket = io.connect('http://178.21.11.153/:7789');
     const app = new PIXI.Application({
         background: '#1099bb',
         resizeTo: window,

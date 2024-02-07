@@ -15,7 +15,6 @@
   },
   "scripts": {
     "build": "webpack",
-    "serve": "serve -l 7790",
     "start": "webpack serve --port 7790"
   },
   "keywords": [],
