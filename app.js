@@ -7,7 +7,12 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*"
+        origin: "*",
+        allowedHeaders: [
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Methods",
+            "Access-Control-Allow-Headers"
+        ],
     }
 });
 
