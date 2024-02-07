@@ -1,18 +1,18 @@
 const express = require('express');
 const { createServer } = require('http');
-const { join } = require('path');
 const { Server } = require('socket.io');
 
+const PORT = 7789;
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*"
+    }
+});
 
 const colors = ["red", "blue", "green", "#8F3A84", "#212121"];
 let players = [];
-
-app.get('/', (req, res) => {
-    res.sendFile(join(__dirname, 'client/index.html'));
-});
 
 io.on('connection', (socket) => {
 
@@ -35,7 +35,8 @@ io.on('connection', (socket) => {
                 return {
                     ...el,
                     pageX: params.pageX,
-                    pageY: params.pageY
+                    pageY: params.pageY,
+                    rotation: params.rotation
                 };
             } else {
                 return el;
@@ -57,6 +58,6 @@ io.on('connection', (socket) => {
     io.emit('allPlayers', players);
 });
 
-server.listen(7789, () => {
-    console.log('server running at http://localhost:7789');
+server.listen(PORT, () => {
+    console.log('server running at http://localhost:' + PORT);
 });
