@@ -32,6 +32,9 @@ export function App () {
     control.onMouseMove(() => {
         players.socket.emit('playerMoved', mePlayer.getCoords());
     });
+    control.onMousePressed(() => {
+        mePlayer.fire();
+    });
 
     app.ticker.add((delta) => {
         mePlayer.refreshRotationAngleToMouse(control.getMouseCoords());

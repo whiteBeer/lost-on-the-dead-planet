@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import Weapon from "./Weapon";
 
 export class Player {
 
@@ -8,10 +9,12 @@ export class Player {
     speed = 3;
     playerW = 16;
     playerH = 40;
+    weapon = null;
 
     constructor (app, params = {}) {
         this.app = app;
         this.socketId = params.socketId || "me";
+        this.weapon = new Weapon(app, this);
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
@@ -42,6 +45,10 @@ export class Player {
                 .drawRect( 0, 0, this.playerW, this.playerH)
                 .endFill();
         } catch (e) {}
+    }
+
+    fire () {
+        this.weapon.fire();
     }
 
     getCoords () {

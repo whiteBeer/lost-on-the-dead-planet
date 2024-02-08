@@ -7,9 +7,11 @@ export class PlayersCollection {
     app = null;
     socket = null;
     players = [];
+    mePlayer = null;
 
     constructor (app, mePlayer) {
         this.app = app;
+        this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.stage.addChild(mePlayer.pixiObj);

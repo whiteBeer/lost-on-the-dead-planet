@@ -13,6 +13,7 @@ let mouseCoords = {
 };
 
 let mouseMoveCallbacks = [];
+let isMousePressed = false;
 
 export class Control {
 
@@ -31,6 +32,16 @@ export class Control {
             mouseCoords.pageY = e.pageY;
             mouseMoveCallbacks.forEach(el => el());
         });
+        document.addEventListener("mousedown", (e) => {
+            mouseCoords.pageX = e.pageX;
+            mouseCoords.pageY = e.pageY;
+            isMousePressed = true;
+        });
+        document.addEventListener("mouseup", (e) => {
+            mouseCoords.pageX = e.pageX;
+            mouseCoords.pageY = e.pageY;
+            isMousePressed = false;
+        });
     }
 
     getMouseCoords () {
@@ -47,6 +58,14 @@ export class Control {
 
     onMouseMove (callback) {
         mouseMoveCallbacks.push(callback);
+    }
+
+    onMousePressed (callback) {
+        this.app.ticker.add((delta) => {
+            if (isMousePressed) {
+                callback(delta);
+            }
+        });
     }
 }
 
