@@ -80,7 +80,6 @@ export class Player {
             const diffX = mouseCoords.pageX - this.pixiObj.x;
             const diffY = mouseCoords.pageY - this.pixiObj.y;
             this.pixiObj.rotation = Math.PI + Math.atan2(diffY, diffX);
-            console.log(diffX, diffY, Math.atan2(diffY, diffX));
         } catch (e) {}
     }
 }
