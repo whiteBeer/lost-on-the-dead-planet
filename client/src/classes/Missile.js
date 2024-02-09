@@ -28,25 +28,11 @@ export class Missile {
         this.pixiObj = container;
         app.stage.addChild(this.pixiObj);
 
-        if (params.direction < Math.PI / 2) {
-            this.dx = params.direction;
-            this.dy = -(Math.PI / 2 - params.direction);
-        }
-        if (params.direction >= Math.PI / 2 && params.direction < Math.PI) {
-            this.dx = Math.PI - params.direction;
-            this.dy = params.direction - Math.PI / 2;
-        }
-        if (params.direction >= Math.PI && params.direction < Math.PI * 3 / 2) {
-            this.dx = -(params.direction - Math.PI);
-            this.dy = Math.PI * 3 / 2 - params.direction;
-        }
-        if (params.direction >= Math.PI * 3 / 2) {
-            this.dx = -(Math.PI * 2 - params.direction);
-            this.dy = -(params.direction - Math.PI * 3 / 2);
-        }
+        const cos = Math.cos(params.direction)
+        const sin = Math.sin(params.direction)
 
-        this.dx = this.dx * this.speed;
-        this.dy = this.dy * this.speed;
+        this.dx = -cos * this.speed;
+        this.dy = -sin * this.speed;
 
         this.app.ticker.add(this.moveMissile.bind(this));
     }

@@ -9,14 +9,14 @@ export class PlayersCollection {
     players = [];
     mePlayer = null;
 
-    constructor (app, mePlayer) {
+    constructor (app, mePlayer, socketUrl) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.stage.addChild(mePlayer.pixiObj);
 
-        this.socket = io.connect('http://localhost:7789');
+        this.socket = io.connect(socketUrl);
 
         this.socket.emit('playerMoved', mePlayer.getCoords());
 

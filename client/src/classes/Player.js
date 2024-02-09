@@ -7,8 +7,8 @@ export class Player {
     socketId = null;
     pixiObj = null;
     speed = 3;
-    playerW = 16;
-    playerH = 40;
+    playerW = 40;
+    playerH = 16;
     weapon = null;
 
     constructor (app, params = {}) {
@@ -28,8 +28,8 @@ export class Player {
             params.y || (app.screen.height / 2 - this.playerH / 2)
         );
 
-        container.pivot.x = container.width / 2;
-        container.pivot.y = container.height;
+        container.pivot.x = container.width;
+        container.pivot.y = container.height / 2;
         this.pixiObj = container;
     }
 
@@ -79,7 +79,8 @@ export class Player {
         try {
             const diffX = mouseCoords.pageX - this.pixiObj.x;
             const diffY = mouseCoords.pageY - this.pixiObj.y;
-            this.pixiObj.rotation = (diffX < 0 ? Math.PI : 0) + Math.PI / 2 + Math.atan(diffY / diffX);
+            this.pixiObj.rotation = Math.PI + Math.atan2(diffY, diffX);
+            console.log(diffX, diffY, Math.atan2(diffY, diffX));
         } catch (e) {}
     }
 }

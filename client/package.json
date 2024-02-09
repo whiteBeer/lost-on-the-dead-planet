@@ -14,8 +14,8 @@
     "socket.io": "^4.7.4"
   },
   "scripts": {
-    "build": "webpack",
-    "start": "webpack serve --port 7790"
+    "build": "webpack --env=prod",
+    "start": "webpack serve --port 7790 --env=dev"
   },
   "keywords": [],
   "description": "",

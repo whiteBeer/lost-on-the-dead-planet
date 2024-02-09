@@ -3,14 +3,17 @@ import Player from "./classes/Player";
 import Players from "./classes/PlayersCollection";
 import Control from "./classes/Control";
 
-export function App () {
+export function App (env) {
     const app = new PIXI.Application({
         background: '#1099bb',
         resizeTo: window,
     });
 
     const mePlayer = new Player(app, {color: "#99B"});
-    const players = new Players(app, mePlayer);
+    const players = new Players(
+        app, mePlayer,
+        env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789'
+    );
     const control = new Control(app);
 
     control.onKey("KeyW", (delta) => {

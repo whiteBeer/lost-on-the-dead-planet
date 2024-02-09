@@ -6,7 +6,7 @@ export class Weapon {
     app = null;
     player = null;
     missilesPeriod = 150;
-    missilesSpeed = 50;
+    missilesSpeed = 15;
     missiles = [];
 
     constructor (app, player) {
