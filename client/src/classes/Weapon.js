@@ -17,7 +17,7 @@ export class Weapon {
     fire () {
         const now = new Date().getTime();
         if (!this.missiles.find(el => el.createdAt + this.missilesPeriod > now)) {
-            this.missiles.push(new Missile(this.app, {
+            this.missiles.push(new Missile(this.app, this, {
                 createdAt: now,
                 speed: this.missilesSpeed,
                 startX: this.player.pixiObj.x,
@@ -25,6 +25,10 @@ export class Weapon {
                 direction: this.player.pixiObj.rotation
             }));
         }
+    }
+
+    removeMissileByCreatedAt (createdAt) {
+        this.missiles = this.missiles.filter(el => el.createdAt !== createdAt);
     }
 }
 

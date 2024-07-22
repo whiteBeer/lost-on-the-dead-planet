@@ -22,7 +22,10 @@ export class PlayersCollection {
 
         this.socket.on('allPlayers', (backendPlayers) => {
             backendPlayers.forEach(player => {
-                if (player.socketId !== this.socket.id) {
+                if (
+                    player.socketId !== this.socket.id &&
+                    !this.players.find(el => el.socketId === player.socketId)
+                ) {
                     let anotherPlayer = new Player(app, {
                         x: player.pageX,
                         y: player.pageY,

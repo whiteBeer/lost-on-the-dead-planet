@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 export class Missile {
 
     app = null;
+    weapon = null;
     missileW = 10;
     missileH = 10;
     pixiObj = null;
@@ -10,9 +11,11 @@ export class Missile {
     speed = 0;
     dx = 0;
     dy = 0;
+    tickerFunc = null;
 
-    constructor (app, params = {}) {
+    constructor (app, weapon, params = {}) {
         this.app = app;
+        this.weapon = weapon;
         this.createdAt = params.createdAt;
         this.speed = params.speed || 10;
         const container = new PIXI.Container();
@@ -34,13 +37,22 @@ export class Missile {
         this.dx = -cos * this.speed;
         this.dy = -sin * this.speed;
 
-        this.app.ticker.add(this.moveMissile.bind(this));
+        this.tickerFunc = this.moveMissile.bind(this);
+        this.app.ticker.add(this.tickerFunc);
     }
 
     moveMissile (delta) {
         if (this.pixiObj) {
             this.pixiObj.x += this.dx * delta;
             this.pixiObj.y += this.dy * delta;
+            if (
+                this.pixiObj.x < 100 || this.pixiObj.x > (window.innerWidth - 100) ||
+                this.pixiObj.y < 100 || this.pixiObj.y > (window.innerHeight - 100)
+            ) {
+                this.app.stage.removeChild(this.pixiObj)
+                this.app.ticker.remove(this.tickerFunc);
+                this.weapon.removeMissileByCreatedAt(this.createdAt);
+            }
         }
     }
 }
