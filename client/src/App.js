@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import Scene from "./classes/Scene";
 import Player from "./classes/Player";
 import Players from "./classes/PlayersCollection";
 import Control from "./classes/Control";
@@ -9,6 +10,7 @@ export function App (env) {
         resizeTo: window,
     });
 
+    const scene = new Scene(app);
     const mePlayer = new Player(app, {color: "#99B"});
     const players = new Players(
         app, mePlayer,

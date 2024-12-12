@@ -1,6 +1,7 @@
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const { BackendScene } = require('./classes/Scene');
 
 const PORT = 7789;
 const app = express();
@@ -11,51 +12,30 @@ const io = new Server(server, {
     }
 });
 
-const colors = ["red", "blue", "white", "#8F3A84", "#212121"];
-let players = [];
+const scene = new BackendScene(app);
 
 io.on('connection', (socket) => {
 
-    const playersColors = players.map(el => el.color);
-    const color = colors.find(el => {
-        return playersColors.indexOf(el) === -1;
-    });
-    players.push({
-        socketId: socket.id,
-        color: color,
-    });
+    scene.addPlayer(socket.id);
 
-    console.log("Connected: " + socket.id, players);
+    console.log("Connected: " + socket.id, scene.players);
 
     socket.on('playerMoved', (params) => {
-        let currentPlayerIndex = -1;
-        players = players.map((el, i) => {
-            if (el.socketId === socket.id) {
-                currentPlayerIndex = i;
-                return {
-                    ...el,
-                    pageX: params.pageX,
-                    pageY: params.pageY,
-                    rotation: params.rotation
-                };
-            } else {
-                return el;
-            }
-        });
+        let currentPlayerIndex = scene.updatePlayer(socket.id, params);
         if (currentPlayerIndex !== -1) {
-            io.emit('playerMoved', players[currentPlayerIndex]);
+            io.emit('playerMoved', scene.players[currentPlayerIndex]);
         }
     });
 
     socket.on('disconnect', () => {
-        players = players.filter(it => it.socketId !== socket.id);
+        scene.deletePlayer(socket.id);
         io.emit('userDisconnected', {
             socketId: socket.id
         });
-        console.log('Disconnected ', socket.id, players);
+        console.log('Disconnected ', socket.id, scene.players);
     });
 
-    io.emit('allPlayers', players);
+    io.emit('allPlayers', scene.players);
 });
 
 server.listen(PORT, () => {

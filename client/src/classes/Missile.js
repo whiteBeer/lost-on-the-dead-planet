@@ -46,8 +46,8 @@ export class Missile {
             this.pixiObj.x += this.dx * delta;
             this.pixiObj.y += this.dy * delta;
             if (
-                this.pixiObj.x < 100 || this.pixiObj.x > (window.innerWidth - 100) ||
-                this.pixiObj.y < 100 || this.pixiObj.y > (window.innerHeight - 100)
+                this.pixiObj.x < 10 || this.pixiObj.x > (window.innerWidth - 10) ||
+                this.pixiObj.y < 10 || this.pixiObj.y > (window.innerHeight - 10)
             ) {
                 this.app.stage.removeChild(this.pixiObj)
                 this.app.ticker.remove(this.tickerFunc);
