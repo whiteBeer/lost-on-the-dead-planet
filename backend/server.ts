@@ -1,26 +1,26 @@
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const { BackendScene } = require('./classes/Scene');
+const BackendScene = require('./classes/Scene');
 
 const PORT = 7789;
-const app = express();
-const server = createServer(app);
+const expressServer = express();
+const server = createServer(expressServer);
 const io = new Server(server, {
     cors: {
         origin: "*"
     }
 });
 
-const scene = new BackendScene(app);
+const scene = new BackendScene.BackendScene(server);
 
-io.on('connection', (socket) => {
+io.on('connection', (socket:any) => {
 
     scene.addPlayer(socket.id);
 
     console.log("Connected: " + socket.id, scene.players);
 
-    socket.on('playerMoved', (params) => {
+    socket.on('playerMoved', (params:any) => {
         let currentPlayerIndex = scene.updatePlayer(socket.id, params);
         if (currentPlayerIndex !== -1) {
             io.emit('playerMoved', scene.players[currentPlayerIndex]);
