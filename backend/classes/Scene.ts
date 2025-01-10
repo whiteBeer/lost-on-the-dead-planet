@@ -1,19 +1,10 @@
-
-import { config } from "../configs/Main";
+import { config } from "../config";
 import { Player } from "../types";
 
 export class BackendScene {
 
     playerColors:string[] = config.playerColors;
-
-    app:any = null;
-    width:number = 1000;
-    height:number = 1000;
     players:Player[] = [];
-
-    constructor (app:any, params:any = {}) {
-        this.app = app;
-    }
 
     addPlayer (socketId:string) {
         const playersColors = this.players.map((el:Player) => el.color);
@@ -50,6 +41,6 @@ export class BackendScene {
     }
 
     deletePlayer (socketId:string) {
-        this.players = this.players.filter((it:any) => it.socketId !== socketId);
+        this.players = this.players.filter((it:Player) => it.socketId !== socketId);
     }
 }
