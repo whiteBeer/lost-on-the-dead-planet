@@ -18,8 +18,6 @@ export class PlayersCollection {
 
         this.socket = io.connect(socketUrl);
 
-        this.socket.emit('playerMoved', mePlayer.getCoords());
-
         this.socket.on('allPlayers', (backendPlayers) => {
             backendPlayers.forEach(player => {
                 if (
@@ -34,6 +32,10 @@ export class PlayersCollection {
                     });
                     this.players.push(anotherPlayer);
                     app.stage.addChild(anotherPlayer.pixiObj);
+                } else {
+                    this.mePlayer.setColor(player.color);
+                    this.mePlayer.moveTo(player.pageX, player.pageY, player.rotation);
+                    this.mePlayer.show();
                 }
             });
         });

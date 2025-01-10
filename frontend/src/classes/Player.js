@@ -4,7 +4,7 @@ import Weapon from "./Weapon";
 export class Player {
 
     app = null;
-    socketId = null;
+    socketId = "";
     pixiObj = null;
     speed = 3;
     playerW = 40;
@@ -23,13 +23,14 @@ export class Player {
             .endFill();
 
         container.addChild(rectangle);
-        container.position.set(
-            params.x || (app.screen.width / 2 - this.playerW / 2),
-            params.y || (app.screen.height / 2 - this.playerH / 2)
-        );
-
+        if (typeof params.x !== "undefined" && typeof params.y !== "undefined") {
+            container.position.set(params.x, params.y);
+        }
         container.pivot.x = container.width;
         container.pivot.y = container.height / 2;
+        if (this.socketId === "me") {
+            container.visible = false;
+        }
         this.pixiObj = container;
     }
 
@@ -47,6 +48,14 @@ export class Player {
         } catch (e) {}
     }
 
+    hide () {
+        this.pixiObj.visible = false;
+    }
+
+    show () {
+        this.pixiObj.visible = true;
+    }
+
     fire () {
         this.weapon.fire();
     }
@@ -62,7 +71,7 @@ export class Player {
     moveTo (x, y, rotation = null) {
         this.pixiObj.x = x;
         this.pixiObj.y = y;
-        if (rotation) {
+        if (rotation !== null) {
             this.pixiObj.rotation = rotation;
         }
     }

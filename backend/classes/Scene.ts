@@ -3,6 +3,8 @@ import { Player } from "../types";
 
 export class BackendScene {
 
+    width = 1000;
+    height = 1000;
     playerColors:string[] = config.playerColors;
     players:Player[] = [];
 
@@ -12,10 +14,15 @@ export class BackendScene {
             return playersColors.indexOf(el) === -1;
         });
         if (color) {
-            this.players.push({
+            const newPlayer = {
                 socketId: socketId,
-                color: color
-            });
+                color: color,
+                pageX: Math.round(Math.random() * this.width),
+                pageY: Math.round(Math.random() * this.height),
+                rotation: Math.random() * 6
+            };
+            this.players.push(newPlayer);
+            return newPlayer;
         } else {
             console.log("Cannot find color for player");
         }

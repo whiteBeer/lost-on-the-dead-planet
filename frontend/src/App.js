@@ -42,7 +42,9 @@ export function App (env) {
     });
 
     app.ticker.add((delta) => {
-        mePlayer.refreshRotationAngleToMouse(control.getMouseCoords());
+        if (document.querySelector('#game').matches(':hover')) {
+            mePlayer.refreshRotationAngleToMouse(control.getMouseCoords());
+        }
     });
 
 
