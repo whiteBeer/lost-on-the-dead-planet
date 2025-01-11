@@ -1,12 +1,23 @@
+import { Server } from "socket.io";
+
 import { config } from "../config";
 import { Player } from "../types";
+import { Enemies } from "./Enemies";
 
 export class BackendScene {
+
+    io:Server;
 
     width = 1000;
     height = 1000;
     playerColors:string[] = config.playerColors;
     players:Player[] = [];
+    enemiesCollection:Enemies;
+
+    constructor(io:Server) {
+        this.io = io;
+        this.enemiesCollection = new Enemies(this);
+    }
 
     addPlayer (socketId:string) {
         const playersColors = this.players.map((el:Player) => el.color);

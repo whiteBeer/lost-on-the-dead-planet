@@ -10,7 +10,7 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
-const scene = new BackendScene();
+const scene = new BackendScene(io);
 
 io.on("connection", async (socket:Socket) => {
 
@@ -35,6 +35,8 @@ io.on("connection", async (socket:Socket) => {
 
         io.emit("allPlayers", scene.players);
     }
+
+    io.emit("allEnemies", scene.enemiesCollection.getEnemies());
 });
 
 server.listen(PORT, () => {

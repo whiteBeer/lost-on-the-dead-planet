@@ -2,7 +2,9 @@ import * as PIXI from "pixi.js";
 import Scene from "./classes/Scene";
 import Player from "./classes/Player";
 import Players from "./classes/PlayersCollection";
+import Enemies from "./classes/EnemiesCollection";
 import Control from "./classes/Control";
+import {io} from "socket.io-client";
 
 export function App (env) {
     const app = new PIXI.Application({
@@ -10,12 +12,12 @@ export function App (env) {
         resizeTo: window,
     });
 
+    const socketUrl = env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789';
+    const socket = io.connect(socketUrl);
     const scene = new Scene(app);
     const mePlayer = new Player(app, {color: "#99B"});
-    const players = new Players(
-        app, mePlayer,
-        env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789'
-    );
+    const players = new Players(app, mePlayer, socket);
+    const enemies = new Enemies(app, socket);
     const control = new Control(app);
 
     control.onKey("KeyW", (delta) => {

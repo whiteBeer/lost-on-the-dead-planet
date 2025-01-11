@@ -9,14 +9,14 @@ export class PlayersCollection {
     players = [];
     mePlayer = null;
 
-    constructor (app, mePlayer, socketUrl) {
+    constructor (app, mePlayer, socket) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.stage.addChild(mePlayer.pixiObj);
 
-        this.socket = io.connect(socketUrl);
+        this.socket = socket;
 
         this.socket.on('allPlayers', (backendPlayers) => {
             backendPlayers.forEach(player => {
