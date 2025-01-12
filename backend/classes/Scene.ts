@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import { config } from "../config";
 import { Player } from "../types";
 import { Enemies } from "./Enemies";
+import { Missiles } from "./Missiles";
 
 export class BackendScene {
 
@@ -13,10 +14,12 @@ export class BackendScene {
     playerColors:string[] = config.playerColors;
     players:Player[] = [];
     enemiesCollection:Enemies;
+    missilesCollection:Missiles;
 
     constructor(io:Server) {
         this.io = io;
         this.enemiesCollection = new Enemies(this);
+        this.missilesCollection = new Missiles(this);
     }
 
     addPlayer (socketId:string) {

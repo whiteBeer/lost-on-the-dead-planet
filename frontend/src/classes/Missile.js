@@ -8,7 +8,7 @@ export class Missile {
     missileH = 10;
     pixiObj = null;
     createdAt = null;
-    speed = 0;
+    speedInSecond = 0;
     dx = 0;
     dy = 0;
     tickerFunc = null;
@@ -17,7 +17,11 @@ export class Missile {
         this.app = app;
         this.weapon = weapon;
         this.createdAt = params.createdAt;
-        this.speed = params.speed || 10;
+        this.speedInSecond = params.speedInSecond || 100;
+
+        const dirCos = Math.cos(params.rotation);
+        const dirSin = Math.sin(params.rotation);
+
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
@@ -25,17 +29,24 @@ export class Missile {
             .drawRect( 0, 0, this.missileW, this.missileH)
             .endFill();
         container.addChild(rectangle);
-        container.position.set(params.startX, params.startY);
+        if (params.serverCurrentDateTime) {
+            const dTimeSeconds = (
+                new Date(params.serverCurrentDateTime).getTime() - new Date(params.createdAt).getTime()
+            ) / 1000;
+            container.position.set(
+                params.startX + (-dirCos * (params.speedInSecond * dTimeSeconds)),
+                params.startY + (-dirSin * (params.speedInSecond * dTimeSeconds))
+            );
+        } else {
+            container.position.set(params.startX, params.startY);
+        }
         container.pivot.x = container.width / 2;
         container.pivot.y = container.height / 2;
         this.pixiObj = container;
         app.stage.addChild(this.pixiObj);
 
-        const cos = Math.cos(params.direction)
-        const sin = Math.sin(params.direction)
-
-        this.dx = -cos * this.speed;
-        this.dy = -sin * this.speed;
+        this.dx = -dirCos * (this.speedInSecond / (1000 / 16.66)) ;
+        this.dy = -dirSin * (this.speedInSecond / (1000 / 16.66));
 
         this.tickerFunc = this.moveMissile.bind(this);
         this.app.ticker.add(this.tickerFunc);

@@ -25,6 +25,10 @@ io.on("connection", async (socket:Socket) => {
             }
         });
 
+        socket.on("missileCreate", (params) => {
+            scene.missilesCollection.createMissile(params, socket.id);
+        });
+
         socket.on("disconnect", () => {
             scene.deletePlayer(socket.id);
             io.emit("userDisconnected", {

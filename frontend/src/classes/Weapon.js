@@ -6,7 +6,7 @@ export class Weapon {
     app = null;
     player = null;
     missilesPeriod = 150;
-    missilesSpeed = 15;
+    speedInSecond = 300;
     missiles = [];
 
     constructor (app, player) {
@@ -15,15 +15,24 @@ export class Weapon {
     }
 
     fire () {
+        // TODO: need to use scene.createMissile(...)
         const now = new Date().getTime();
         if (!this.missiles.find(el => el.createdAt + this.missilesPeriod > now)) {
+
+            const playerCoords = this.player.getCoords();
             this.missiles.push(new Missile(this.app, this, {
                 createdAt: now,
-                speed: this.missilesSpeed,
-                startX: this.player.pixiObj.x,
-                startY: this.player.pixiObj.y,
-                direction: this.player.pixiObj.rotation
+                speedInSecond: this.speedInSecond,
+                startX: playerCoords.pageX,
+                startY: playerCoords.pageY,
+                rotation: playerCoords.rotation
             }));
+            this.app.socket.emit('missileCreate', {
+                speedInSecond: this.speedInSecond,
+                startX: playerCoords.pageX,
+                startY: playerCoords.pageY,
+                rotation: playerCoords.rotation
+            });
         }
     }
 

@@ -9,19 +9,17 @@ export class PlayersCollection {
     players = [];
     mePlayer = null;
 
-    constructor (app, mePlayer, socket) {
+    constructor (app, mePlayer) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.stage.addChild(mePlayer.pixiObj);
 
-        this.socket = socket;
-
-        this.socket.on('allPlayers', (backendPlayers) => {
+        this.app.socket.on('allPlayers', (backendPlayers) => {
             backendPlayers.forEach(player => {
                 if (
-                    player.socketId !== this.socket.id &&
+                    player.socketId !== this.app.socket.id &&
                     !this.players.find(el => el.socketId === player.socketId)
                 ) {
                     let anotherPlayer = new Player(app, {
@@ -40,8 +38,8 @@ export class PlayersCollection {
             });
         });
 
-        this.socket.on('playerMoved', (params) => {
-            if (params.socketId !== this.socket.id) {
+        this.app.socket.on('playerMoved', (params) => {
+            if (params.socketId !== this.app.socket.id) {
                 let player = this.players.find(el => el.socketId === params.socketId);
                 if (player) {
                     player.moveTo(params.pageX, params.pageY, params.rotation);
@@ -60,7 +58,7 @@ export class PlayersCollection {
             }
         });
 
-        this.socket.on('userDisconnected', (params) => {
+        this.app.socket.on('userDisconnected', (params) => {
             let player = this.players.find(el => el.socketId === params.socketId);
             if (player) {
                 player.remove();

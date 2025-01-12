@@ -16,3 +16,13 @@ export interface Enemy {
     createdAt: string,
     updatedAt: string
 }
+
+export interface Missile {
+    id: string,
+    ownerId: string,
+    startX: number,
+    startY: number,
+    speedInSecond: number,
+    rotation: number,
+    createdAt: string
+}
