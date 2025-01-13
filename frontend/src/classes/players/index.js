@@ -1,5 +1,4 @@
 import * as PIXI from "pixi.js";
-import {io} from "socket.io-client";
 import Player from "./Player";
 
 export class PlayersCollection {
@@ -14,7 +13,7 @@ export class PlayersCollection {
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
-        app.stage.addChild(mePlayer.pixiObj);
+        app.pixiApp.stage.addChild(mePlayer.pixiObj);
 
         this.app.socket.on('allPlayers', (backendPlayers) => {
             backendPlayers.forEach(player => {
@@ -29,7 +28,7 @@ export class PlayersCollection {
                         socketId: player.socketId
                     });
                     this.players.push(anotherPlayer);
-                    app.stage.addChild(anotherPlayer.pixiObj);
+                    app.pixiApp.stage.addChild(anotherPlayer.pixiObj);
                 } else {
                     this.mePlayer.setColor(player.color);
                     this.mePlayer.moveTo(player.pageX, player.pageY, player.rotation);
@@ -51,14 +50,14 @@ export class PlayersCollection {
                         socketId: params.socketId
                     });
                     this.players.push(anotherPlayer);
-                    app.stage.addChild(anotherPlayer.pixiObj);
+                    app.pixiApp.stage.addChild(anotherPlayer.pixiObj);
                 }
             } else {
                 mePlayer.setColor(params.color);
             }
         });
 
-        this.app.socket.on('userDisconnected', (params) => {
+        this.app.socket.on('playerDisconnected', (params) => {
             let player = this.players.find(el => el.socketId === params.socketId);
             if (player) {
                 player.remove();
@@ -67,5 +66,3 @@ export class PlayersCollection {
         });
     }
 }
-
-export default PlayersCollection;

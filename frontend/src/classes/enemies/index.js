@@ -8,18 +8,17 @@ export class EnemiesCollection {
     socket = null;
     enemies = [];
 
-    constructor (app, socket) {
+    constructor (app) {
         this.app = app;
-        this.socket = socket;
 
-        this.socket.on('allEnemies', (backendEnemies) => {
+        this.app.socket.on('allEnemies', (backendEnemies) => {
             this.enemies.forEach(el => {
                 el.remove();
             });
             backendEnemies.enemies.forEach(el => {
                 const enemy = new Enemy(this.app, el, backendEnemies.serverCurrentDateTime);
                 this.enemies.push(enemy);
-                app.stage.addChild(enemy.pixiObj);
+                app.pixiApp.stage.addChild(enemy.pixiObj);
             });
         });
     }

@@ -31,7 +31,7 @@ io.on("connection", async (socket:Socket) => {
 
         socket.on("disconnect", () => {
             scene.deletePlayer(socket.id);
-            io.emit("userDisconnected", {
+            io.emit("playerDisconnected", {
                 socketId: socket.id
             });
             console.log("Disconnected ", socket.id, scene.players);

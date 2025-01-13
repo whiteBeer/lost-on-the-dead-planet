@@ -3,7 +3,7 @@ import * as PIXI from "pixi.js";
 export class Missile {
 
     app = null;
-    weapon = null;
+    ownerId = null;
     missileW = 10;
     missileH = 10;
     pixiObj = null;
@@ -13,9 +13,9 @@ export class Missile {
     dy = 0;
     tickerFunc = null;
 
-    constructor (app, weapon, params = {}) {
+    constructor (app, params = {}) {
         this.app = app;
-        this.weapon = weapon;
+        this.ownerId = params.ownerId;
         this.createdAt = params.createdAt;
         this.speedInSecond = params.speedInSecond || 100;
 
@@ -39,17 +39,32 @@ export class Missile {
             );
         } else {
             container.position.set(params.startX, params.startY);
+            this.createBackend(params);
         }
         container.pivot.x = container.width / 2;
         container.pivot.y = container.height / 2;
         this.pixiObj = container;
-        app.stage.addChild(this.pixiObj);
+        app.pixiApp.stage.addChild(this.pixiObj);
 
         this.dx = -dirCos * (this.speedInSecond / (1000 / 16.66)) ;
         this.dy = -dirSin * (this.speedInSecond / (1000 / 16.66));
 
         this.tickerFunc = this.moveMissile.bind(this);
-        this.app.ticker.add(this.tickerFunc);
+        this.app.pixiApp.ticker.add(this.tickerFunc);
+    }
+
+    createBackend (params) {
+        this.app.socket.emit('missileCreate', {
+            range: params.range,
+            speedInSecond: params.speedInSecond,
+            startX: params.startX,
+            startY: params.startY,
+            rotation: params.rotation
+        });
+    }
+
+    getOwnerId() {
+        return this.ownerId;
     }
 
     moveMissile (delta) {
@@ -60,9 +75,9 @@ export class Missile {
                 this.pixiObj.x < 10 || this.pixiObj.x > (window.innerWidth - 10) ||
                 this.pixiObj.y < 10 || this.pixiObj.y > (window.innerHeight - 10)
             ) {
-                this.app.stage.removeChild(this.pixiObj)
-                this.app.ticker.remove(this.tickerFunc);
-                this.weapon.removeMissileByCreatedAt(this.createdAt);
+                this.app.pixiApp.stage.removeChild(this.pixiObj)
+                this.app.pixiApp.ticker.remove(this.tickerFunc);
+                this.app.scene.missilesCollection.removeMissileByCreatedAt(this.createdAt);
             }
         }
     }

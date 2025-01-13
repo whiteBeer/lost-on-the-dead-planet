@@ -49,7 +49,7 @@ export class Control {
     }
 
     onKey (keyCode, callback) {
-        this.app.ticker.add((delta) => {
+        this.app.pixiApp.ticker.add((delta) => {
             if (keys["is" + keyCode]) {
                 callback(delta);
             }
@@ -61,7 +61,7 @@ export class Control {
     }
 
     onMousePressed (callback) {
-        this.app.ticker.add((delta) => {
+        this.app.pixiApp.ticker.add((delta) => {
             if (isMousePressed) {
                 callback(delta);
             }

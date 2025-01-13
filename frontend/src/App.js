@@ -1,58 +1,55 @@
 import * as PIXI from "pixi.js";
 import Scene from "./classes/Scene";
-import Player from "./classes/Player";
-import Players from "./classes/PlayersCollection";
-import Enemies from "./classes/EnemiesCollection";
 import Control from "./classes/Control";
 import {io} from "socket.io-client";
 
-export function App (env) {
+export class App {
 
-    const socketUrl = env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789';
-    const socket = io.connect(socketUrl);
+    socket = null;
+    scene = null;
+    control = null;
 
-    const app = new PIXI.Application({
-        background: '#1099bb',
-        resizeTo: window,
-    });
-    app.socket = socket;
-    const scene = new Scene(app);
-    const mePlayer = new Player(app, {color: "#99B"});
-    const players = new Players(app, mePlayer);
-    const enemies = new Enemies(app, socket);
-    const control = new Control(app);
+    constructor (env) {
+        const socketUrl = env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789';
+        this.socket = io.connect(socketUrl);
 
-    control.onKey("KeyW", (delta) => {
-        mePlayer.moveY(-mePlayer.speed * delta);
-        app.socket.emit('playerMoved', mePlayer.getCoords());
-    });
-    control.onKey("KeyS", (delta) => {
-        mePlayer.moveY(mePlayer.speed * delta);
-        app.socket.emit('playerMoved', mePlayer.getCoords());
-    });
-    control.onKey("KeyA", (delta) => {
-        mePlayer.moveX(-mePlayer.speed * delta);
-        app.socket.emit('playerMoved', mePlayer.getCoords());
-    });
-    control.onKey("KeyD", (delta) => {
-        mePlayer.moveX(mePlayer.speed * delta);
-        app.socket.emit('playerMoved', mePlayer.getCoords());
-    });
-    control.onMouseMove(() => {
-        app.socket.emit('playerMoved', mePlayer.getCoords());
-    });
-    control.onMousePressed(() => {
-        mePlayer.fire();
-    });
+        this.pixiApp = new PIXI.Application({
+            background: '#1099bb',
+            resizeTo: window,
+        });
+        this.control = new Control(this);
+        this.scene = new Scene(this);
 
-    app.ticker.add((delta) => {
-        if (document.querySelector('#game').matches(':hover')) {
-            mePlayer.refreshRotationAngleToMouse(control.getMouseCoords());
-        }
-    });
+        this.control.onKey("KeyW", (delta) => {
+            this.scene.mePlayer.moveY(-this.scene.mePlayer.speed * delta);
+            this.socket.emit('playerMoved', this.scene.mePlayer.getCoords());
+        });
+        this.control.onKey("KeyS", (delta) => {
+            this.scene.mePlayer.moveY(this.scene.mePlayer.speed * delta);
+            this.socket.emit('playerMoved', this.scene.mePlayer.getCoords());
+        });
+        this.control.onKey("KeyA", (delta) => {
+            this.scene.mePlayer.moveX(-this.scene.mePlayer.speed * delta);
+            this.socket.emit('playerMoved', this.scene.mePlayer.getCoords());
+        });
+        this.control.onKey("KeyD", (delta) => {
+            this.scene.mePlayer.moveX(this.scene.mePlayer.speed * delta);
+            this.socket.emit('playerMoved', this.scene.mePlayer.getCoords());
+        });
+        this.control.onMouseMove(() => {
+            this.socket.emit('playerMoved', this.scene.mePlayer.getCoords());
+        });
+        this.control.onMousePressed(() => {
+            this.scene.mePlayer.fire();
+        });
+
+        this.pixiApp.ticker.add((delta) => {
+            if (document.querySelector('#game').matches(':hover')) {
+                this.scene.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
+            }
+        });
 
 
-    return app.view;
+        return this.pixiApp.view;
+    }
 }
-
-export default App;

@@ -1,5 +1,8 @@
 import * as PIXI from "pixi.js";
-import Missile from "./Missile";
+import Player from "./players/Player";
+import { PlayersCollection } from "./players";
+import { EnemiesCollection } from "./enemies";
+import { MissilesCollection } from "./missiles";
 
 export class Scene {
 
@@ -9,11 +12,20 @@ export class Scene {
     width = 1000;
     height = 1000;
 
-    missiles = [];
+    mePlayer = null;
+    playersCollection = null;
+    enemiesCollection = null;
+    missilesCollection = null;
 
     constructor (app, params = {}) {
         this.app = app;
         this.socketId = params.socketId || "me";
+
+        this.mePlayer = new Player(app, {color: "#99B"});
+        this.playersCollection = new PlayersCollection(app, this.mePlayer);
+        this.enemiesCollection = new EnemiesCollection(app);
+        this.missilesCollection = new MissilesCollection(app);
+
         const container = new PIXI.Container();
         const line = new PIXI.Graphics();
         line.lineStyle(2, "#FFF");
@@ -26,31 +38,15 @@ export class Scene {
         container.position.set(0, 0);
         
         this.pixiObj = container;
-        app.stage.addChild(this.pixiObj);
+        app.pixiApp.stage.addChild(this.pixiObj);
 
         this.app.socket.on('missilesAll', (params) => {
             params.missiles.forEach(el => {
                 if (el.ownerId !== app.socket.id) {
-                    this.createMissile(el, params.serverCurrentDateTime);
+                    this.missilesCollection.createMissile(el, params.serverCurrentDateTime);
                 }
             });
         });
-    }
-
-    createMissile (params, serverCurrentDateTime) {
-        const now = new Date().getTime();
-        this.missiles.push(new Missile(this.app, this, {
-            serverCurrentDateTime: serverCurrentDateTime,
-            createdAt: params.createdAt,
-            speedInSecond: params.speedInSecond,
-            startX: params.startX,
-            startY: params.startY,
-            rotation: params.rotation
-        }));
-    }
-
-    removeMissileByCreatedAt (createdAt) {
-        this.missiles = this.missiles.filter(el => el.createdAt !== createdAt);
     }
 }
 

@@ -36,7 +36,7 @@ export class Enemy {
         this.dy = -dirSin * (enemyJson.speedInSecond / (1000 / 16.66));
 
         this.tickerFunc = this.moveEnemy.bind(this);
-        this.app.ticker.add(this.tickerFunc);
+        this.app.pixiApp.ticker.add(this.tickerFunc);
     }
 
     remove () {
@@ -46,7 +46,7 @@ export class Enemy {
     }
 
     stop () {
-        this.app.ticker.remove(this.tickerFunc);
+        this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
     moveEnemy (delta) {
