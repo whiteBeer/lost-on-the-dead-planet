@@ -1,3 +1,3 @@
 import {App} from './src/App';
 
-document.body.appendChild(App("prod"));
+document.body.appendChild(new App("prod"));
