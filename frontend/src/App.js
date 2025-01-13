@@ -5,18 +5,21 @@ import {io} from "socket.io-client";
 
 export class App {
 
+    pixiApp = null;
+
     socket = null;
     scene = null;
     control = null;
 
     constructor (env) {
-        const socketUrl = env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789';
-        this.socket = io.connect(socketUrl);
 
         this.pixiApp = new PIXI.Application({
             background: '#1099bb',
             resizeTo: window,
         });
+
+        const socketUrl = env === "dev" ? 'http://localhost:7789' : 'http://178.21.11.153:7789';
+        this.socket = io.connect(socketUrl);
         this.control = new Control(this);
         this.scene = new Scene(this);
 
