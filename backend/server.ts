@@ -14,14 +14,15 @@ const scene = new BackendScene(io);
 
 io.on("connection", async (socket:Socket) => {
 
-    const newPlayer = scene.addPlayer(socket.id);
+    const scenePlayers = scene.playersCollection;
+    const newPlayer = scenePlayers.addPlayer(socket.id);
     if (newPlayer) {
         console.log("Connected: " + socket.id, newPlayer);
 
         socket.on("playerMoved", (params: Player) => {
-            const currentPlayerIndex = scene.updatePlayer(socket.id, params);
+            const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
             if (currentPlayerIndex !== -1) {
-                io.emit("playerMoved", scene.players[currentPlayerIndex]);
+                io.emit("playerMoved", scenePlayers.getPlayers()[currentPlayerIndex]);
             }
         });
 
@@ -30,14 +31,14 @@ io.on("connection", async (socket:Socket) => {
         });
 
         socket.on("disconnect", () => {
-            scene.deletePlayer(socket.id);
+            scenePlayers.deletePlayer(socket.id);
             io.emit("playerDisconnected", {
                 socketId: socket.id
             });
-            console.log("Disconnected ", socket.id, scene.players);
+            console.log("Disconnected ", socket.id, scenePlayers.getPlayers());
         });
 
-        io.emit("allPlayers", scene.players);
+        io.emit("allPlayers", scenePlayers.getPlayers());
     }
 
     io.emit("allEnemies", scene.enemiesCollection.getEnemies());
