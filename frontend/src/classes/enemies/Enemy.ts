@@ -1,13 +1,17 @@
 import * as PIXI from "pixi.js";
+import {App} from "../../App";
 
 export class Enemy {
 
-    app = null;
-    pixiObj = null;
-    weapon = null;
-    createdAt = null;
+    app:App;
+    pixiObj:PIXI.Container;
 
-    constructor (app, enemyJson = {}, serverCurrentDateTime) {
+    dx:number;
+    dy:number;
+
+    tickerFunc:any;
+
+    constructor (app:App, enemyJson:any = {}, serverCurrentDateTime:string) {
         this.app = app;
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
@@ -18,8 +22,8 @@ export class Enemy {
 
         container.addChild(rectangle);
 
-        const dirCos = Math.cos(enemyJson.rotation)
-        const dirSin = Math.sin(enemyJson.rotation)
+        const dirCos = Math.cos(enemyJson.rotation);
+        const dirSin = Math.sin(enemyJson.rotation);
         const dTimeSeconds = (
             new Date(serverCurrentDateTime).getTime() - new Date(enemyJson.updatedAt).getTime()
         ) / 1000;
@@ -42,14 +46,16 @@ export class Enemy {
     remove () {
         try {
             this.pixiObj.parent.removeChild(this.pixiObj);
-        } catch (e) {}
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     stop () {
         this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
-    moveEnemy (delta) {
+    moveEnemy (delta:number) {
         if (this.pixiObj) {
             this.pixiObj.x += this.dx * delta;
             this.pixiObj.y += this.dy * delta;

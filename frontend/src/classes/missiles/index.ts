@@ -1,14 +1,13 @@
 import * as PIXI from "pixi.js";
-import {io} from "socket.io-client";
-import Player from "./Missile";
-import Missile from "./Missile";
+import {Missile} from "./Missile";
+import {App} from "../../App";
 
 export class MissilesCollection {
 
-    app = null;
-    missiles = [];
+    app:App;
+    missiles:Missile[] = [];
 
-    constructor (app) {
+    constructor (app:App) {
         this.app = app;
     }
 
@@ -16,8 +15,7 @@ export class MissilesCollection {
         return this.missiles;
     }
 
-    createMissile (params, serverCurrentDateTime) {
-        const now = new Date().getTime();
+    createMissile (params:any, serverCurrentDateTime:string) {
         this.missiles.push(new Missile(this.app, {
             serverCurrentDateTime: serverCurrentDateTime,
             ownerId: params.ownerId,
@@ -29,11 +27,11 @@ export class MissilesCollection {
         }));
     }
 
-    getMissilesByOwnerId (ownerId) {
+    getMissilesByOwnerId (ownerId:string) {
         return this.missiles.filter(el => el.getOwnerId() === ownerId);
     }
 
-    removeMissileByCreatedAt (createdAt) {
+    removeMissileByCreatedAt (createdAt:string) {
         this.missiles = this.missiles.filter(el => el.createdAt !== createdAt);
     }
 }

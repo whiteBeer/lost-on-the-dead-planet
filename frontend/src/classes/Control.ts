@@ -1,25 +1,26 @@
 import * as PIXI from "pixi.js";
+import {App} from "../App";
 
-let keys = {
+const keys:any = {
     isKeyW: false,
     isKeyS: false,
     isKeyA: false,
-    isKeyD: false,
+    isKeyD: false
 };
 
-let mouseCoords = {
+const mouseCoords:any = {
     pageX: 0,
-    pageY: 0,
+    pageY: 0
 };
 
-let mouseMoveCallbacks = [];
+const mouseMoveCallbacks:any[] = [];
 let isMousePressed = false;
 
 export class Control {
 
-    app = null;
+    app:App;
 
-    constructor (app, params = {}) {
+    constructor (app:App) {
         this.app = app;
         document.addEventListener("keydown", (e) => {
             keys["is" + e.code] = true;
@@ -48,7 +49,7 @@ export class Control {
         return mouseCoords;
     }
 
-    onKey (keyCode, callback) {
+    onKey (keyCode:string, callback:any) {
         this.app.pixiApp.ticker.add((delta) => {
             if (keys["is" + keyCode]) {
                 callback(delta);
@@ -56,11 +57,11 @@ export class Control {
         });
     }
 
-    onMouseMove (callback) {
+    onMouseMove (callback:any) {
         mouseMoveCallbacks.push(callback);
     }
 
-    onMousePressed (callback) {
+    onMousePressed (callback:any) {
         this.app.pixiApp.ticker.add((delta) => {
             if (isMousePressed) {
                 callback(delta);

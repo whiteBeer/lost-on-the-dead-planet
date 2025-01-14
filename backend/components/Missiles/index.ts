@@ -1,14 +1,14 @@
 import { randomUUID } from "crypto";
 
 import { Missile } from "../../types";
-import { BackendScene } from "../Scene";
+import { Scene } from "../Scene";
 
 export class Missiles {
 
-    scene:BackendScene;
+    scene:Scene;
     items:Missile[] = [];
 
-    constructor(scene:BackendScene) {
+    constructor(scene:Scene) {
         this.scene = scene;
     }
 

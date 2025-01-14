@@ -3,25 +3,25 @@ import Player from "./Player";
 
 export class PlayersCollection {
 
-    app = null;
-    socket = null;
-    players = [];
-    mePlayer = null;
+    app:any = null;
+    socket:any = null;
+    players:any[] = [];
+    mePlayer:any = null;
 
-    constructor (app, mePlayer) {
+    constructor (app:any, mePlayer:any) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.pixiApp.stage.addChild(mePlayer.pixiObj);
 
-        this.app.socket.on('allPlayers', (backendPlayers) => {
-            backendPlayers.forEach(player => {
+        this.app.socket?.on("allPlayers", (backendPlayers:any) => {
+            backendPlayers.forEach((player:any) => {
                 if (
                     player.socketId !== this.app.socket.id &&
                     !this.players.find(el => el.socketId === player.socketId)
                 ) {
-                    let anotherPlayer = new Player(app, {
+                    const anotherPlayer = new Player(app, {
                         x: player.pageX,
                         y: player.pageY,
                         color: player.color,
@@ -37,13 +37,13 @@ export class PlayersCollection {
             });
         });
 
-        this.app.socket.on('playerMoved', (params) => {
+        this.app.socket?.on("playerMoved", (params:any) => {
             if (params.socketId !== this.app.socket.id) {
-                let player = this.players.find(el => el.socketId === params.socketId);
+                const player = this.players.find(el => el.socketId === params.socketId);
                 if (player) {
                     player.moveTo(params.pageX, params.pageY, params.rotation);
                 } else {
-                    let anotherPlayer = new Player(app, {
+                    const anotherPlayer = new Player(app, {
                         x: params.pageX,
                         y: params.pageY,
                         color: params.color,
@@ -57,8 +57,8 @@ export class PlayersCollection {
             }
         });
 
-        this.app.socket.on('playerDisconnected', (params) => {
-            let player = this.players.find(el => el.socketId === params.socketId);
+        this.app.socket?.on("playerDisconnected", (params:any) => {
+            const player = this.players.find(el => el.socketId === params.socketId);
             if (player) {
                 player.remove();
                 this.players = this.players.filter(el => el.socketId !== params.socketId);

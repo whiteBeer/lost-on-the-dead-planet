@@ -1,14 +1,14 @@
 import { Player } from "../../types";
-import { BackendScene } from "../Scene";
+import { Scene } from "../Scene";
 import { config } from "../../config";
 
 export class Players {
 
-    scene:BackendScene;
-    playerColors:string[] = config.playerColors;
+    scene:Scene;
+    playerColors:string[] = config.playerColors || [];
     players:Player[] = [];
 
-    constructor(scene:BackendScene) {
+    constructor(scene:Scene) {
         this.scene = scene;
     }
 

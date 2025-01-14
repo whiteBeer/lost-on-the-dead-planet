@@ -1,25 +1,25 @@
 import * as PIXI from "pixi.js";
 import Player from "./players/Player";
-import { PlayersCollection } from "./players";
-import { EnemiesCollection } from "./enemies";
-import { MissilesCollection } from "./missiles";
+import {PlayersCollection} from "./players";
+import {EnemiesCollection} from "./enemies";
+import {MissilesCollection} from "./missiles";
+import {App} from "../App";
 
 export class Scene {
 
-    app = null;
-    pixiObj = null;
+    app:App;
+    pixiObj:PIXI.Container;
 
     width = 1000;
     height = 1000;
 
-    mePlayer = null;
-    playersCollection = null;
-    enemiesCollection = null;
-    missilesCollection = null;
+    mePlayer:Player;
+    playersCollection:PlayersCollection;
+    enemiesCollection:EnemiesCollection;
+    missilesCollection:MissilesCollection;
 
-    constructor (app, params = {}) {
+    constructor (app:App) {
         this.app = app;
-        this.socketId = params.socketId || "me";
 
         this.mePlayer = new Player(app, {color: "#99B"});
         this.playersCollection = new PlayersCollection(app, this.mePlayer);
@@ -40,8 +40,8 @@ export class Scene {
         this.pixiObj = container;
         app.pixiApp.stage.addChild(this.pixiObj);
 
-        this.app.socket.on('missilesAll', (params) => {
-            params.missiles.forEach(el => {
+        this.app.socket.on("missilesAll", (params:any) => {
+            params.missiles.forEach((el:any) => {
                 if (el.ownerId !== app.socket.id) {
                     this.missilesCollection.createMissile(el, params.serverCurrentDateTime);
                 }

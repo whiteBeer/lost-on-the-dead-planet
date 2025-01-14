@@ -1,17 +1,18 @@
 import * as PIXI from "pixi.js";
 import Weapon from "./Weapon";
+import { App } from "../../App";
 
 export class Player {
 
-    app = null;
+    app:App;
     socketId = "";
-    pixiObj = null;
+    pixiObj:any = null;
     speed = 3;
     playerW = 40;
     playerH = 16;
-    weapon = null;
+    weapon:Weapon;
 
-    constructor (app, params = {}) {
+    constructor (app:App, params:any = {}) {
         this.app = app;
         this.socketId = params.socketId || "me";
         this.weapon = new Weapon(app, this);
@@ -38,7 +39,7 @@ export class Player {
         this.pixiObj.parent.removeChild(this.pixiObj);
     }
 
-    setColor (color) {
+    setColor (color:string) {
         try {
             this.pixiObj.children[0]
                 .clear()
@@ -65,31 +66,41 @@ export class Player {
             pageX: this.pixiObj.x,
             pageY: this.pixiObj.y,
             rotation: this.pixiObj.rotation
+        };
+    }
+
+    moveTo (x:number, y:number, rotation:number|null = null) {
+        if (this.pixiObj) {
+            this.pixiObj.x = x;
+            this.pixiObj.y = y;
+            if (rotation !== null) {
+                this.pixiObj.rotation = rotation;
+            }
         }
     }
 
-    moveTo (x, y, rotation = null) {
-        this.pixiObj.x = x;
-        this.pixiObj.y = y;
-        if (rotation !== null) {
-            this.pixiObj.rotation = rotation;
+    moveX (step:number) {
+        if (this.pixiObj) {
+            this.pixiObj.x += step;
         }
     }
 
-    moveX (step) {
-        this.pixiObj.x += step;
+    moveY (step:number) {
+        if (this.pixiObj) {
+            this.pixiObj.y += step;
+        }
     }
 
-    moveY (step) {
-        this.pixiObj.y += step;
-    }
-
-    refreshRotationAngleToMouse (mouseCoords) {
+    refreshRotationAngleToMouse (mouseCoords:any) {
         try {
-            const diffX = mouseCoords.pageX - this.pixiObj.x;
-            const diffY = mouseCoords.pageY - this.pixiObj.y;
-            this.pixiObj.rotation = Math.PI + Math.atan2(diffY, diffX);
-        } catch (e) {}
+            if (this.pixiObj) {
+                const diffX = mouseCoords.pageX - this.pixiObj.x;
+                const diffY = mouseCoords.pageY - this.pixiObj.y;
+                this.pixiObj.rotation = Math.PI + Math.atan2(diffY, diffX);
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
 }
 

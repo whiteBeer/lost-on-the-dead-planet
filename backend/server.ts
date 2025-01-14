@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
-import { BackendScene } from "./classes/Scene";
+import { Scene } from "./components/Scene";
 import { Player } from "./types";
 
 const PORT = 7789;
@@ -10,7 +10,7 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
-const scene = new BackendScene(io);
+const scene = new Scene(io);
 
 io.on("connection", async (socket:Socket) => {
 

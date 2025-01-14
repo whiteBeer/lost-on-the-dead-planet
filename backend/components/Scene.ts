@@ -4,7 +4,7 @@ import { Enemies } from "./Enemies";
 import { Missiles } from "./Missiles";
 import { Players } from "./Players";
 
-export class BackendScene {
+export class Scene {
 
     io:Server;
 

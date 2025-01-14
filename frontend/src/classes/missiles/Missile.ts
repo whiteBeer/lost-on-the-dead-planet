@@ -1,19 +1,22 @@
 import * as PIXI from "pixi.js";
+import {App} from "../../App";
 
 export class Missile {
 
-    app = null;
-    ownerId = null;
+    app:App;
+    pixiObj:PIXI.Container;
+    ownerId:string;
+
     missileW = 10;
     missileH = 10;
-    pixiObj = null;
-    createdAt = null;
+    createdAt:string;
     speedInSecond = 0;
     dx = 0;
     dy = 0;
-    tickerFunc = null;
 
-    constructor (app, params = {}) {
+    tickerFunc:any = null;
+
+    constructor (app:App, params:any = {}) {
         this.app = app;
         this.ownerId = params.ownerId;
         this.createdAt = params.createdAt;
@@ -53,8 +56,8 @@ export class Missile {
         this.app.pixiApp.ticker.add(this.tickerFunc);
     }
 
-    createBackend (params) {
-        this.app.socket.emit('missileCreate', {
+    createBackend (params:any) {
+        this.app.socket.emit("missileCreate", {
             range: params.range,
             speedInSecond: params.speedInSecond,
             startX: params.startX,
@@ -67,20 +70,18 @@ export class Missile {
         return this.ownerId;
     }
 
-    moveMissile (delta) {
-        if (this.pixiObj) {
+    moveMissile (delta:number) {
+        if (this.pixiObj && this.app && this.app.pixiApp) {
             this.pixiObj.x += this.dx * delta;
             this.pixiObj.y += this.dy * delta;
             if (
                 this.pixiObj.x < 10 || this.pixiObj.x > (window.innerWidth - 10) ||
                 this.pixiObj.y < 10 || this.pixiObj.y > (window.innerHeight - 10)
             ) {
-                this.app.pixiApp.stage.removeChild(this.pixiObj)
+                this.app.pixiApp.stage.removeChild(this.pixiObj);
                 this.app.pixiApp.ticker.remove(this.tickerFunc);
-                this.app.scene.missilesCollection.removeMissileByCreatedAt(this.createdAt);
+                this.app.scene?.missilesCollection?.removeMissileByCreatedAt(this.createdAt);
             }
         }
     }
 }
-
-export default Missile;

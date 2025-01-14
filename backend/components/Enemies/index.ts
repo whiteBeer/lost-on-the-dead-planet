@@ -1,13 +1,13 @@
 import { config } from "../../config";
 import { Enemy } from "../../types";
-import { BackendScene } from "../Scene";
+import { Scene } from "../Scene";
 
 export class Enemies {
 
-    scene:BackendScene;
+    scene:Scene;
     items:Enemy[] = [];
 
-    constructor(scene:BackendScene) {
+    constructor(scene:Scene) {
         this.scene = scene;
         const createdAt = new Date().toISOString();
         const enemy = {
