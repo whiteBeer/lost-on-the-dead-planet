@@ -8,7 +8,7 @@ import {App} from "../App";
 export class Scene {
 
     app:App;
-    pixiObj:PIXI.Container;
+    pixiObj:PIXI.Container<PIXI.ContainerChild>;
 
     width = 1000;
     height = 1000;
@@ -28,15 +28,16 @@ export class Scene {
 
         const container = new PIXI.Container();
         const line = new PIXI.Graphics();
-        line.lineStyle(2, "#FFF");
-        line.moveTo(10, 10);
-        line.lineTo(this.width, 10);
-        line.lineTo(this.width, this.height);
-        line.lineTo(10, this.height);
-        line.lineTo(10, 10);
+        line.moveTo(10, 10)
+            .lineTo(this.width, 10)
+            .lineTo(this.width, this.height)
+            .lineTo(10, this.height)
+            .lineTo(10, 10);
+        line.stroke({color: "0xFFF", width: 2 });
         container.addChild(line);
-        container.position.set(0, 0);
-        
+        container.x = 0;
+        container.y = 0;
+
         this.pixiObj = container;
         app.pixiApp.stage.addChild(this.pixiObj);
 

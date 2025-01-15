@@ -4,7 +4,7 @@ import {App} from "../../App";
 export class Enemy {
 
     app:App;
-    pixiObj:PIXI.Container;
+    pixiObj:PIXI.Container<PIXI.ContainerChild>;
 
     dx:number;
     dy:number;
@@ -16,9 +16,8 @@ export class Enemy {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .beginFill(enemyJson.color || "black")
-            .drawRect( 0, 0, enemyJson.size, enemyJson.size)
-            .endFill();
+            .rect( 0, 0, enemyJson.size, enemyJson.size)
+            .fill(enemyJson.color || "black");
 
         container.addChild(rectangle);
 
@@ -31,7 +30,7 @@ export class Enemy {
             enemyJson.pageX + (-dirCos * (enemyJson.speedInSecond * dTimeSeconds)),
             enemyJson.pageY + (-dirSin * (enemyJson.speedInSecond * dTimeSeconds))
         );
-        container.pivot.x = container.width;
+        container.pivot.x = container.width / 2;
         container.pivot.y = container.height / 2;
         this.pixiObj = container;
 
@@ -55,10 +54,10 @@ export class Enemy {
         this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
-    moveEnemy (delta:number) {
+    moveEnemy (ticker:PIXI.Ticker) {
         if (this.pixiObj) {
-            this.pixiObj.x += this.dx * delta;
-            this.pixiObj.y += this.dy * delta;
+            this.pixiObj.x += this.dx * ticker.deltaTime;
+            this.pixiObj.y += this.dy * ticker.deltaTime;
         }
     }
 }

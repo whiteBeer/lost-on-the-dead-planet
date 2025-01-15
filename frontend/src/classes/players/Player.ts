@@ -5,8 +5,9 @@ import { App } from "../../App";
 export class Player {
 
     app:App;
+    pixiObj:PIXI.Container<PIXI.ContainerChild>;
     socketId = "";
-    pixiObj:any = null;
+
     speed = 3;
     playerW = 40;
     playerH = 16;
@@ -19,10 +20,8 @@ export class Player {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .beginFill(params.color || "white")
-            .drawRect( 0, 0, this.playerW, this.playerH)
-            .endFill();
-
+            .rect( 0, 0, this.playerW, this.playerH)
+            .fill(params.color || "white");
         container.addChild(rectangle);
         if (typeof params.x !== "undefined" && typeof params.y !== "undefined") {
             container.position.set(params.x, params.y);
@@ -41,12 +40,13 @@ export class Player {
 
     setColor (color:string) {
         try {
-            this.pixiObj.children[0]
+            this.pixiObj.getChildAt<PIXI.Graphics>(0)
                 .clear()
-                .beginFill(color)
-                .drawRect( 0, 0, this.playerW, this.playerH)
-                .endFill();
-        } catch (e) {}
+                .rect( 0, 0, this.playerW, this.playerH)
+                .fill(color);
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     hide () {

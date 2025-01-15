@@ -1,4 +1,7 @@
 import {App} from "./src/App";
 
-// @ts-ignore
-document.body.appendChild(new App("dev").getView());
+(async () => {
+    const app = new App("dev");
+    await app.init();
+    document.body.appendChild(app.getView());
+})();

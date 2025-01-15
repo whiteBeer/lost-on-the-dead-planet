@@ -4,7 +4,7 @@ import {App} from "../../App";
 export class Missile {
 
     app:App;
-    pixiObj:PIXI.Container;
+    pixiObj:PIXI.Container<PIXI.ContainerChild>;
     ownerId:string;
 
     missileW = 10;
@@ -70,10 +70,10 @@ export class Missile {
         return this.ownerId;
     }
 
-    moveMissile (delta:number) {
+    moveMissile (ticker:PIXI.Ticker) {
         if (this.pixiObj && this.app && this.app.pixiApp) {
-            this.pixiObj.x += this.dx * delta;
-            this.pixiObj.y += this.dy * delta;
+            this.pixiObj.x += this.dx * ticker.deltaTime;
+            this.pixiObj.y += this.dy * ticker.deltaTime;
             if (
                 this.pixiObj.x < 10 || this.pixiObj.x > (window.innerWidth - 10) ||
                 this.pixiObj.y < 10 || this.pixiObj.y > (window.innerHeight - 10)
