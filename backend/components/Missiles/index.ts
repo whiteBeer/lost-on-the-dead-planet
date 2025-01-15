@@ -19,7 +19,7 @@ export class Missiles {
             ownerId: socketId,
             createdAt: new Date().toISOString()
         }));
-        this.scene.io.emit("missilesAll", this.getMissiles());
+        this.scene.io.emit("missilesAll", this.getMissilesWithServerTime());
 
         // TODO: need remove on leave the scene
         setTimeout(() => {
@@ -27,10 +27,14 @@ export class Missiles {
         }, 5000);
     }
 
-    getMissiles () {
+    getMissilesWithServerTime () {
         return {
             serverCurrentDateTime: new Date().toISOString(),
             missiles: this.items
         };
+    }
+
+    getMissiles () {
+        return this.items;
     }
 }

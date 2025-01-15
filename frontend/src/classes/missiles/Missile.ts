@@ -28,9 +28,8 @@ export class Missile {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .beginFill(params.color || "white")
-            .drawRect( 0, 0, this.missileW, this.missileH)
-            .endFill();
+            .rect( 0, 0, this.missileW, this.missileH)
+            .fill(params.color || "white");
         container.addChild(rectangle);
         if (params.serverCurrentDateTime) {
             const dTimeSeconds = (

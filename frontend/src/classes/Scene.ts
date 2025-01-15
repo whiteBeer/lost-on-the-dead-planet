@@ -4,6 +4,7 @@ import {PlayersCollection} from "./players";
 import {EnemiesCollection} from "./enemies";
 import {MissilesCollection} from "./missiles";
 import {App} from "../App";
+import {BackendScene} from "../Types";
 
 export class Scene {
 
@@ -18,13 +19,13 @@ export class Scene {
     enemiesCollection:EnemiesCollection;
     missilesCollection:MissilesCollection;
 
-    constructor (app:App) {
+    constructor (app:App, backendScene:BackendScene) {
         this.app = app;
 
         this.mePlayer = new Player(app, {color: "#99B"});
         this.playersCollection = new PlayersCollection(app, this.mePlayer);
-        this.enemiesCollection = new EnemiesCollection(app);
-        this.missilesCollection = new MissilesCollection(app);
+        this.enemiesCollection = new EnemiesCollection(app, backendScene);
+        this.missilesCollection = new MissilesCollection(app, backendScene);
 
         const container = new PIXI.Container();
         const line = new PIXI.Graphics();
@@ -40,15 +41,5 @@ export class Scene {
 
         this.pixiObj = container;
         app.pixiApp.stage.addChild(this.pixiObj);
-
-        this.app.socket.on("missilesAll", (params:any) => {
-            params.missiles.forEach((el:any) => {
-                if (el.ownerId !== app.socket.id) {
-                    this.missilesCollection.createMissile(el, params.serverCurrentDateTime);
-                }
-            });
-        });
     }
 }
-
-export default Scene;

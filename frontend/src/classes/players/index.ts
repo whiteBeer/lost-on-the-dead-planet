@@ -1,21 +1,23 @@
 import * as PIXI from "pixi.js";
+import {App} from "../../App";
+import {BackendPlayer} from "../../Types";
 import Player from "./Player";
 
 export class PlayersCollection {
 
-    app:any = null;
-    socket:any = null;
-    players:any[] = [];
-    mePlayer:any = null;
+    app:App;
 
-    constructor (app:any, mePlayer:any) {
+    players:Player[] = [];
+    mePlayer:Player;
+
+    constructor (app:App, mePlayer:Player) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.players = [mePlayer];
 
         app.pixiApp.stage.addChild(mePlayer.pixiObj);
 
-        this.app.socket?.on("allPlayers", (backendPlayers:any) => {
+        this.app.socket?.on("allPlayers", (backendPlayers:BackendPlayer[]) => {
             backendPlayers.forEach((player:any) => {
                 if (
                     player.socketId !== this.app.socket.id &&

@@ -69,5 +69,3 @@ export class Control {
         });
     }
 }
-
-export default Control;

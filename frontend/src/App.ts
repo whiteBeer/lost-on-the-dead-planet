@@ -1,29 +1,31 @@
 import * as PIXI from "pixi.js";
-import Scene from "./classes/Scene";
-import Control from "./classes/Control";
-import { io, Socket } from "socket.io-client";
+import axios from "axios";
+import {Scene} from "./classes/Scene";
+import {Control} from "./classes/Control";
+import {io, Socket} from "socket.io-client";
 
 export class App {
 
     pixiApp:PIXI.Application;
-
+    backendUrl:string;
     socket:Socket;
     scene:Scene|null = null;
     control:Control|null = null;
 
     constructor (env:string)  {
         this.pixiApp = new PIXI.Application();
-        const socketUrl = env === "dev" ? "http://localhost:7789" : "http://178.21.11.153:7789";
-        this.socket = io(socketUrl);
+        this.backendUrl = env === "dev" ? "http://localhost:7789" : "http://178.21.11.153:7789";
+        this.socket = io(this.backendUrl);
     }
 
     async init () {
+        const backendScene = (await axios.get(this.backendUrl + "/api/scene")).data;
         await this.pixiApp.init({
             background: "#1099bb",
             resizeTo: window
         });
         this.control = new Control(this);
-        this.scene = new Scene(this);
+        this.scene = new Scene(this, backendScene);
 
         this.control.onKey("KeyW", (delta:number) => {
             this.scene?.mePlayer.moveY(-this.scene?.mePlayer.speed * delta);

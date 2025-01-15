@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import {Enemy} from "./Enemy";
 import {App} from "../../App";
+import {BackendScene, BackendEnemy} from "../../Types";
 
 export class EnemiesCollection {
 
@@ -8,15 +9,21 @@ export class EnemiesCollection {
     socket = null;
     enemies:Enemy[] = [];
 
-    constructor (app:App) {
+    constructor (app:App, backendScene:BackendScene) {
         this.app = app;
 
-        this.app.socket.on("allEnemies", (backendEnemies:any) => {
+        backendScene.enemies.forEach((el:BackendEnemy) => {
+            const enemy = new Enemy(this.app, el, backendScene.serverCurrentDateTime);
+            this.enemies.push(enemy);
+            app.pixiApp.stage.addChild(enemy.pixiObj);
+        });
+
+        this.app.socket.on("allEnemies", (beObj:any) => {
             this.enemies.forEach(el => {
                 el.remove();
             });
-            backendEnemies.enemies.forEach((el:any) => {
-                const enemy = new Enemy(this.app, el, backendEnemies.serverCurrentDateTime);
+            beObj.enemies.forEach((el:BackendEnemy) => {
+                const enemy = new Enemy(this.app, el, beObj.serverCurrentDateTime);
                 this.enemies.push(enemy);
                 app.pixiApp.stage.addChild(enemy.pixiObj);
             });

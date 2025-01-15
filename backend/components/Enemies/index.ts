@@ -38,14 +38,18 @@ export class Enemies {
             enemy.rotation += 1;
             enemy.updatedAt = currentTime.toISOString();
 
-            this.scene.io.emit("allEnemies", this.getEnemies());
+            this.scene.io.emit("allEnemies", this.getEnemiesWithServerTime());
         }, 5000);
     }
 
-    getEnemies () {
+    getEnemiesWithServerTime () {
         return {
             serverCurrentDateTime: new Date().toISOString(),
             enemies: this.items
         };
+    }
+
+    getEnemies () {
+        return this.items;
     }
 }
