@@ -3,6 +3,11 @@ import {Missile} from "./Missile";
 import {App} from "../../App";
 import {BackendScene, BackendMissile} from "../../Types";
 
+interface BackendMissileAddedSocket {
+    newMissile: BackendMissile,
+    serverCurrentDateTime: string
+}
+
 export class MissilesCollection {
 
     app:App;
@@ -17,12 +22,17 @@ export class MissilesCollection {
             }
         });
 
-        this.app.socket.on("missilesAll", (params:any) => {
-            params.missiles.forEach((el:any) => {
-                if (el.ownerId !== app.socket.id) {
-                    this.createMissile(el, params.serverCurrentDateTime);
+        this.app.socket.on("missilesRemoved", (missileId:string) => {
+            this.missiles.forEach((el:Missile) => {
+                if (el.id === missileId) {
+                    el.remove();
                 }
             });
+            this.missiles = this.missiles.filter(el => el.id !== missileId);
+        });
+
+        this.app.socket.on("missilesAdded", (params:BackendMissileAddedSocket) => {
+            this.createMissile(params.newMissile, params.serverCurrentDateTime);
         });
     }
 
@@ -32,14 +42,19 @@ export class MissilesCollection {
 
     createMissile (params:BackendMissile, serverCurrentDateTime:string) {
         this.missiles.push(new Missile(this.app, {
-            serverCurrentDateTime: serverCurrentDateTime,
-            ownerId: params.ownerId,
-            createdAt: params.createdAt,
+            ...params,
+            serverCurrentDateTime: serverCurrentDateTime
+        }));
+    }
+
+    createBackendMissile (params:BackendMissile) {
+        this.app.socket.emit("missileCreate", {
+            range: params.range,
             speedInSecond: params.speedInSecond,
             startX: params.startX,
             startY: params.startY,
             rotation: params.rotation
-        }));
+        });
     }
 
     getMissilesByOwnerId (ownerId:string) {

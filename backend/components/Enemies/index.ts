@@ -1,4 +1,5 @@
-import { config } from "../../config";
+import { randomUUID } from "crypto";
+
 import { Enemy } from "../../types";
 import { Scene } from "../Scene";
 
@@ -11,6 +12,7 @@ export class Enemies {
         this.scene = scene;
         const createdAt = new Date().toISOString();
         const enemy = {
+            id: randomUUID(),
             color: "black",
             size: 50,
             speedInSecond: 50,
@@ -38,7 +40,10 @@ export class Enemies {
             enemy.rotation += 1;
             enemy.updatedAt = currentTime.toISOString();
 
-            this.scene.io.emit("allEnemies", this.getEnemiesWithServerTime());
+            this.scene.io.emit("enemiesUpdated", {
+                serverCurrentDateTime: new Date().toISOString(),
+                enemy: enemy
+            });
         }, 5000);
     }
 

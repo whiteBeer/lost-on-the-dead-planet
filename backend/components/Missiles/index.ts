@@ -14,17 +14,21 @@ export class Missiles {
 
     createMissile (params:Missile, socketId:string) {
         const missileId = randomUUID();
-        this.items.push(Object.assign(params, {
+        const newMissile = Object.assign(params, {
             id: missileId,
             ownerId: socketId,
             createdAt: new Date().toISOString()
-        }));
-        this.scene.io.emit("missilesAll", this.getMissilesWithServerTime());
+        });
+        this.items.push(newMissile);
+        this.scene.io.emit("missilesAdded", {
+            serverCurrentDateTime: new Date().toISOString(),
+            newMissile: newMissile
+        });
 
-        // TODO: need remove on leave the scene
         setTimeout(() => {
             this.items = this.items.filter(el => el.id !== missileId);
-        }, 5000);
+            this.scene.io.emit("missilesRemoved", missileId);
+        }, params.range / params.speedInSecond * 1000);
     }
 
     getMissilesWithServerTime () {

@@ -11,8 +11,8 @@ export class Scene {
     app:App;
     pixiObj:PIXI.Container<PIXI.ContainerChild>;
 
-    width = 1000;
-    height = 1000;
+    width:number;
+    height:number;
 
     mePlayer:Player;
     playersCollection:PlayersCollection;
@@ -21,6 +21,9 @@ export class Scene {
 
     constructor (app:App, backendScene:BackendScene) {
         this.app = app;
+
+        this.width = backendScene.width;
+        this.height = backendScene.height;
 
         this.mePlayer = new Player(app, {color: "#99B"});
         this.playersCollection = new PlayersCollection(app, this.mePlayer);
@@ -34,7 +37,7 @@ export class Scene {
             .lineTo(this.width, this.height)
             .lineTo(10, this.height)
             .lineTo(10, 10);
-        line.stroke({color: "0xFFF", width: 2 });
+        line.stroke({color: "0xFFF", width: 4 });
         container.addChild(line);
         container.x = 0;
         container.y = 0;

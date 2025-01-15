@@ -7,6 +7,7 @@ export interface Player {
 }
 
 export interface Enemy {
+    id: string,
     color: string,
     size: number,
     speedInSecond: number,
@@ -24,5 +25,6 @@ export interface Missile {
     startY: number,
     speedInSecond: number,
     rotation: number,
+    range: number,
     createdAt: string
 }

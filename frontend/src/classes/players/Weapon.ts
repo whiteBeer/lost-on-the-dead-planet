@@ -1,33 +1,36 @@
 import * as PIXI from "pixi.js";
+import {App} from "../../App";
+import {Player} from "./Player";
 
 export class Weapon {
 
-    app:any = null;
-    player:any = null;
+    app:App;
+    player:Player;
     missilesPeriod = 150;
     speedInSecond = 300;
-    range = 200;
+    range = 500;
+    lastFire = new Date().toISOString();
 
-    constructor (app:any, player:any) {
+    constructor (app:App, player:Player) {
         this.app = app;
         this.player = player;
     }
 
     fire () {
-        const now = new Date().getTime();
-        const missiles = this.app.scene.missilesCollection;
-        const playerMissiles = missiles.getMissilesByOwnerId(this.app?.socket.id);
-        if (!playerMissiles.find((el:any) => el.createdAt + this.missilesPeriod > now)) {
-            const playerCoords = this.player.getCoords();
-            missiles.createMissile({
-                createdAt: now,
-                ownerId: this.app?.socket.id,
-                range: this.range,
-                speedInSecond: this.speedInSecond,
-                startX: playerCoords.pageX,
-                startY: playerCoords.pageY,
-                rotation: playerCoords.rotation
-            });
+        if (this.app.scene && this.app?.socket.id) {
+            const missiles = this.app.scene.missilesCollection;
+            if (new Date().getTime() - new Date(this.lastFire).getTime() > this.missilesPeriod) {
+                const playerCoords = this.player.getCoords();
+                missiles.createBackendMissile({
+                    ownerId: this.app.socket.id,
+                    range: this.range,
+                    speedInSecond: this.speedInSecond,
+                    startX: playerCoords.pageX,
+                    startY: playerCoords.pageY,
+                    rotation: playerCoords.rotation
+                });
+                this.lastFire = new Date().toISOString();
+            }
         }
     }
 }

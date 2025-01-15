@@ -7,6 +7,7 @@ export interface BackendPlayer {
 }
 
 export interface BackendEnemy {
+    id: string,
     color: string,
     size: number,
     speedInSecond: number,
@@ -18,13 +19,14 @@ export interface BackendEnemy {
 }
 
 export interface BackendMissile {
-    id: string,
+    id?: string,
     ownerId: string,
     startX: number,
     startY: number,
     speedInSecond: number,
     rotation: number,
-    createdAt: string
+    range: number,
+    createdAt?: string
 }
 
 export interface BackendScene {

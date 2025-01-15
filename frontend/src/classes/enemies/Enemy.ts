@@ -6,13 +6,16 @@ export class Enemy {
     app:App;
     pixiObj:PIXI.Container<PIXI.ContainerChild>;
 
+    id:string;
     dx:number;
     dy:number;
 
-    tickerFunc:any;
+    tickerFunc:(ticker:PIXI.Ticker) => void;
 
     constructor (app:App, enemyJson:any = {}, serverCurrentDateTime:string) {
         this.app = app;
+        this.id = enemyJson.id;
+
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
@@ -43,11 +46,8 @@ export class Enemy {
     }
 
     remove () {
-        try {
-            this.pixiObj.parent.removeChild(this.pixiObj);
-        } catch (e) {
-            console.log(e);
-        }
+        this.app.pixiApp.stage.removeChild(this.pixiObj);
+        this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
     stop () {
