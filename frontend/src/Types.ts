@@ -1,9 +1,9 @@
 export interface BackendPlayer {
     socketId: string,
     color: string,
-    rotation?: number,
-    pageX?: number,
-    pageY?: number
+    rotation: number,
+    pageX: number,
+    pageY: number
 }
 
 export interface BackendEnemy {
@@ -19,14 +19,14 @@ export interface BackendEnemy {
 }
 
 export interface BackendMissile {
-    id?: string,
+    id: string,
     ownerId: string,
     startX: number,
     startY: number,
     speedInSecond: number,
     rotation: number,
     range: number,
-    createdAt?: string
+    createdAt: string
 }
 
 export interface BackendScene {

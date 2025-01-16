@@ -5,7 +5,8 @@ const keys:any = {
     isKeyW: false,
     isKeyS: false,
     isKeyA: false,
-    isKeyD: false
+    isKeyD: false,
+    isSpace: false
 };
 
 const mouseCoords:any = {
@@ -14,6 +15,7 @@ const mouseCoords:any = {
 };
 
 const mouseMoveCallbacks:any[] = [];
+const mouseScrollCallbacks:any[] = [];
 let isMousePressed = false;
 
 export class Control {
@@ -31,7 +33,7 @@ export class Control {
         document.addEventListener("mousemove", (e) => {
             mouseCoords.pageX = e.pageX;
             mouseCoords.pageY = e.pageY;
-            mouseMoveCallbacks.forEach(el => el());
+            mouseMoveCallbacks.forEach(el => el(e));
         });
         document.addEventListener("mousedown", (e) => {
             mouseCoords.pageX = e.pageX;
@@ -43,10 +45,18 @@ export class Control {
             mouseCoords.pageY = e.pageY;
             isMousePressed = false;
         });
+
+        document.addEventListener("wheel", (e) => {
+            mouseScrollCallbacks.forEach(el => el(e.deltaY > 0 ? "down" : "up"));
+        });
     }
 
     getMouseCoords () {
         return mouseCoords;
+    }
+
+    isSpace () {
+        return keys["isSpace"];
     }
 
     onKey (keyCode:string, callback:any) {
@@ -59,6 +69,10 @@ export class Control {
 
     onMouseMove (callback:any) {
         mouseMoveCallbacks.push(callback);
+    }
+
+    onMouseWheel (callback:(direction:string) => void) {
+        mouseScrollCallbacks.push(callback);
     }
 
     onMousePressed (callback:any) {

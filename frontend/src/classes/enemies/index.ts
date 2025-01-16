@@ -34,6 +34,10 @@ export class EnemiesCollection {
             app.pixiApp.stage.addChild(enemy.pixiObj);
         });
     }
+
+    getEnemies () {
+        return this.enemies;
+    }
 }
 
 export default EnemiesCollection;

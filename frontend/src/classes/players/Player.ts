@@ -8,6 +8,8 @@ export class Player {
     pixiObj:PIXI.Container<PIXI.ContainerChild>;
     socketId = "";
 
+    x = -1;
+    y = -1;
     speed = 3;
     playerW = 40;
     playerH = 16;
@@ -16,18 +18,31 @@ export class Player {
     constructor (app:App, params:any = {}) {
         this.app = app;
         this.socketId = params.socketId || "me";
+        this.pixiObj = new PIXI.Container();
         this.weapon = new Weapon(app, this);
+
+        this.x = params.x;
+        this.y = params.y;
+
+        const scale = this.app.scene?.scale || 1;
+        const tx = this.app.scene?.tx || 0;
+        const ty = this.app.scene?.ty || 0;
+
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect( 0, 0, this.playerW, this.playerH)
+            .rect(0, 0, this.playerW, this.playerH)
             .fill(params.color || "white");
         container.addChild(rectangle);
         if (typeof params.x !== "undefined" && typeof params.y !== "undefined") {
-            container.position.set(params.x, params.y);
+            this.x = params.x;
+            this.y = params.y;
+            container.position.set(tx + params.x * scale, ty + params.y * scale);
         }
         container.pivot.x = container.width;
         container.pivot.y = container.height / 2;
+        container.scale = scale;
+
         if (this.socketId === "me") {
             container.visible = false;
         }
@@ -63,16 +78,21 @@ export class Player {
 
     getCoords () {
         return {
-            pageX: this.pixiObj.x,
-            pageY: this.pixiObj.y,
+            pageX: this.x,
+            pageY: this.y,
             rotation: this.pixiObj.rotation
         };
     }
 
     moveTo (x:number, y:number, rotation:number|null = null) {
-        if (this.pixiObj) {
-            this.pixiObj.x = x;
-            this.pixiObj.y = y;
+        const scale = this.app.scene?.scale || 1;
+        const tx = this.app.scene?.tx || 0;
+        const ty = this.app.scene?.ty || 0;
+        if (this.pixiObj && this.app.scene) {
+            this.x = x;
+            this.y = y;
+            this.pixiObj.x = tx + x * scale;
+            this.pixiObj.y = ty + y * scale;
             if (rotation !== null) {
                 this.pixiObj.rotation = rotation;
             }
@@ -80,14 +100,16 @@ export class Player {
     }
 
     moveX (step:number) {
-        if (this.pixiObj) {
-            this.pixiObj.x += step;
+        if (this.pixiObj && this.app.scene) {
+            this.x += step;
+            this.pixiObj.x += step * this.app.scene.scale;
         }
     }
 
     moveY (step:number) {
-        if (this.pixiObj) {
-            this.pixiObj.y += step;
+        if (this.pixiObj && this.app.scene) {
+            this.y += step;
+            this.pixiObj.y += step * this.app.scene.scale;
         }
     }
 

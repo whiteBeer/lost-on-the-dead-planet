@@ -36,25 +36,12 @@ export class MissilesCollection {
         });
     }
 
-    getAllMissiles () {
+    getMissiles () {
         return this.missiles;
     }
 
     createMissile (params:BackendMissile, serverCurrentDateTime:string) {
-        this.missiles.push(new Missile(this.app, {
-            ...params,
-            serverCurrentDateTime: serverCurrentDateTime
-        }));
-    }
-
-    createBackendMissile (params:BackendMissile) {
-        this.app.socket.emit("missileCreate", {
-            range: params.range,
-            speedInSecond: params.speedInSecond,
-            startX: params.startX,
-            startY: params.startY,
-            rotation: params.rotation
-        });
+        this.missiles.push(new Missile(this.app, params, serverCurrentDateTime));
     }
 
     getMissilesByOwnerId (ownerId:string) {

@@ -39,7 +39,7 @@ export class PlayersCollection {
             });
         });
 
-        this.app.socket?.on("playerMoved", (params:any) => {
+        this.app.socket?.on("playerMoved", (params:BackendPlayer) => {
             if (params.socketId !== this.app.socket.id) {
                 const player = this.players.find(el => el.socketId === params.socketId);
                 if (player) {
@@ -66,5 +66,9 @@ export class PlayersCollection {
                 this.players = this.players.filter(el => el.socketId !== params.socketId);
             }
         });
+    }
+
+    getPlayers () {
+        return this.players;
     }
 }

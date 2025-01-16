@@ -13,6 +13,9 @@ export class Scene {
 
     width:number;
     height:number;
+    scale = 1;
+    tx = 0;
+    ty = 0;
 
     mePlayer:Player;
     playersCollection:PlayersCollection;
@@ -32,17 +35,51 @@ export class Scene {
 
         const container = new PIXI.Container();
         const line = new PIXI.Graphics();
-        line.moveTo(10, 10)
-            .lineTo(this.width, 10)
+        line.moveTo(0, 0)
+            .lineTo(this.width, 0)
             .lineTo(this.width, this.height)
-            .lineTo(10, this.height)
-            .lineTo(10, 10);
+            .lineTo(0, this.height)
+            .lineTo(0, 0);
         line.stroke({color: "0xFFF", width: 4 });
         container.addChild(line);
-        container.x = 0;
-        container.y = 0;
+        this.tx = window.innerWidth / 2 - this.width / 2;
+        this.ty = window.innerHeight / 2 - this.height / 2;
+        container.x = this.tx;
+        container.y = this.ty;
 
         this.pixiObj = container;
         app.pixiApp.stage.addChild(this.pixiObj);
+    }
+
+    incrementTxTy (dtx:number, dty:number) {
+        this.tx += dtx;
+        this.ty += dty;
+        this.updateScene();
+    }
+
+    incrementScale (val:number) {
+        this.scale += val;
+        this.updateScene();
+    }
+
+    updateScene () {
+        this.pixiObj.scale  = this.scale;
+        this.pixiObj.x = this.tx;
+        this.pixiObj.y = this.ty;
+        this.playersCollection.getPlayers().forEach((el) => {
+            el.pixiObj.scale = this.scale;
+            el.pixiObj.x = this.tx + el.x * this.scale;
+            el.pixiObj.y = this.ty + el.y * this.scale;
+        });
+        this.missilesCollection.getMissiles().forEach((el) => {
+            el.pixiObj.scale = this.scale;
+            el.pixiObj.x = this.tx + el.x * this.scale;
+            el.pixiObj.y = this.ty + el.y * this.scale;
+        });
+        this.enemiesCollection.getEnemies().forEach((el) => {
+            el.pixiObj.scale = this.scale;
+            el.pixiObj.x = this.tx + el.x * this.scale;
+            el.pixiObj.y = this.ty + el.y * this.scale;
+        });
     }
 }

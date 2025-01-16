@@ -43,12 +43,26 @@ export class App {
             this.scene?.mePlayer.moveX(this.scene?.mePlayer.speed * delta);
             this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
         });
-        this.control.onMouseMove(() => {
-            this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+        this.control.onMouseMove((e:MouseEvent) => {
+            if (this.control?.isSpace()) {
+                this.scene?.incrementTxTy(e.movementX, e.movementY);
+            } else {
+                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            }
         });
         this.control.onMousePressed(() => {
             this.scene?.mePlayer.fire();
         });
+        this.control.onMouseWheel((wheelDirection) => {
+            if (this.scene) {
+                if (wheelDirection === "down") {
+                    this.scene.incrementScale(-0.1);
+                } else {
+                    this.scene.incrementScale(0.1);
+                }
+            }
+        });
+
 
         this.pixiApp.ticker.add(() => {
             if (
