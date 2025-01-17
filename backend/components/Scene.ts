@@ -20,5 +20,20 @@ export class Scene {
         this.enemiesCollection = new Enemies(this);
         this.missilesCollection = new Missiles(this);
         this.playersCollection = new Players(this);
+
+        // setInterval(() => {
+        //     this.verifyScene();
+        // }, 50);
     }
+
+    // verifyScene () {
+    //     const players = this.playersCollection.getPlayers();
+    //     const enemies = this.enemiesCollection.getEnemies();
+    //
+    //     players.forEach(player => {
+    //         enemies.forEach(enemy => {
+    //             const leftBottom = (player.rotation - Math.PI/2)
+    //         });
+    //     });
+    // }
 }

@@ -8,33 +8,17 @@ export class PlayersCollection {
     app:App;
 
     players:Player[] = [];
-    mePlayer:Player;
 
-    constructor (app:App, mePlayer:Player) {
+    constructor (app:App) {
         this.app = app;
-        this.mePlayer = mePlayer;
-        this.players = [mePlayer];
-
-        app.pixiApp.stage.addChild(mePlayer.pixiObj);
 
         this.app.socket?.on("allPlayers", (backendPlayers:BackendPlayer[]) => {
-            backendPlayers.forEach((player:any) => {
-                if (
-                    player.socketId !== this.app.socket.id &&
-                    !this.players.find(el => el.socketId === player.socketId)
-                ) {
-                    const anotherPlayer = new Player(app, {
-                        x: player.pageX,
-                        y: player.pageY,
-                        color: player.color,
-                        socketId: player.socketId
-                    });
-                    this.players.push(anotherPlayer);
-                    app.pixiApp.stage.addChild(anotherPlayer.pixiObj);
-                } else {
-                    this.mePlayer.setColor(player.color);
-                    this.mePlayer.moveTo(player.pageX, player.pageY, player.rotation);
-                    this.mePlayer.show();
+            backendPlayers.forEach((player: BackendPlayer) => {
+                const p = new Player(app, player);
+                this.players.push(p);
+                app.pixiApp.stage.addChild(p.pixiObj);
+                if (p.socketId === this.app.socket.id) {
+                    this.app.scene?.setMePlayer(p);
                 }
             });
         });
@@ -54,8 +38,6 @@ export class PlayersCollection {
                     this.players.push(anotherPlayer);
                     app.pixiApp.stage.addChild(anotherPlayer.pixiObj);
                 }
-            } else {
-                mePlayer.setColor(params.color);
             }
         });
 

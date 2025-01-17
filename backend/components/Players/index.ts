@@ -25,6 +25,8 @@ export class Players {
             const newPlayer = {
                 socketId: socketId,
                 color: color,
+                length: 40,
+                width: 16,
                 pageX: Math.round(Math.random() * this.scene.width),
                 pageY: Math.round(Math.random() * this.scene.height),
                 rotation: Math.random() * 6

@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import Weapon from "./Weapon";
 import { App } from "../../App";
+import {BackendPlayer} from "../../Types";
 
 export class Player {
 
@@ -11,18 +12,21 @@ export class Player {
     x = -1;
     y = -1;
     speed = 3;
-    playerW = 40;
-    playerH = 16;
+    length = 0;
+    width = 0;
+    rotation = 0;
     weapon:Weapon;
 
-    constructor (app:App, params:any = {}) {
+    constructor (app:App, params:BackendPlayer|any) {
         this.app = app;
         this.socketId = params.socketId || "me";
         this.pixiObj = new PIXI.Container();
         this.weapon = new Weapon(app, this);
 
-        this.x = params.x;
-        this.y = params.y;
+        this.x = params.pageX;
+        this.y = params.pageY;
+        this.length = params.length;
+        this.width = params.width;
 
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
@@ -31,21 +35,19 @@ export class Player {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect(0, 0, this.playerW, this.playerH)
+            .rect(0, 0, this.length, this.width)
             .fill(params.color || "white");
         container.addChild(rectangle);
-        if (typeof params.x !== "undefined" && typeof params.y !== "undefined") {
-            this.x = params.x;
-            this.y = params.y;
-            container.position.set(tx + params.x * scale, ty + params.y * scale);
-        }
+
+        this.x = params.pageX;
+        this.y = params.pageY;
+        this.rotation = params.rotation;
+        container.position.set(tx + params.pageX * scale, ty + params.pageY * scale);
+
         container.pivot.x = container.width;
         container.pivot.y = container.height / 2;
         container.scale = scale;
 
-        if (this.socketId === "me") {
-            container.visible = false;
-        }
         this.pixiObj = container;
     }
 
@@ -57,7 +59,7 @@ export class Player {
         try {
             this.pixiObj.getChildAt<PIXI.Graphics>(0)
                 .clear()
-                .rect( 0, 0, this.playerW, this.playerH)
+                .rect( 0, 0, this.length, this.width)
                 .fill(color);
         } catch (e) {
             console.log(e);
@@ -80,7 +82,7 @@ export class Player {
         return {
             pageX: this.x,
             pageY: this.y,
-            rotation: this.pixiObj.rotation
+            rotation: this.rotation
         };
     }
 
@@ -94,7 +96,10 @@ export class Player {
             this.pixiObj.x = tx + x * scale;
             this.pixiObj.y = ty + y * scale;
             if (rotation !== null) {
-                this.pixiObj.rotation = rotation;
+                this.rotation = rotation;
+                if (this.pixiObj) {
+                    this.pixiObj.rotation = rotation;
+                }
             }
         }
     }
@@ -115,10 +120,12 @@ export class Player {
 
     refreshRotationAngleToMouse (mouseCoords:any) {
         try {
+            const diffX = mouseCoords.pageX - this.pixiObj.x;
+            const diffY = mouseCoords.pageY - this.pixiObj.y;
+            const rotation = Math.PI + Math.atan2(diffY, diffX);
+            this.rotation = rotation;
             if (this.pixiObj) {
-                const diffX = mouseCoords.pageX - this.pixiObj.x;
-                const diffY = mouseCoords.pageY - this.pixiObj.y;
-                this.pixiObj.rotation = Math.PI + Math.atan2(diffY, diffX);
+                this.pixiObj.rotation = rotation;
             }
         } catch (e) {
             console.log(e);

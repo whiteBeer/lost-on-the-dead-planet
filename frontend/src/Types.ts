@@ -1,6 +1,8 @@
 export interface BackendPlayer {
     socketId: string,
     color: string,
+    length: number,
+    width: number,
     rotation: number,
     pageX: number,
     pageY: number
@@ -9,7 +11,8 @@ export interface BackendPlayer {
 export interface BackendEnemy {
     id: string,
     color: string,
-    size: number,
+    length: number,
+    width: number,
     speedInSecond: number,
     rotation: number,
     pageX: number,

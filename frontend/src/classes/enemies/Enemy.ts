@@ -9,6 +9,8 @@ export class Enemy {
     id:string;
     x = -1;
     y = -1;
+    length = 0;
+    width = 0;
     dx:number;
     dy:number;
 
@@ -17,6 +19,8 @@ export class Enemy {
     constructor (app:App, enemyJson:any = {}, serverCurrentDateTime:string) {
         this.app = app;
         this.id = enemyJson.id;
+        this.length = enemyJson.length;
+        this.width = enemyJson.width;
 
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
@@ -25,7 +29,7 @@ export class Enemy {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect( 0, 0, enemyJson.size, enemyJson.size)
+            .rect( 0, 0, enemyJson.length, enemyJson.width)
             .fill(enemyJson.color || "black");
 
         container.addChild(rectangle);
@@ -41,10 +45,11 @@ export class Enemy {
             tx + this.x * scale,
             ty + this.y * scale
         );
-        container.pivot.x = container.width / 2;
+        container.pivot.x = container.width;
         container.pivot.y = container.height / 2;
         this.pixiObj = container;
         this.pixiObj.scale = scale;
+        this.pixiObj.rotation = enemyJson.rotation;
 
         // 16.66 is PIXI updater in ms
         this.dx = -dirCos * (enemyJson.speedInSecond / (1000 / 16.66));

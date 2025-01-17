@@ -14,7 +14,8 @@ export class Enemies {
         const enemy = {
             id: randomUUID(),
             color: "black",
-            size: 50,
+            length: 50,
+            width: 30,
             speedInSecond: 50,
             rotation: 3.5,
             pageX: 300,
@@ -40,7 +41,7 @@ export class Enemies {
             enemy.rotation += 1;
             enemy.updatedAt = currentTime.toISOString();
 
-            this.scene.io.emit("enemiesUpdated", {
+            this.scene.io.emit("enemiesUpdated", <any>{
                 serverCurrentDateTime: new Date().toISOString(),
                 enemy: enemy
             });

@@ -20,14 +20,14 @@ export class Missiles {
             createdAt: new Date().toISOString()
         });
         this.items.push(newMissile);
-        this.scene.io.emit("missilesAdded", {
+        this.scene.io.emit("missilesAdded", <any>{
             serverCurrentDateTime: new Date().toISOString(),
             newMissile: newMissile
         });
 
         setTimeout(() => {
             this.items = this.items.filter(el => el.id !== missileId);
-            this.scene.io.emit("missilesRemoved", missileId);
+            this.scene.io.emit("missilesRemoved", <any>missileId);
         }, params.range / params.speedInSecond * 1000);
     }
 

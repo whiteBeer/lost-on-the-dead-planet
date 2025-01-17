@@ -1,15 +1,18 @@
 export interface Player {
     socketId: string,
     color: string,
-    rotation?: number,
-    pageX?: number,
-    pageY?: number
+    length: number,
+    width: number,
+    rotation: number,
+    pageX: number,
+    pageY: number
 }
 
 export interface Enemy {
     id: string,
     color: string,
-    size: number,
+    length: number,
+    width: number,
     speedInSecond: number,
     rotation: number,
     pageX: number,

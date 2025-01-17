@@ -17,7 +17,7 @@ export class Scene {
     tx = 0;
     ty = 0;
 
-    mePlayer:Player;
+    mePlayer:Player|null = null;
     playersCollection:PlayersCollection;
     enemiesCollection:EnemiesCollection;
     missilesCollection:MissilesCollection;
@@ -28,8 +28,7 @@ export class Scene {
         this.width = backendScene.width;
         this.height = backendScene.height;
 
-        this.mePlayer = new Player(app, {color: "#99B"});
-        this.playersCollection = new PlayersCollection(app, this.mePlayer);
+        this.playersCollection = new PlayersCollection(app);
         this.enemiesCollection = new EnemiesCollection(app, backendScene);
         this.missilesCollection = new MissilesCollection(app, backendScene);
 
@@ -49,6 +48,10 @@ export class Scene {
 
         this.pixiObj = container;
         app.pixiApp.stage.addChild(this.pixiObj);
+    }
+
+    setMePlayer (mePlayer:Player) {
+        this.mePlayer = mePlayer;
     }
 
     incrementTxTy (dtx:number, dty:number) {

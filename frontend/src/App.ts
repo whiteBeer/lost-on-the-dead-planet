@@ -28,30 +28,42 @@ export class App {
         this.scene = new Scene(this, backendScene);
 
         this.control.onKey("KeyW", (delta:number) => {
-            this.scene?.mePlayer.moveY(-this.scene?.mePlayer.speed * delta);
-            this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            if (this.scene?.mePlayer) {
+                this.scene?.mePlayer?.moveY(-this.scene?.mePlayer.speed * delta);
+                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            }
         });
         this.control.onKey("KeyS", (delta:number) => {
-            this.scene?.mePlayer.moveY(this.scene?.mePlayer.speed * delta);
-            this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            if (this.scene?.mePlayer) {
+                this.scene?.mePlayer?.moveY(this.scene?.mePlayer.speed * delta);
+                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            }
         });
         this.control.onKey("KeyA", (delta:number) => {
-            this.scene?.mePlayer.moveX(-this.scene?.mePlayer.speed * delta);
-            this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            if (this.scene?.mePlayer) {
+                this.scene?.mePlayer?.moveX(-this.scene?.mePlayer.speed * delta);
+                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            }
         });
         this.control.onKey("KeyD", (delta:number) => {
-            this.scene?.mePlayer.moveX(this.scene?.mePlayer.speed * delta);
-            this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            if (this.scene?.mePlayer) {
+                this.scene?.mePlayer?.moveX(this.scene?.mePlayer.speed * delta);
+                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+            }
         });
         this.control.onMouseMove((e:MouseEvent) => {
             if (this.control?.isSpace()) {
                 this.scene?.incrementTxTy(e.movementX, e.movementY);
             } else {
-                this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+                if (this.scene?.mePlayer) {
+                    this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
+                }
             }
         });
         this.control.onMousePressed(() => {
-            this.scene?.mePlayer.fire();
+            if (this.scene?.mePlayer) {
+                this.scene?.mePlayer.fire();
+            }
         });
         this.control.onMouseWheel((wheelDirection) => {
             if (this.scene) {
@@ -65,10 +77,7 @@ export class App {
 
 
         this.pixiApp.ticker.add(() => {
-            if (
-                this.scene?.mePlayer && this.control &&
-                document.querySelector("#game")?.matches(":hover")
-            ) {
+            if (this.scene?.mePlayer && this.control) {
                 this.scene?.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
             }
         });
