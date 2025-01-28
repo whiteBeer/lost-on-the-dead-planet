@@ -15,11 +15,11 @@ export class Enemies {
             id: randomUUID(),
             color: "black",
             length: 50,
-            width: 30,
-            speedInSecond: 50,
-            rotation: 3.5,
-            pageX: 300,
-            pageY: 200,
+            width: 80,
+            speedInSecond: 30,
+            rotation: 0.1,
+            startX: 500,
+            startY: 500,
             createdAt: createdAt,
             updatedAt: createdAt
         };
@@ -36,9 +36,9 @@ export class Enemies {
             const dx = -cos * (enemy.speedInSecond * timeDistSeconds);
             const dy = -sin * (enemy.speedInSecond * timeDistSeconds);
 
-            enemy.pageX += dx;
-            enemy.pageY += dy;
-            enemy.rotation += 1;
+            enemy.startX += dx;
+            enemy.startY += dy;
+            enemy.rotation += 0.5;
             enemy.updatedAt = currentTime.toISOString();
 
             this.scene.io.emit("enemiesUpdated", <any>{

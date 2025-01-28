@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import {App} from "../../App";
+import {BackendEnemy} from "../../Types";
 
 export class Enemy {
 
@@ -16,7 +17,7 @@ export class Enemy {
 
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
-    constructor (app:App, enemyJson:any = {}, serverCurrentDateTime:string) {
+    constructor (app:App, enemyJson:BackendEnemy, serverCurrentDateTime:string) {
         this.app = app;
         this.id = enemyJson.id;
         this.length = enemyJson.length;
@@ -29,24 +30,25 @@ export class Enemy {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect( 0, 0, enemyJson.length, enemyJson.width)
+            .rect( 0, 0, enemyJson.width, enemyJson.length)
             .fill(enemyJson.color || "black");
+        const circle = new PIXI.Graphics();
+        circle.circle(0, 0, 3).fill("white");
 
         container.addChild(rectangle);
+        container.addChild(circle);
 
         const dirCos = Math.cos(enemyJson.rotation);
         const dirSin = Math.sin(enemyJson.rotation);
         const dTimeSeconds = (
             new Date(serverCurrentDateTime).getTime() - new Date(enemyJson.updatedAt).getTime()
         ) / 1000;
-        this.x = enemyJson.pageX + -dirCos * (enemyJson.speedInSecond * dTimeSeconds);
-        this.y = enemyJson.pageY + -dirSin * (enemyJson.speedInSecond * dTimeSeconds);
+        this.x = enemyJson.startX + -dirCos * (enemyJson.speedInSecond * dTimeSeconds);
+        this.y = enemyJson.startY + -dirSin * (enemyJson.speedInSecond * dTimeSeconds);
         container.position.set(
             tx + this.x * scale,
             ty + this.y * scale
         );
-        container.pivot.x = container.width;
-        container.pivot.y = container.height / 2;
         this.pixiObj = container;
         this.pixiObj.scale = scale;
         this.pixiObj.rotation = enemyJson.rotation;

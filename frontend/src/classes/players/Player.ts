@@ -37,7 +37,10 @@ export class Player {
         rectangle
             .rect(0, 0, this.length, this.width)
             .fill(params.color || "white");
+        const circle = new PIXI.Graphics();
+        circle.circle(this.length - 2, this.width/2, 2).fill("white");
         container.addChild(rectangle);
+        container.addChild(circle);
 
         this.x = params.pageX;
         this.y = params.pageY;

@@ -12,8 +12,6 @@ export class Missile {
 
     x = -1;
     y = -1;
-    missileW = 10;
-    missileH = 10;
     createdAt:string;
     speedInSecond = 0;
     dx = 0;
@@ -37,11 +35,9 @@ export class Missile {
         const dirSin = Math.sin(params.rotation);
 
         const container = new PIXI.Container();
-        const rectangle = new PIXI.Graphics();
-        rectangle
-            .rect( 0, 0, this.missileW, this.missileH)
-            .fill("white");
-        container.addChild(rectangle);
+        const circle = new PIXI.Graphics();
+        circle.circle(0, 0, 5).fill("white");
+        container.addChild(circle);
         const dTimeSeconds = (
             new Date(serverCurrentDateTime).getTime() - new Date(params.createdAt).getTime()
         ) / 1000;
@@ -51,8 +47,6 @@ export class Missile {
             tx + this.x * scale,
             ty + this.y * scale
         );
-        container.pivot.x = container.width / 2;
-        container.pivot.y = container.height / 2;
         this.pixiObj = container;
         this.pixiObj.scale = scale;
         app.pixiApp.stage.addChild(this.pixiObj);

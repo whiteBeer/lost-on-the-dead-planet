@@ -15,8 +15,8 @@ export interface BackendEnemy {
     width: number,
     speedInSecond: number,
     rotation: number,
-    pageX: number,
-    pageY: number,
+    startX: number,
+    startY: number,
     createdAt: string,
     updatedAt: string
 }
