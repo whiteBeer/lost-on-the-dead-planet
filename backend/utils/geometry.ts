@@ -1,3 +1,5 @@
+import {BaseCoords} from "../types";
+
 export function rotate (x:number, y:number, angleRad:number) {
     const cos = Math.cos(angleRad),
         sin = Math.sin(angleRad),
@@ -9,7 +11,9 @@ export function rotate (x:number, y:number, angleRad:number) {
     };
 }
 
-export function calcTimedPoint (startX:number, startY:number, rotation:number, speedInSecond:number, createdAt:string) {
+export function calcTimedPoint (
+    startX:number, startY:number, rotation:number, speedInSecond:number, createdAt:string
+):BaseCoords {
     const dirCosMissile = Math.cos(rotation);
     const dirSinMissile = Math.sin(rotation);
     const dTimeSecondsMissile = (

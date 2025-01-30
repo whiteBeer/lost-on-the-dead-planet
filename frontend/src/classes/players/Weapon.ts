@@ -7,7 +7,7 @@ export class Weapon {
     app:App;
     player:Player;
     missilesPeriod = 150;
-    speedInSecond = 300;
+    speedInSecond = 500;
     range = 700;
     lastFire = new Date().toISOString();
 

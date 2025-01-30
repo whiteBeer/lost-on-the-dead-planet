@@ -1,3 +1,8 @@
+export interface BaseCoords {
+    x: number,
+    y: number
+}
+
 export interface Player {
     socketId: string,
     color: string,
@@ -8,7 +13,7 @@ export interface Player {
     pageY: number
 }
 
-export interface Enemy {
+export interface EnemyJSON {
     id: string,
     color: string,
     length: number,
@@ -19,6 +24,12 @@ export interface Enemy {
     startY: number,
     createdAt: string,
     updatedAt: string
+}
+
+export interface EnemyParams {
+    rotation: number,
+    startX: number,
+    startY: number
 }
 
 export interface Missile {

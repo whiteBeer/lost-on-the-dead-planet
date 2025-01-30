@@ -1,10 +1,10 @@
 import { Server } from "socket.io";
 
-import { rotate, calcTimedPoint } from "./../utils/geometry";
+import { rotate, calcTimedPoint } from "../utils/geometry";
 import { Enemies } from "./Enemies";
 import { Missiles } from "./Missiles";
 import { Players } from "./Players";
-import { Enemy, Missile } from "../types";
+import {EnemyJSON, Missile} from "../types";
 
 export class Scene {
 
@@ -25,7 +25,7 @@ export class Scene {
 
         setInterval(() => {
             this.verifyScene();
-        }, 100);
+        }, 50);
     }
 
     verifyScene () {
@@ -37,17 +37,17 @@ export class Scene {
             const missileCoords = calcTimedPoint(
                 missile.startX, missile.startY, missile.rotation, missile.speedInSecond, missile.createdAt
             );
-            enemies.forEach((enemy:Enemy) => {
+            enemies.forEach((enemy:EnemyJSON) => {
                 const enemyCoords = calcTimedPoint(
                     enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
                 );
                 const rotatedEnemy = rotate(enemyCoords.x, enemyCoords.y, enemy.rotation);
                 const rotatedMissile = rotate(missileCoords.x, missileCoords.y, enemy.rotation);
                 if (
-                    rotatedMissile.x > rotatedEnemy.x &&
-                    rotatedMissile.x < rotatedEnemy.x + enemy.width &&
-                    rotatedMissile.y > rotatedEnemy.y &&
-                    rotatedMissile.y < rotatedEnemy.y + enemy.length
+                    rotatedMissile.x > rotatedEnemy.x - enemy.width/2 &&
+                    rotatedMissile.x < rotatedEnemy.x + enemy.width/2 &&
+                    rotatedMissile.y > rotatedEnemy.y - enemy.length/2 &&
+                    rotatedMissile.y < rotatedEnemy.y + enemy.length/2
                 ) {
                     this.missilesCollection.removeMissile(missile.id);
                 }

@@ -30,7 +30,7 @@ export class Enemy {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect( 0, 0, enemyJson.width, enemyJson.length)
+            .rect( -enemyJson.width/2, -enemyJson.length/2, enemyJson.width, enemyJson.length)
             .fill(enemyJson.color || "black");
         const circle = new PIXI.Graphics();
         circle.circle(0, 0, 3).fill("white");
