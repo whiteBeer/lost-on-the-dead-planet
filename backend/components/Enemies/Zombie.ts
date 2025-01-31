@@ -20,7 +20,6 @@ export class Zombie extends BaseEnemy {
 
     move () {
         this.moveInterval = setInterval(() => {
-            const players = this.scene.playersCollection.getPlayers();
             const enemyCoords = calcTimedPoint(
                 this.startX, this.startY, this.rotation, this.speedInSecond, this.updatedAt
             );

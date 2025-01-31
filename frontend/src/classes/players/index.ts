@@ -14,11 +14,13 @@ export class PlayersCollection {
 
         this.app.socket?.on("allPlayers", (backendPlayers:BackendPlayer[]) => {
             backendPlayers.forEach((player: BackendPlayer) => {
-                const p = new Player(app, player);
-                this.players.push(p);
-                app.pixiApp.stage.addChild(p.pixiObj);
-                if (p.socketId === this.app.socket.id) {
-                    this.app.scene?.setMePlayer(p);
+                if (this.players.map(el => el.socketId).indexOf(player.socketId) === -1) {
+                    const p = new Player(app, player);
+                    this.players.push(p);
+                    app.pixiApp.stage.addChild(p.pixiObj);
+                    if (p.socketId === this.app.socket.id) {
+                        this.app.scene?.setMePlayer(p);
+                    }
                 }
             });
         });

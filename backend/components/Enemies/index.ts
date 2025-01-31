@@ -20,20 +20,18 @@ export class Enemies {
             startY: -100
         }));
         // this.enemies.push(new Zombie(scene, {
-        //     rotation: Math.PI,
+        //     rotation: Math.PI,s
         //     startX: 1000,
         //     startY: 1000
         // }));
     }
 
-    getEnemiesWithServerTime () {
-        return {
-            serverCurrentDateTime: new Date().toISOString(),
-            enemies: this.enemies.map(el => el.toJSON())
-        };
-    }
-
     getEnemies () {
         return this.enemies;
     }
+
+    getEnemiesJSON () {
+        return this.enemies.map(el => el.toJSON());
+    }
+
 }

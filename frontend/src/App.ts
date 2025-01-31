@@ -21,7 +21,7 @@ export class App {
     async init () {
         const backendScene = (await axios.get(this.backendUrl + "/api/scene")).data;
         await this.pixiApp.init({
-            background: "#1099bb",
+            background: "#1099aa",
             resizeTo: window
         });
         this.control = new Control(this);

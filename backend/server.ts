@@ -21,7 +21,7 @@ app.get("/api/scene", (req, res) => {
         width: scene.width,
         height: scene.height,
         players: scene.playersCollection.getPlayers(),
-        enemies: scene.enemiesCollection.getEnemies(),
+        enemies: scene.enemiesCollection.getEnemiesJSON(),
         missiles: scene.missilesCollection.getMissiles()
     });
 });

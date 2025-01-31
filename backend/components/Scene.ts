@@ -10,8 +10,8 @@ export class Scene {
 
     io:Server;
 
-    width = 700;
-    height = 700;
+    width = 1000;
+    height = 1000;
 
     enemiesCollection:Enemies;
     missilesCollection:Missiles;

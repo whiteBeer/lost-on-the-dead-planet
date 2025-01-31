@@ -111,6 +111,7 @@ export class Player {
         if (this.pixiObj && this.app.scene) {
             this.x += step;
             this.pixiObj.x += step * this.app.scene.scale;
+            this.app.scene.centerScene();
         }
     }
 
@@ -118,6 +119,7 @@ export class Player {
         if (this.pixiObj && this.app.scene) {
             this.y += step;
             this.pixiObj.y += step * this.app.scene.scale;
+            this.app.scene.centerScene();
         }
     }
 
