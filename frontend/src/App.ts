@@ -11,6 +11,7 @@ export class App {
     socket:Socket;
     scene:Scene|null = null;
     control:Control|null = null;
+    move2ButtonsKof = 0.7071; // cos(45)
 
     constructor (env:string)  {
         this.pixiApp = new PIXI.Application();
@@ -27,27 +28,43 @@ export class App {
         this.control = new Control(this);
         this.scene = new Scene(this, backendScene);
 
-        this.control.onKey("KeyW", (delta:number) => {
+        this.control.onKey("KeyW", (ticker:PIXI.Ticker) => {
             if (this.scene?.mePlayer) {
-                this.scene?.mePlayer?.moveY(-this.scene?.mePlayer.speed * delta);
+                let dy = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
+                let dx = 0;
+                if (this.control?.isKey("KeyA") || this.control?.isKey("KeyD")) {
+                    dy *= this.move2ButtonsKof;
+                    dx = (this.control?.isKey("KeyD") ? -1 : 1) * dy;
+                    this.scene?.mePlayer?.moveX(dx);
+                }
+                this.scene?.mePlayer?.moveY(dy);
                 this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
             }
         });
-        this.control.onKey("KeyS", (delta:number) => {
+        this.control.onKey("KeyS", (ticker:PIXI.Ticker) => {
             if (this.scene?.mePlayer) {
-                this.scene?.mePlayer?.moveY(this.scene?.mePlayer.speed * delta);
+                let dy = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
+                let dx = 0;
+                if (this.control?.isKey("KeyD") || this.control?.isKey("KeyA")) {
+                    dy *= this.move2ButtonsKof;
+                    dx = (this.control?.isKey("KeyA") ? -1 : 1) * dy;
+                    this.scene?.mePlayer?.moveX(dx);
+                }
+                this.scene?.mePlayer?.moveY(dy);
                 this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
             }
         });
-        this.control.onKey("KeyA", (delta:number) => {
-            if (this.scene?.mePlayer) {
-                this.scene?.mePlayer?.moveX(-this.scene?.mePlayer.speed * delta);
+        this.control.onKey("KeyA", (ticker:PIXI.Ticker) => {
+            if (this.scene?.mePlayer && !this.control?.isKey("KeyW") && !this.control?.isKey("KeyS")) {
+                const dx = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
+                this.scene?.mePlayer?.moveX(dx);
                 this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
             }
         });
-        this.control.onKey("KeyD", (delta:number) => {
-            if (this.scene?.mePlayer) {
-                this.scene?.mePlayer?.moveX(this.scene?.mePlayer.speed * delta);
+        this.control.onKey("KeyD", (ticker:PIXI.Ticker) => {
+            if (this.scene?.mePlayer && !this.control?.isKey("KeyS") && !this.control?.isKey("KeyW")) {
+                const dx = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
+                this.scene?.mePlayer?.moveX(dx);
                 this.socket.emit("playerMoved", this.scene?.mePlayer.getCoords());
             }
         });

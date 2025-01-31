@@ -11,7 +11,7 @@ export class Player {
 
     x = -1;
     y = -1;
-    speed = 3;
+    speedInSecond = 150;
     length = 0;
     width = 0;
     rotation = 0;

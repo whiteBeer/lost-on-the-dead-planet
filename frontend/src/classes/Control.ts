@@ -49,20 +49,37 @@ export class Control {
         document.addEventListener("wheel", (e) => {
             mouseScrollCallbacks.forEach(el => el(e.deltaY > 0 ? "down" : "up"));
         });
+
+        document.addEventListener("contextmenu", clearKeys);
+        window.addEventListener("blur", clearKeys);
+
+        function clearKeys () {
+            Object.keys(keys).forEach(key => {
+                keys[key] = false;
+            });
+        }
     }
 
     getMouseCoords () {
         return mouseCoords;
     }
 
+    getKeys () {
+        return keys;
+    }
+
     isSpace () {
         return keys["isSpace"];
+    }
+
+    isKey (keyCode:string) {
+        return keys["is" + keyCode];
     }
 
     onKey (keyCode:string, callback:any) {
         this.app.pixiApp.ticker.add((ticker) => {
             if (keys["is" + keyCode]) {
-                callback(ticker.deltaTime);
+                callback(ticker);
             }
         });
     }
