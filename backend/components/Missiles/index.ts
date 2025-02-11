@@ -42,7 +42,7 @@ export class Missiles {
         return this.items;
     }
 
-    removeMissile (missileId:string) {
+    removeMissileById (missileId:string) {
         this.items = this.items.filter(el => el.id !== missileId);
         this.scene.io.emit("missilesRemoved", <any>missileId);
     }

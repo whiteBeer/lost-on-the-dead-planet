@@ -1,6 +1,7 @@
 import {randomUUID} from "crypto";
 import {EnemyParams} from "../../types";
 import {Scene} from "../Scene";
+import {clearInterval} from "timers";
 
 export class BaseEnemy {
 
@@ -12,10 +13,11 @@ export class BaseEnemy {
     width = -1;
     rotation = 0;
     speedInSecond = 0;
-    startX: number;
-    startY: number;
-    createdAt: string;
-    updatedAt: string;
+    startX:number;
+    startY:number;
+    createdAt:string;
+    updatedAt:string;
+    moveInterval:NodeJS.Timeout|null = null;
 
     constructor(scene:Scene, params:EnemyParams) {
         this.scene = scene;
@@ -25,6 +27,16 @@ export class BaseEnemy {
         this.startY = params.startY;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
+    }
+
+    remove () {
+        if (this.moveInterval !== null) {
+            clearInterval(this.moveInterval);
+        }
+        this.scene.io.emit("enemiesRemoved", <any>{
+            serverCurrentDateTime: new Date().toISOString(),
+            enemy: this.toJSON()
+        });
     }
 
     toJSON() {

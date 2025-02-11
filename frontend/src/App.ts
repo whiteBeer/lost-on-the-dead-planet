@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import axios from "axios";
+import {Toolbar} from "./Toolbar";
 import {Scene} from "./classes/Scene";
 import {Control} from "./classes/Control";
 import {io, Socket} from "socket.io-client";
@@ -9,6 +10,7 @@ export class App {
     pixiApp:PIXI.Application;
     backendUrl:string;
     socket:Socket;
+    toolbar:Toolbar|null = null;
     scene:Scene|null = null;
     control:Control|null = null;
     move2ButtonsKof = 0.7071; // cos(45)
@@ -25,6 +27,7 @@ export class App {
             background: "#1099aa",
             resizeTo: window
         });
+        this.toolbar = new Toolbar(this);
         this.control = new Control(this);
         this.scene = new Scene(this, backendScene);
 

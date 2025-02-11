@@ -26,6 +26,21 @@ app.get("/api/scene", (req, res) => {
     });
 });
 
+app.put("/api/new-game", (req, res) => {
+    scene.newGame();
+    res.json({});
+});
+
+app.put("/api/sandbox/add-zombie", (req, res) => {
+    scene.enemiesCollection.addZombie();
+    res.json({});
+});
+
+app.put("/api/sandbox/add-spider", (req, res) => {
+    scene.enemiesCollection.addSpider();
+    res.json({});
+});
+
 io.on("connection", async (socket:Socket) => {
 
     const scenePlayers = scene.playersCollection;

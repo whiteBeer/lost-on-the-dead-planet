@@ -4,7 +4,7 @@
         <title>Game</title>
         <style>
             /* Styles reset */
-            * {
+            :not(button) {
                 font-family: -apple-system, 'Segoe UI', 'Verdana', 'Candara', sans-serif;
                 border: 0 none;
                 outline: 0;
@@ -12,11 +12,29 @@
                 margin: 0;
                 box-sizing: border-box;
             }
+            #menu {
+                height: 50px;
+                width: 100%;
+                padding: 12px;
+            }
+            #game {
+                height: calc(100% - 50px);
+                position: fixed;
+            }
+            .toolbar-btn {
+                margin-right: 10px;
+            }
         </style>
     </head>
 
-    <body id="game" style="margin: 0; overflow: hidden;">
-
+    <body>
+        <div id="menu">
+            <button id="btn-new-game" class="toolbar-btn">New Game</button>
+            <button id="btn-add-zombie" class="toolbar-btn">Add Zombie</button>
+            <button id="btn-add-zombie-10" class="toolbar-btn">Add 10 Zombie</button>
+            <button id="btn-add-spider" class="toolbar-btn">Add Spider</button>
+        </div>
+        <div id="game" style="margin: 0; overflow: hidden;"></div>
     </body>
 
 </html>

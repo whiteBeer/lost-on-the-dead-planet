@@ -13,7 +13,7 @@ export class Scene {
 
     width:number;
     height:number;
-    scale = 2;
+    scale = 1.7;
     tx = 0;
     ty = 0;
     marginX = 100;

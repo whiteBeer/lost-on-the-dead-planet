@@ -5,10 +5,12 @@ import { Enemies } from "./Enemies";
 import { Missiles } from "./Missiles";
 import { Players } from "./Players";
 import {EnemyJSON, Missile} from "../types";
+import {clearInterval} from "timers";
 
 export class Scene {
 
     io:Server;
+    verifyInterval:NodeJS.Timeout;
 
     width = 1000;
     height = 1000;
@@ -23,7 +25,19 @@ export class Scene {
         this.missilesCollection = new Missiles(this);
         this.playersCollection = new Players(this);
 
-        setInterval(() => {
+        this.verifyInterval = setInterval(() => {
+            this.verifyScene();
+        }, 50);
+    }
+
+    newGame () {
+        this.enemiesCollection.removeAllEnemies();
+        this.enemiesCollection = new Enemies(this);
+        this.enemiesCollection.addSpider();
+        this.enemiesCollection.addZombie();
+
+        clearInterval(this.verifyInterval);
+        this.verifyInterval = setInterval(() => {
             this.verifyScene();
         }, 50);
     }
@@ -49,7 +63,8 @@ export class Scene {
                     rotatedMissile.y > rotatedEnemy.y - enemy.length/2 &&
                     rotatedMissile.y < rotatedEnemy.y + enemy.length/2
                 ) {
-                    this.missilesCollection.removeMissile(missile.id);
+                    this.missilesCollection.removeMissileById(missile.id);
+                    this.enemiesCollection.removeEnemyById(enemy.id);
                 }
             });
         });

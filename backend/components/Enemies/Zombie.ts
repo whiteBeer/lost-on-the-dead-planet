@@ -13,7 +13,7 @@ export class Zombie extends BaseEnemy {
         this.width = 50;
         this.length = 50;
         this.color = "0x6F8";
-        this.speedInSecond = 50;
+        this.speedInSecond = 50 + Math.round(Math.random() * 30);
 
         this.move();
     }

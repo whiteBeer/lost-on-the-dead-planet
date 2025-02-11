@@ -31,8 +31,9 @@ export class Control {
             keys["is" + e.code] = false;
         });
         document.addEventListener("mousemove", (e) => {
+            const menuHeight = document.getElementById("menu")?.clientHeight || 0;
             mouseCoords.pageX = e.pageX;
-            mouseCoords.pageY = e.pageY;
+            mouseCoords.pageY = e.pageY - menuHeight;
             mouseMoveCallbacks.forEach(el => el(e));
         });
         document.addEventListener("mousedown", (e) => {
