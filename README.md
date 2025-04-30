@@ -6,3 +6,6 @@ Little multiplayer game.
 3) cd ../frontend
 4) npm i
 5) npm start
+
+Client:
+http://localhost:7790/
