@@ -1,4 +1,4 @@
-Little multiplayer game.
+A little multiplayer game.
 
 1) cd backend
 2) npm i

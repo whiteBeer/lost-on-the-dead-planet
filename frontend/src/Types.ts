@@ -11,6 +11,8 @@ export interface BackendPlayer {
 export interface BackendEnemy {
     id: string,
     color: string,
+    health: number,
+    currentHealth: number,
     length: number,
     width: number,
     speedInSecond: number,
@@ -24,6 +26,7 @@ export interface BackendEnemy {
 export interface BackendMissile {
     id: string,
     ownerId: string,
+    damage: number,
     startX: number,
     startY: number,
     speedInSecond: number,

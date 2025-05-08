@@ -16,6 +16,8 @@ export interface Player {
 export interface EnemyJSON {
     id: string,
     color: string,
+    health: number,
+    currentHealth: number,
     length: number,
     width: number,
     speedInSecond: number,
@@ -35,10 +37,19 @@ export interface EnemyParams {
 export interface Missile {
     id: string,
     ownerId: string,
+    damage: number,
     startX: number,
     startY: number,
     speedInSecond: number,
     rotation: number,
     range: number,
     createdAt: string
+}
+
+export interface MissileParams {
+    weaponType: string,
+    rotation: number,
+    startX: number,
+    startY: number
+    ownerId: string
 }

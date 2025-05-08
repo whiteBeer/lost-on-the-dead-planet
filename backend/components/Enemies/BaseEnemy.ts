@@ -9,6 +9,8 @@ export class BaseEnemy {
 
     id: string;
     color = "black";
+    health = -1;
+    currentHealth = -1;
     length = -1;
     width = -1;
     rotation = 0;
@@ -29,6 +31,17 @@ export class BaseEnemy {
         this.updatedAt = createdAt;
     }
 
+    damage (missileDamage:number) {
+        this.health = this.health - missileDamage;
+    }
+
+    damageEvent () {
+        this.scene.io.emit("enemiesDamaged", <any>{
+            serverCurrentDateTime: new Date().toISOString(),
+            enemy: this.toJSON()
+        });
+    }
+
     remove () {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
@@ -45,6 +58,8 @@ export class BaseEnemy {
             color: this.color,
             length: this.length,
             width: this.width,
+            health: this.health,
+            currentHealth: this.currentHealth,
             rotation: this.rotation,
             speedInSecond: this.speedInSecond,
             startX: this.startX,

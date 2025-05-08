@@ -1,7 +1,6 @@
-import { randomUUID } from "crypto";
-
-import { Missile } from "../../types";
+import { Missile, MissileParams } from "../../types";
 import { Scene } from "../Scene";
+import { RifleMissile } from "./RifleMissile";
 
 export class Missiles {
 
@@ -12,23 +11,13 @@ export class Missiles {
         this.scene = scene;
     }
 
-    createMissile (params:Missile, socketId:string) {
-        const missileId = randomUUID();
-        const newMissile = Object.assign(params, {
-            id: missileId,
-            ownerId: socketId,
-            createdAt: new Date().toISOString()
-        });
-        this.items.push(newMissile);
-        this.scene.io.emit("missilesAdded", <any>{
-            serverCurrentDateTime: new Date().toISOString(),
-            newMissile: newMissile
-        });
-
-        setTimeout(() => {
-            this.items = this.items.filter(el => el.id !== missileId);
-            this.scene.io.emit("missilesRemoved", <any>missileId);
-        }, params.range / params.speedInSecond * 1000);
+    createMissile (params:MissileParams) {
+        if (params.weaponType === "Rifle") {
+            const newMissile = new RifleMissile(this.scene, params);
+            this.items.push(newMissile);
+        } else {
+            // TODO: unsupported weapon
+        }
     }
 
     getMissilesWithServerTime () {

@@ -1,11 +1,12 @@
 import {Scene} from "../Scene";
 import {Spider} from "./Spider";
 import {Zombie} from "./Zombie";
+import {BaseEnemy} from "./BaseEnemy";
 
 export class Enemies {
 
     scene:Scene;
-    enemies:any[] = [];
+    enemies:BaseEnemy[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;
@@ -33,7 +34,19 @@ export class Enemies {
         });
     }
 
-    removeEnemyById (enemyId:string) {
+    damageEnemyById (enemyId:string, missileDamage:number) {
+        const enemy = this.enemies.find(el => el.id === enemyId);
+        if (enemy) {
+            enemy.damage(missileDamage);
+            if (enemy.health <= 0) {
+                this.removenEmemyById(enemyId);
+            } else {
+                enemy.damageEvent();
+            }
+        }
+    }
+
+    removenEmemyById (enemyId:string) {
         const enemy = this.enemies.find(el => el.id === enemyId);
         if (enemy) {
             enemy.remove();

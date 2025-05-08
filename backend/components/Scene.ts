@@ -64,7 +64,7 @@ export class Scene {
                     rotatedMissile.y < rotatedEnemy.y + enemy.length/2
                 ) {
                     this.missilesCollection.removeMissileById(missile.id);
-                    this.enemiesCollection.removeEnemyById(enemy.id);
+                    this.enemiesCollection.damageEnemyById(enemy.id, missile.damage);
                 }
             });
         });

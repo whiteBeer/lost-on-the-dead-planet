@@ -56,7 +56,9 @@ io.on("connection", async (socket:Socket) => {
         });
 
         socket.on("missileCreate", (params) => {
-            scene.missilesCollection.createMissile(params, socket.id);
+            scene.missilesCollection.createMissile(Object.assign(params, {
+                ownerId: socket.id
+            }));
         });
 
         socket.on("disconnect", () => {

@@ -1,0 +1,56 @@
+import {randomUUID} from "crypto";
+import {MissileParams} from "../../types";
+import {Scene} from "../Scene";
+
+export class BaseMissile {
+
+    scene:Scene;
+
+    id: string;
+    ownerId: string;
+    damage = -1;
+    startX = -1;
+    startY = -1;
+    speedInSecond = -1;
+    rotation = 0;
+    range = 0;
+    createdAt:string;
+    updatedAt:string;
+
+    constructor(scene:Scene, params:MissileParams) {
+        this.scene = scene;
+        const createdAt = new Date().toISOString();
+        this.id = randomUUID();
+        this.ownerId = params.ownerId;
+        this.startX = params.startX;
+        this.startY = params.startY;
+        this.rotation = params.rotation;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    handleEvents () {
+        this.scene.io.emit("missilesAdded", <any>{
+            serverCurrentDateTime: new Date().toISOString(),
+            newMissile: this.toJSON()
+        });
+
+        setTimeout(() => {
+            this.scene.missilesCollection.removeMissileById(this.id);
+        }, this.range / this.speedInSecond * 1000);
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            ownerId: this.ownerId,
+            damage: this.damage,
+            startX: this.startX,
+            startY: this.startY,
+            speedInSecond: this.speedInSecond,
+            rotation: this.rotation,
+            range: this.range,
+            createdAt: this.createdAt
+        };
+    }
+}

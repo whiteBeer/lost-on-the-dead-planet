@@ -1,4 +1,3 @@
-import * as PIXI from "pixi.js";
 import {App} from "../../App";
 import {Player} from "./Player";
 
@@ -7,8 +6,6 @@ export class Weapon {
     app:App;
     player:Player;
     missilesPeriod = 150;
-    speedInSecond = 500;
-    range = 700;
     lastFire = new Date().toISOString();
 
     constructor (app:App, player:Player) {
@@ -21,8 +18,7 @@ export class Weapon {
             if (new Date().getTime() - new Date(this.lastFire).getTime() > this.missilesPeriod) {
                 const playerCoords = this.player.getCoords();
                 this.app.socket.emit("missileCreate", {
-                    range: this.range,
-                    speedInSecond: this.speedInSecond,
+                    weaponType: "Rifle",
                     startX: playerCoords.pageX,
                     startY: playerCoords.pageY,
                     rotation: playerCoords.rotation

@@ -37,6 +37,13 @@ export class EnemiesCollection {
                 this.enemies = this.enemies.filter(el => el.id !== beObj.enemy.id);
             }
         });
+
+        this.app.socket.on("enemiesDamaged", (beObj:BackendEnemyUpdatedSocket) => {
+            const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
+            if (existEnemy) {
+                existEnemy.setHealth(beObj?.enemy?.health || 0);
+            }
+        });
     }
 
     enemiesFromBackendScene (backendScene:BackendScene) {

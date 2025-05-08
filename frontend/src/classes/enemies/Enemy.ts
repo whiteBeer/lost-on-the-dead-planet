@@ -15,6 +15,9 @@ export class Enemy {
     dx:number;
     dy:number;
 
+    health = 0;
+    currentHealth = 0;
+
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
     constructor (app:App, enemyJson:BackendEnemy, serverCurrentDateTime:string) {
@@ -22,6 +25,9 @@ export class Enemy {
         this.id = enemyJson.id;
         this.length = enemyJson.length;
         this.width = enemyJson.width;
+
+        this.health = enemyJson.health;
+        this.currentHealth = enemyJson.currentHealth;
 
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
@@ -57,6 +63,8 @@ export class Enemy {
         this.dx = -dirCos * (enemyJson.speedInSecond / (1000 / 16.66));
         this.dy = -dirSin * (enemyJson.speedInSecond / (1000 / 16.66));
 
+        this.setHealth(this.health);
+
         this.tickerFunc = this.moveEnemy.bind(this);
         this.app.pixiApp.ticker.add(this.tickerFunc);
     }
@@ -80,6 +88,11 @@ export class Enemy {
             this.pixiObj.x = tx + this.x * scale;
             this.pixiObj.y = ty + this.y * scale;
         }
+    }
+
+    setHealth (health:number) {
+        this.health = health;
+        this.pixiObj.alpha = health / this.currentHealth;
     }
 }
 
