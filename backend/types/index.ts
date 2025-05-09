@@ -3,7 +3,7 @@ export interface BaseCoords {
     y: number
 }
 
-export interface Player {
+export interface PlayerJSON {
     socketId: string,
     color: string,
     length: number,
@@ -34,7 +34,7 @@ export interface EnemyParams {
     startY: number
 }
 
-export interface Missile {
+export interface MissileJSON {
     id: string,
     ownerId: string,
     damage: number,

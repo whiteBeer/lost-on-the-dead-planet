@@ -1,9 +1,9 @@
 import {randomUUID} from "crypto";
-import {EnemyParams} from "../../types";
+import {EnemyParams, EnemyJSON} from "../../types";
 import {Scene} from "../Scene";
 import {clearInterval} from "timers";
 
-export class BaseEnemy {
+export class BaseEnemy implements EnemyJSON {
 
     scene:Scene;
 
@@ -53,6 +53,7 @@ export class BaseEnemy {
     }
 
     toJSON() {
+        //TODO: https://stackoverflow.com/questions/43909566/get-keys-of-a-typescript-interface-as-array-of-strings
         return {
             id: this.id,
             color: this.color,

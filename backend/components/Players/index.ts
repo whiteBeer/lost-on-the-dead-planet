@@ -1,12 +1,12 @@
-import { Player } from "../../types";
-import { Scene } from "../Scene";
-import { config } from "../../config";
+import {PlayerJSON} from "../../types";
+import {Scene} from "../Scene";
+import {config} from "../../config";
 
 export class Players {
 
     scene:Scene;
     playerColors:string[] = config.playerColors || [];
-    players:Player[] = [];
+    players:PlayerJSON[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;
@@ -17,7 +17,7 @@ export class Players {
     }
 
     addPlayer (socketId:string) {
-        const playersColors = this.players.map((el:Player) => el.color);
+        const playersColors = this.players.map((el:PlayerJSON) => el.color);
         const color = this.playerColors.find((el:string) => {
             return playersColors.indexOf(el) === -1;
         });
@@ -38,9 +38,9 @@ export class Players {
         }
     }
 
-    updatePlayer (socketId:string, params:Player) {
+    updatePlayer (socketId:string, params:PlayerJSON) {
         let currentPlayerIndex = -1;
-        this.players = this.players.map((el:Player, i:number) => {
+        this.players = this.players.map((el:PlayerJSON, i:number) => {
             if (el.socketId === socketId) {
                 currentPlayerIndex = i;
                 return {
@@ -58,6 +58,6 @@ export class Players {
     }
 
     deletePlayer (socketId:string) {
-        this.players = this.players.filter((it:Player) => it.socketId !== socketId);
+        this.players = this.players.filter((it:PlayerJSON) => it.socketId !== socketId);
     }
 }

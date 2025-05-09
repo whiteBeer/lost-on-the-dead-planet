@@ -1,8 +1,8 @@
 import express from "express";
 import cors from "cors";
-import { Server, Socket } from "socket.io";
-import { Scene } from "./components/Scene";
-import { Player } from "./types";
+import {Server, Socket} from "socket.io";
+import {Scene} from "./components/Scene";
+import {PlayerJSON} from "./types";
 
 const PORT = 7789;
 const app = express().use(cors());
@@ -48,7 +48,7 @@ io.on("connection", async (socket:Socket) => {
     if (newPlayer) {
         console.log("Connected: " + socket.id, newPlayer);
 
-        socket.on("playerMoved", (params: Player) => {
+        socket.on("playerMoved", (params: PlayerJSON) => {
             const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
             if (currentPlayerIndex !== -1) {
                 io.emit("playerMoved", scenePlayers.getPlayers()[currentPlayerIndex]);

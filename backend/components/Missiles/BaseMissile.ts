@@ -1,8 +1,8 @@
 import {randomUUID} from "crypto";
-import {MissileParams} from "../../types";
+import {MissileParams, MissileJSON} from "../../types";
 import {Scene} from "../Scene";
 
-export class BaseMissile {
+export class BaseMissile implements MissileJSON {
 
     scene:Scene;
 
@@ -41,6 +41,7 @@ export class BaseMissile {
     }
 
     toJSON() {
+        //TODO: https://stackoverflow.com/questions/43909566/get-keys-of-a-typescript-interface-as-array-of-strings
         return {
             id: this.id,
             ownerId: this.ownerId,

@@ -1,11 +1,12 @@
-import { Missile, MissileParams } from "../../types";
-import { Scene } from "../Scene";
-import { RifleMissile } from "./RifleMissile";
+import {MissileParams} from "../../types";
+import {Scene} from "../Scene";
+import {RifleMissile} from "./RifleMissile";
+import {BaseMissile} from "./BaseMissile";
 
 export class Missiles {
 
     scene:Scene;
-    items:Missile[] = [];
+    items:BaseMissile[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;

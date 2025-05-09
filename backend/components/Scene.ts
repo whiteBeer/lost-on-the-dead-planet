@@ -1,10 +1,11 @@
-import { Server } from "socket.io";
+import {Server} from "socket.io";
 
-import { rotate, calcTimedPoint } from "../utils/geometry";
-import { Enemies } from "./Enemies";
-import { Missiles } from "./Missiles";
-import { Players } from "./Players";
-import {EnemyJSON, Missile} from "../types";
+import {rotate, calcTimedPoint} from "../utils/geometry";
+import {Enemies} from "./Enemies";
+import {Missiles} from "./Missiles";
+import {Players} from "./Players";
+import {BaseEnemy} from "./Enemies/BaseEnemy";
+import {BaseMissile} from "./Missiles/BaseMissile";
 import {clearInterval} from "timers";
 
 export class Scene {
@@ -47,11 +48,11 @@ export class Scene {
         const enemies = this.enemiesCollection.getEnemies();
         const missiles = this.missilesCollection.getMissiles();
 
-        missiles.forEach((missile:Missile) => {
+        missiles.forEach((missile:BaseMissile) => {
             const missileCoords = calcTimedPoint(
                 missile.startX, missile.startY, missile.rotation, missile.speedInSecond, missile.createdAt
             );
-            enemies.forEach((enemy:EnemyJSON) => {
+            enemies.forEach((enemy:BaseEnemy) => {
                 const enemyCoords = calcTimedPoint(
                     enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
                 );
