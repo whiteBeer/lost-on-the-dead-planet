@@ -32,6 +32,10 @@ export class Missiles {
         return this.items;
     }
 
+    getMissilesJSON () {
+        return this.items.map(el => el.toJSON());
+    }
+
     removeMissileById (missileId:string) {
         this.items = this.items.filter(el => el.id !== missileId);
         this.scene.io.emit("missilesRemoved", <any>missileId);

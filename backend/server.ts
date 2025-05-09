@@ -22,7 +22,7 @@ app.get("/api/scene", (req, res) => {
         height: scene.height,
         players: scene.playersCollection.getPlayers(),
         enemies: scene.enemiesCollection.getEnemiesJSON(),
-        missiles: scene.missilesCollection.getMissiles()
+        missiles: scene.missilesCollection.getMissilesJSON()
     });
 });
 
