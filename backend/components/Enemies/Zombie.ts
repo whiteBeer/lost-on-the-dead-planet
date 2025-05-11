@@ -2,6 +2,7 @@ import {Scene} from "../Scene";
 import {BaseEnemy} from "./BaseEnemy";
 import {BaseCoords, EnemyParams} from "../../types";
 import {calcTimedPoint} from "../../utils/geometry";
+import {server} from "../../classes/ServerFacade";
 
 export class Zombie extends BaseEnemy {
 
@@ -34,7 +35,7 @@ export class Zombie extends BaseEnemy {
                 this.startY = enemyCoords.y;
                 this.updatedAt = new Date().toISOString();
             }
-            this.scene.io.emit("enemiesUpdated", <any>{
+            server.emit("enemiesUpdated",{
                 serverCurrentDateTime: new Date().toISOString(),
                 enemy: this.toJSON()
             });

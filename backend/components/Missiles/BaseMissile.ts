@@ -1,6 +1,7 @@
 import {randomUUID} from "crypto";
 import {MissileParams, MissileJSON} from "../../types";
 import {Scene} from "../Scene";
+import {server} from "../../classes/ServerFacade";
 
 export class BaseMissile implements MissileJSON {
 
@@ -30,7 +31,7 @@ export class BaseMissile implements MissileJSON {
     }
 
     handleEvents () {
-        this.scene.io.emit("missilesAdded", <any>{
+        server.emit("missilesAdded", {
             serverCurrentDateTime: new Date().toISOString(),
             newMissile: this.toJSON()
         });

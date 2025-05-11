@@ -2,6 +2,7 @@ import {randomUUID} from "crypto";
 import {EnemyParams, EnemyJSON} from "../../types";
 import {Scene} from "../Scene";
 import {clearInterval} from "timers";
+import {server} from "../../classes/ServerFacade";
 
 export class BaseEnemy implements EnemyJSON {
 
@@ -36,7 +37,7 @@ export class BaseEnemy implements EnemyJSON {
     }
 
     damageEvent () {
-        this.scene.io.emit("enemiesDamaged", <any>{
+        server.emit("enemiesDamaged",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });
@@ -46,7 +47,7 @@ export class BaseEnemy implements EnemyJSON {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
         }
-        this.scene.io.emit("enemiesRemoved", <any>{
+        server.emit("enemiesRemoved",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });

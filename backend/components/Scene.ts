@@ -1,5 +1,3 @@
-import {Server} from "socket.io";
-
 import {rotate, calcTimedPoint} from "../utils/geometry";
 import {Enemies} from "./Enemies";
 import {Missiles} from "./Missiles";
@@ -10,7 +8,6 @@ import {clearInterval} from "timers";
 
 export class Scene {
 
-    io:Server;
     verifyInterval:NodeJS.Timeout;
 
     width = 1000;
@@ -20,8 +17,7 @@ export class Scene {
     missilesCollection:Missiles;
     playersCollection:Players;
 
-    constructor(io:Server) {
-        this.io = io;
+    constructor() {
         this.enemiesCollection = new Enemies(this);
         this.missilesCollection = new Missiles(this);
         this.playersCollection = new Players(this);

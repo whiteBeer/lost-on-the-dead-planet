@@ -2,6 +2,7 @@ import {MissileParams} from "../../types";
 import {Scene} from "../Scene";
 import {RifleMissile} from "./RifleMissile";
 import {BaseMissile} from "./BaseMissile";
+import {server} from "../../classes/ServerFacade";
 
 export class Missiles {
 
@@ -38,6 +39,6 @@ export class Missiles {
 
     removeMissileById (missileId:string) {
         this.items = this.items.filter(el => el.id !== missileId);
-        this.scene.io.emit("missilesRemoved", <any>missileId);
+        server.emit("missilesRemoved", missileId);
     }
 }

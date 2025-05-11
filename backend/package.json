@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "run": "node dist/server.js",
-    "start": "tsc && nodemon server.ts",
+    "run": "node --env-file=.env.prod dist/server.js",
+    "start": "nodemon --ext ts -x \"tsc && node --env-file=.env.local dist/server.js\"",
     "build": "eslint . --ext .ts && tsc"
   },
   "name": "game",
@@ -21,11 +21,11 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
-    "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
-    "eslint": "^7.32.0"
+    "eslint": "^7.32.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   }
 }
