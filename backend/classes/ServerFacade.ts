@@ -27,9 +27,9 @@ class ServerFacade {
         return this.io;
     }
 
-    emit (eventName:string, data:any) {
+    emit (eventName:string, ...data:any[]) {
         // console.log("WebSocket emit: ", eventName, data);
-        this.io.emit(eventName, data);
+        this.io.emit.apply(this.io, [eventName, ...data]);
     }
 }
 

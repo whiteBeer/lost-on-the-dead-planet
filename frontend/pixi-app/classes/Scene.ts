@@ -4,7 +4,7 @@ import {PlayersCollection} from "./players";
 import {EnemiesCollection} from "./enemies";
 import {MissilesCollection} from "./missiles";
 import {App} from "../App";
-import {BackendScene} from "../Types";
+import {BackendPlayer, BackendScene} from "../Types";
 
 export class Scene {
 
@@ -18,14 +18,6 @@ export class Scene {
     ty = 0;
     marginX = 100;
     marginY = 100;
-
-    // line = {
-    //     x: 200,
-    //     y: 100,
-    //     w: 200,
-    //     h: 100,
-    //     rotation: Math.PI + 1
-    // };
 
     mePlayer:Player|null = null;
     playersCollection:PlayersCollection;
@@ -67,32 +59,11 @@ export class Scene {
         container._zIndex = -1;
 
         this.pixiObj = container;
-        app.pixiApp.stage.addChild(this.pixiObj);
+        this.app.pixiApp.stage.addChild(this.pixiObj);
 
-        ///////////////////////////////////////
-        // const container1 = new PIXI.Container();
-        //
-        // const line1 = new PIXI.Graphics();
-        // line1.moveTo(0, 0)
-        //     .lineTo(1000, 0);
-        // line1.stroke({color: "0xFF0", width: 1 });
-        //
-        // const line2 = new PIXI.Graphics();
-        // line2.moveTo(0, 0)
-        //     .lineTo(1000, 0);
-        // line2.stroke({color: "0xFF0", width: 1 });
-        //
-        // const rectangle = new PIXI.Graphics();
-        // rectangle
-        //     .rect(0, 0, this.line.w, this.line.h)
-        //     .fill("white");
-        // container1.addChild(line1);
-        // container1.addChild(rectangle);
-        //
-        // container1.position.set(this.tx + this.line.x * this.scale, this.ty + this.line.y * this.scale);
-        //
-        // container1.rotation = this.line.rotation;
-        // app.pixiApp.stage.addChild(container1);
+        this.app.socket?.on("sceneChanged", (newScene:BackendScene) => {
+            this.enemiesCollection.enemiesFromBackendScene(newScene);
+        });
     }
 
     setMePlayer (mePlayer:Player) {

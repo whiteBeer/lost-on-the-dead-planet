@@ -9,29 +9,25 @@ const io = server.getWebSocketServer();
 const scene = new Scene();
 
 app.get("/api/scene", (req, res) => {
-    res.json({
-        serverCurrentDateTime: new Date().toISOString(),
-        width: scene.width,
-        height: scene.height,
-        players: scene.playersCollection.getPlayers(),
-        enemies: scene.enemiesCollection.getEnemiesJSON(),
-        missiles: scene.missilesCollection.getMissilesJSON()
-    });
+    res.json(scene.getScene());
 });
 
 app.put("/api/new-game", (req, res) => {
     scene.newGame();
     res.json({});
+    server.emit("sceneChanged", scene.getScene());
 });
 
 app.put("/api/sandbox/add-zombie", (req, res) => {
     scene.enemiesCollection.addZombie();
     res.json({});
+    server.emit("sceneChanged", scene.getScene());
 });
 
 app.put("/api/sandbox/add-spider", (req, res) => {
     scene.enemiesCollection.addSpider();
     res.json({});
+    server.emit("sceneChanged", scene.getScene());
 });
 
 io.on("connection", async (socket:Socket) => {

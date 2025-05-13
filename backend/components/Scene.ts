@@ -39,6 +39,17 @@ export class Scene {
         }, 50);
     }
 
+    getScene () {
+        return {
+            serverCurrentDateTime: new Date().toISOString(),
+            width: this.width,
+            height: this.height,
+            players: this.playersCollection.getPlayers(),
+            enemies: this.enemiesCollection.getEnemiesJSON(),
+            missiles: this.missilesCollection.getMissilesJSON()
+        };
+    }
+
     verifyScene () {
         const players = this.playersCollection.getPlayers();
         const enemies = this.enemiesCollection.getEnemies();

@@ -1,6 +1,5 @@
 import * as PIXI from "pixi.js";
 import axios from "axios";
-import {Toolbar} from "./Toolbar";
 import {Scene} from "./classes/Scene";
 import {Control} from "./classes/Control";
 import {io, Socket} from "socket.io-client";
@@ -10,14 +9,13 @@ export class App {
     pixiApp:PIXI.Application;
     backendUrl:string;
     socket:Socket;
-    toolbar:Toolbar|null = null;
     scene:Scene|null = null;
     control:Control|null = null;
     move2ButtonsKof = 0.7071; // cos(45)
 
-    constructor (env:string)  {
+    constructor ()  {
         this.pixiApp = new PIXI.Application();
-        this.backendUrl = env === "dev" ? "http://localhost:7789" : "http://178.21.11.153:7789";
+        this.backendUrl = process.env.BACKEND_URL || "";
         this.socket = io(this.backendUrl);
     }
 
@@ -27,7 +25,6 @@ export class App {
             background: "#1099aa",
             resizeTo: window
         });
-        this.toolbar = new Toolbar(this);
         this.control = new Control(this);
         this.scene = new Scene(this, backendScene);
 
