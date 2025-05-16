@@ -43,3 +43,10 @@ export interface BackendScene {
     enemies: BackendEnemy[],
     missiles: BackendMissile[]
 }
+
+// FRONTEND
+
+export interface IMouseCoords {
+    pageX: number;
+    pageY: number;
+}

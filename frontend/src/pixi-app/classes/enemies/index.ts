@@ -1,4 +1,3 @@
-import * as PIXI from "pixi.js";
 import {Enemy} from "./Enemy";
 import {App} from "../../App";
 import {BackendScene, BackendEnemy} from "../../Types";
@@ -19,7 +18,7 @@ export class EnemiesCollection {
 
         this.enemiesFromBackendScene(backendScene);
 
-        this.app.socket.on("enemiesUpdated", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesUpdated", (beObj:BackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.remove();
@@ -30,7 +29,7 @@ export class EnemiesCollection {
             app.pixiApp.stage.addChild(enemy.pixiObj);
         });
 
-        this.app.socket.on("enemiesRemoved", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesRemoved", (beObj:BackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.remove();
@@ -38,7 +37,7 @@ export class EnemiesCollection {
             }
         });
 
-        this.app.socket.on("enemiesDamaged", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesDamaged", (beObj:BackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.setHealth(beObj?.enemy?.health || 0);

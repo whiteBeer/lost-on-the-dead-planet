@@ -1,5 +1,5 @@
-import * as PIXI from "pixi.js";
 import {App} from "../App";
+import {IMouseCoords} from "../Types";
 
 const keys:any = {
     isKeyW: false,
@@ -9,7 +9,7 @@ const keys:any = {
     isSpace: false
 };
 
-const mouseCoords:any = {
+const mouseCoords:IMouseCoords = {
     pageX: 0,
     pageY: 0
 };

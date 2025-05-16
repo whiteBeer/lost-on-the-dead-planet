@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import Weapon from "./Weapon";
 import { App } from "../../App";
-import {BackendPlayer} from "../../Types";
+import {BackendPlayer, IMouseCoords} from "../../Types";
 
 export class Player {
 
@@ -17,7 +17,7 @@ export class Player {
     rotation = 0;
     weapon:Weapon;
 
-    constructor (app:App, params:BackendPlayer|any) {
+    constructor (app:App, params:BackendPlayer) {
         this.app = app;
         this.socketId = params.socketId || "me";
         this.pixiObj = new PIXI.Container();
@@ -123,10 +123,10 @@ export class Player {
         }
     }
 
-    refreshRotationAngleToMouse (mouseCoords:any) {
+    refreshRotationAngleToMouse (mouseCoords:IMouseCoords) {
         try {
             const diffX = mouseCoords.pageX - this.pixiObj.x;
-            const diffY = mouseCoords.pageY - this.pixiObj.y;
+            const diffY = mouseCoords.pageY - this.pixiObj.y - this.app.getCanvasOffsetTop();
             const rotation = Math.PI + Math.atan2(diffY, diffX);
             this.rotation = rotation;
             if (this.pixiObj) {

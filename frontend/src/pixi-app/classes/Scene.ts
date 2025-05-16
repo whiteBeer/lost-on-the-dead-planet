@@ -4,7 +4,7 @@ import {PlayersCollection} from "./players";
 import {EnemiesCollection} from "./enemies";
 import {MissilesCollection} from "./missiles";
 import {App} from "../App";
-import {BackendPlayer, BackendScene} from "../Types";
+import {BackendScene} from "../Types";
 
 export class Scene {
 
@@ -60,6 +60,11 @@ export class Scene {
 
         this.pixiObj = container;
         this.app.pixiApp.stage.addChild(this.pixiObj);
+
+        const mePlayer = this.playersCollection.initPlayers(backendScene.players);
+        if (mePlayer) {
+            this.setMePlayer(mePlayer);
+        }
 
         this.app.socket?.on("sceneChanged", (newScene:BackendScene) => {
             this.enemiesCollection.enemiesFromBackendScene(newScene);

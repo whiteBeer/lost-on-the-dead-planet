@@ -14,7 +14,7 @@ export class Weapon {
     }
 
     fire () {
-        if (this.app.scene && this.app?.socket.id) {
+        if (this.app.scene && this.app?.socket?.id) {
             if (new Date().getTime() - new Date(this.lastFire).getTime() > this.missilesPeriod) {
                 const playerCoords = this.player.getCoords();
                 this.app.socket.emit("missileCreate", {

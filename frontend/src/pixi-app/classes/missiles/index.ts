@@ -1,4 +1,3 @@
-import * as PIXI from "pixi.js";
 import {Missile} from "./Missile";
 import {App} from "../../App";
 import {BackendScene, BackendMissile} from "../../Types";
@@ -17,12 +16,12 @@ export class MissilesCollection {
         this.app = app;
 
         backendScene.missiles.forEach((el:BackendMissile) => {
-            if (el.ownerId !== app.socket.id) {
+            if (el.ownerId !== app.socket?.id) {
                 this.createMissile(el, backendScene.serverCurrentDateTime);
             }
         });
 
-        this.app.socket.on("missilesRemoved", (missileId:string) => {
+        this.app.socket?.on("missilesRemoved", (missileId:string) => {
             this.missiles.forEach((el:Missile) => {
                 if (el.id === missileId) {
                     el.remove();
@@ -31,7 +30,7 @@ export class MissilesCollection {
             this.missiles = this.missiles.filter(el => el.id !== missileId);
         });
 
-        this.app.socket.on("missilesAdded", (params:BackendMissileAddedSocket) => {
+        this.app.socket?.on("missilesAdded", (params:BackendMissileAddedSocket) => {
             this.createMissile(params.newMissile, params.serverCurrentDateTime);
         });
     }
