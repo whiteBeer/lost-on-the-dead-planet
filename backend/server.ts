@@ -1,63 +1,88 @@
 import {Socket} from "socket.io";
 import {Scene} from "./components/Scene";
 import {server} from "./classes/ServerFacade";
+import {RoomsManager} from "./classes/RoomsManager";
 import {PlayerJSON} from "./types";
 
 const app = server.getHttpServer();
 const io = server.getWebSocketServer();
 
-const scene = new Scene();
+const roomsManager = new RoomsManager();
 
-app.get("/api/scene", (req, res) => {
-    res.json(scene.getScene());
+app.put("/api/rooms/:roomId", (req, res) => {
+    const room = roomsManager.createRoom(req.params.roomId);
+    res.json(room);
 });
 
-app.put("/api/new-game", (req, res) => {
-    scene.newGame();
-    res.json({});
-    server.emit("sceneChanged", scene.getScene());
+app.get("/api/rooms/:roomId/scene", (req, res) => {
+    const roomScene = roomsManager.getRoomScene(req.params.roomId);
+    if (roomScene) {
+        res.json(roomScene.getScene());
+    } else {
+        res.json({});
+    }
 });
 
-app.put("/api/sandbox/add-zombie", (req, res) => {
-    scene.enemiesCollection.addZombie();
-    res.json({});
-    server.emit("sceneChanged", scene.getScene());
+app.put("/api/rooms/:roomId/new-game", (req, res) => {
+    const roomId = req.params.roomId;
+    const roomScene = roomsManager.getRoomScene(roomId);
+    if (roomScene) {
+        roomScene.newGame();
+        res.json({});
+        server.emit(roomId, "sceneChanged", roomScene.getScene());
+    } else {
+        res.json({});
+    }
 });
 
-app.put("/api/sandbox/add-spider", (req, res) => {
-    scene.enemiesCollection.addSpider();
+app.put("/api/sandbox/rooms/:roomId/add-zombie", (req, res) => {
+    const roomId = req.params.roomId;
+    const roomScene = roomsManager.getRoomScene(roomId);
+    roomScene.enemiesCollection.addZombie();
     res.json({});
-    server.emit("sceneChanged", scene.getScene());
+    server.emit(roomId, "sceneChanged", roomScene.getScene());
+});
+
+app.put("/api/sandbox/rooms/:roomId/add-spider", (req, res) => {
+    const roomId = req.params.roomId;
+    const roomScene = roomsManager.getRoomScene(roomId);
+    roomScene.enemiesCollection.addSpider();
+    res.json({});
+    server.emit(roomId, "sceneChanged", roomScene.getScene());
 });
 
 io.on("connection", async (socket:Socket) => {
+    const roomId = (socket?.handshake?.headers["room-id"] || "").toString();
+    const roomScene = roomsManager.getRoomScene(roomId);
+    if (roomScene) {
+        socket.join(roomId);
+        const scenePlayers = roomScene.playersCollection;
+        const newPlayer = scenePlayers.addPlayer(socket.id);
+        if (newPlayer) {
+            console.log("Connected: " + socket.id, newPlayer);
 
-    const scenePlayers = scene.playersCollection;
-    const newPlayer = scenePlayers.addPlayer(socket.id);
-    if (newPlayer) {
-        console.log("Connected: " + socket.id, newPlayer);
-
-        socket.on("playerMoved", (params: PlayerJSON) => {
-            const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
-            if (currentPlayerIndex !== -1) {
-                server.emit("playerMoved", scenePlayers.getPlayers()[currentPlayerIndex]);
-            }
-        });
-
-        socket.on("missileCreate", (params) => {
-            scene.missilesCollection.createMissile(Object.assign(params, {
-                ownerId: socket.id
-            }));
-        });
-
-        socket.on("disconnect", () => {
-            scenePlayers.deletePlayer(socket.id);
-            server.emit("playerDisconnected", {
-                socketId: socket.id
+            socket.on("playerMoved", (params: PlayerJSON) => {
+                const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
+                if (currentPlayerIndex !== -1) {
+                    server.emit(roomId, "playerMoved", scenePlayers.getPlayers()[currentPlayerIndex]);
+                }
             });
-            console.log("Disconnected ", socket.id, scenePlayers.getPlayers());
-        });
 
-        server.emit("allPlayers", scenePlayers.getPlayers());
+            socket.on("missileCreate", (params) => {
+                roomScene.missilesCollection.createMissile(Object.assign(params, {
+                    ownerId: socket.id
+                }));
+            });
+
+            socket.on("disconnect", () => {
+                scenePlayers.deletePlayer(socket.id);
+                server.emit(roomId, "playerDisconnected", {
+                    socketId: socket.id
+                });
+                console.log("Disconnected ", socket.id, scenePlayers.getPlayers());
+            });
+
+            server.emit(roomId, "allPlayers", scenePlayers.getPlayers());
+        }
     }
 });

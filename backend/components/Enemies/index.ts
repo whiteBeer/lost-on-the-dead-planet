@@ -39,14 +39,14 @@ export class Enemies {
         if (enemy) {
             enemy.damage(missileDamage);
             if (enemy.health <= 0) {
-                this.removenEmemyById(enemyId);
+                this.removeEnemyById(enemyId);
             } else {
                 enemy.damageEvent();
             }
         }
     }
 
-    removenEmemyById (enemyId:string) {
+    removeEnemyById (enemyId:string) {
         const enemy = this.enemies.find(el => el.id === enemyId);
         if (enemy) {
             enemy.remove();

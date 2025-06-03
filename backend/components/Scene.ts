@@ -10,6 +10,7 @@ export class Scene {
 
     verifyInterval:NodeJS.Timeout;
 
+    roomId = "";
     width = 1000;
     height = 1000;
 
@@ -17,7 +18,10 @@ export class Scene {
     missilesCollection:Missiles;
     playersCollection:Players;
 
-    constructor() {
+    constructor(roomId:string) {
+
+        this.roomId = roomId;
+
         this.enemiesCollection = new Enemies(this);
         this.missilesCollection = new Missiles(this);
         this.playersCollection = new Players(this);

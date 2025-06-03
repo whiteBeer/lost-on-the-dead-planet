@@ -37,7 +37,7 @@ export class Spider extends BaseEnemy {
             this.rotation += 0.5;
             this.updatedAt = currentTime.toISOString();
 
-            server.emit("enemiesUpdated", {
+            server.emit(this.scene.roomId, "enemiesUpdated", {
                 serverCurrentDateTime: new Date().toISOString(),
                 enemy: this.toJSON()
             });

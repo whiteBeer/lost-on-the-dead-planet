@@ -4,6 +4,7 @@ import {Scene} from "./classes/Scene";
 import {Control} from "./classes/Control";
 import {io, Socket} from "socket.io-client";
 import {BackendScene} from "./Types";
+import {getRoomId} from "../utils/getRoomId";
 
 export class App {
 
@@ -22,13 +23,21 @@ export class App {
     }
 
     async init () {
+        const roomId = getRoomId();
         await this.pixiApp.init({
             background: "#1099aa",
             resizeTo: window
         });
-        this.socket = io(this.backendUrl);
+        this.socket = io(this.backendUrl, {
+            extraHeaders: {
+                "room-id": roomId
+            }
+        });
+
+        const isRoomAdded = (await axios.put(this.backendUrl + "/api/rooms/" + roomId)).data;
+
         this.socket.on("connect", async () => {
-            const backendScene:BackendScene = (await axios.get(this.backendUrl + "/api/scene")).data;
+            const backendScene:BackendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
             this.control = new Control(this);
             this.scene = new Scene(this, backendScene);
 

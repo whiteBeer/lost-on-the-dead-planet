@@ -27,9 +27,10 @@ class ServerFacade {
         return this.io;
     }
 
-    emit (eventName:string, ...data:any[]) {
+    emit (roomId:string, eventName:string, ...data:any[]) {
         // console.log("WebSocket emit: ", eventName, data);
-        this.io.emit.apply(this.io, [eventName, ...data]);
+        const room = this.io.to(roomId);
+        room.emit.apply(room, [eventName, ...data]);
     }
 }
 

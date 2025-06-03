@@ -37,7 +37,7 @@ export class BaseEnemy implements EnemyJSON {
     }
 
     damageEvent () {
-        server.emit("enemiesDamaged",{
+        server.emit(this.scene.roomId, "enemiesDamaged",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });
@@ -47,7 +47,7 @@ export class BaseEnemy implements EnemyJSON {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
         }
-        server.emit("enemiesRemoved",{
+        server.emit(this.scene.roomId, "enemiesRemoved",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });

@@ -35,7 +35,7 @@ export class Zombie extends BaseEnemy {
                 this.startY = enemyCoords.y;
                 this.updatedAt = new Date().toISOString();
             }
-            server.emit("enemiesUpdated",{
+            server.emit(this.scene.roomId, "enemiesUpdated", {
                 serverCurrentDateTime: new Date().toISOString(),
                 enemy: this.toJSON()
             });

@@ -39,6 +39,6 @@ export class Missiles {
 
     removeMissileById (missileId:string) {
         this.items = this.items.filter(el => el.id !== missileId);
-        server.emit("missilesRemoved", missileId);
+        server.emit(this.scene.roomId, "missilesRemoved", missileId);
     }
 }

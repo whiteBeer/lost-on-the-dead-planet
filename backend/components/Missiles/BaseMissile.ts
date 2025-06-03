@@ -31,7 +31,7 @@ export class BaseMissile implements MissileJSON {
     }
 
     handleEvents () {
-        server.emit("missilesAdded", {
+        server.emit(this.scene.roomId, "missilesAdded", {
             serverCurrentDateTime: new Date().toISOString(),
             newMissile: this.toJSON()
         });

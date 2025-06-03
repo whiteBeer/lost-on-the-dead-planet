@@ -5,27 +5,29 @@ import {App as PixiAPP} from "../../../pixi-app/App";
 import axios from "axios";
 import styles from "./index.module.css";
 
+import {getRoomId} from "../../../utils/getRoomId";
+
 function Room() {
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     let app;
 
     const newGame = async () => {
-        await axios.put(backendUrl + "/api/new-game");
+        await axios.put(backendUrl + "/api/rooms/" + getRoomId() + "/new-game");
     };
 
     const addZombie = async () => {
-        await axios.put(backendUrl + "/api/sandbox/add-zombie");
+        await axios.put(backendUrl + "/api/sandbox/rooms/" + getRoomId() + "/add-zombie");
     };
 
     const addZombie10 = async () => {
         for (let i=0; i<10; i++) {
-            await axios.put(backendUrl + "/api/sandbox/add-zombie");
+            await axios.put(backendUrl + "/api/sandbox/rooms/" + getRoomId() + "/add-zombie");
         }
     };
 
     const addSpider = async () => {
-        await axios.put(backendUrl + "/api/sandbox/add-spider");
+        await axios.put(backendUrl + "/api/sandbox/rooms/" + getRoomId() + "/add-spider");
     };
 
     useEffect(() => {
