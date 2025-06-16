@@ -1,37 +1,53 @@
 import {Socket} from "socket.io";
-import {Scene} from "./components/Scene";
+import {roomIdValidator} from "./classes/Validator";
 import {server} from "./classes/ServerFacade";
 import {RoomsManager} from "./classes/RoomsManager";
 import {PlayerJSON} from "./types";
+import errorHandler from "./utils/errorHandler";
 
 const app = server.getHttpServer();
 const io = server.getWebSocketServer();
 
 const roomsManager = new RoomsManager();
 
-app.put("/api/rooms/:roomId", (req, res) => {
-    const room = roomsManager.createRoom(req.params.roomId);
-    res.json(room);
-});
-
-app.get("/api/rooms/:roomId/scene", (req, res) => {
-    const roomScene = roomsManager.getRoomScene(req.params.roomId);
-    if (roomScene) {
-        res.json(roomScene.getScene());
-    } else {
-        res.json({});
+app.put("/api/rooms/:roomId", async (req, res, next) => {
+    try {
+        await roomIdValidator.validateAsync(req.params);
+        const room = roomsManager.createRoom(req.params.roomId);
+        res.json(room);
+    } catch (err) {
+        next(err);
     }
 });
 
-app.put("/api/rooms/:roomId/new-game", (req, res) => {
-    const roomId = req.params.roomId;
-    const roomScene = roomsManager.getRoomScene(roomId);
-    if (roomScene) {
-        roomScene.newGame();
-        res.json({});
-        server.emit(roomId, "sceneChanged", roomScene.getScene());
-    } else {
-        res.json({});
+app.get("/api/rooms/:roomId/scene", async (req, res, next) => {
+    try {
+        await roomIdValidator.validateAsync(req.params);
+        const roomScene = roomsManager.getRoomScene(req.params.roomId);
+        if (roomScene) {
+            res.json(roomScene.getScene());
+        } else {
+            res.json({});
+        }
+    } catch (err) {
+        next(err);
+    }
+});
+
+app.put("/api/rooms/:roomId/new-game", async (req, res, next) => {
+    try {
+        await roomIdValidator.validateAsync(req.params);
+        const roomId = req.params.roomId;
+        const roomScene = roomsManager.getRoomScene(roomId);
+        if (roomScene) {
+            roomScene.newGame();
+            res.json({});
+            server.emit(roomId, "sceneChanged", roomScene.getScene());
+        } else {
+            res.json({});
+        }
+    } catch (err) {
+        next(err);
     }
 });
 
@@ -86,3 +102,6 @@ io.on("connection", async (socket:Socket) => {
         }
     }
 });
+
+
+app.use(errorHandler);
