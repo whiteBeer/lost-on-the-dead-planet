@@ -5,7 +5,7 @@ import {RoomsManager} from "./classes/RoomsManager";
 import {PlayerJSON} from "./types";
 import errorHandlerMiddleware from "./middleware/errorHandler";
 import notFoundMiddleware from "./middleware/notFound";
-import {NotFoundError} from "./errors";
+import {NotFoundError, BadRequestError} from "./errors";
 
 const app = server.getHttpServer();
 const io = server.getWebSocketServer();
@@ -14,17 +14,21 @@ const roomsManager = new RoomsManager();
 
 app.put("/api/rooms/:roomId", async (req, res, next) => {
     await roomIdValidator.validateAsync(req.params);
-    const room = roomsManager.createRoom(req.params.roomId);
-    res.json(room);
+    const isCreated = roomsManager.createRoom(req.params.roomId);
+    if (!isCreated) {
+        throw new BadRequestError("Scene already exists");
+    } else {
+        res.json({isCreated});
+    }
 });
 
 app.get("/api/rooms/:roomId/scene", async (req, res, next) => {
     await roomIdValidator.validateAsync(req.params);
     const roomScene = roomsManager.getRoomScene(req.params.roomId);
-    if (roomScene) {
-        res.json(roomScene.getScene());
-    } else {
+    if (!roomScene) {
         throw new NotFoundError("Scene not found");
+    } else {
+        res.json(roomScene.getScene());
     }
 });
 

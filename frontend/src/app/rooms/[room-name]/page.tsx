@@ -4,13 +4,20 @@ import React, { useEffect } from "react";
 import {App as PixiAPP} from "../../../pixi-app/App";
 import axios from "axios";
 import styles from "./index.module.css";
+import { useRouter } from "next/navigation";
 
 import {getRoomId} from "../../../utils/getRoomId";
 
 function Room() {
 
+    const router = useRouter();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    let app;
+    let app: PixiAPP;
+
+    const mainMenu = async () => {
+        app && app.disconnect();
+        router.push("/");
+    };
 
     const newGame = async () => {
         await axios.put(backendUrl + "/api/rooms/" + getRoomId() + "/new-game");
@@ -44,6 +51,7 @@ function Room() {
     return (
         <div>
             <div className={styles.menu}>
+                <button onClick={mainMenu} className="text-xs font-medium btn btn-blue mr-3">Main menu</button>
                 <button onClick={newGame} className="text-xs font-medium btn btn-blue mr-3">New Game</button>
                 <button onClick={addZombie}  className="text-xs font-medium btn btn-blue mr-3">Add Zombie</button>
                 <button onClick={addZombie10}  className="text-xs font-medium  btn btn-blue mr-3">Add 10 Zombie</button>

@@ -22,6 +22,10 @@ export class App {
         this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
     }
 
+    disconnect () {
+        this.socket?.disconnect();
+    }
+
     async init () {
         const roomId = getRoomId();
         await this.pixiApp.init({
@@ -34,10 +38,14 @@ export class App {
             }
         });
 
-        const isRoomAdded = (await axios.put(this.backendUrl + "/api/rooms/" + roomId)).data;
+        try {
+            const addRoomData = (await axios.put(this.backendUrl + "/api/rooms/" + roomId)).data;
+        } catch (error) {
+            console.log("Room was created early. Join room.");
+        }
 
         this.socket.on("connect", async () => {
-            const backendScene:BackendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
+            const backendScene: BackendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
             this.control = new Control(this);
             this.scene = new Scene(this, backendScene);
 
