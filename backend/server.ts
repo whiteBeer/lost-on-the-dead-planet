@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env"});
 import {Socket} from "socket.io";
 import {roomIdValidator} from "./classes/Validator";
 import {server} from "./classes/ServerFacade";

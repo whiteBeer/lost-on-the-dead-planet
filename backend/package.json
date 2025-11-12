@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "run": "node --env-file=.env.prod dist/server.js",
-    "start": "nodemon --ext ts -x \"tsc && node --env-file=.env.local dist/server.js\"",
+    "run": "node dist/server.js",
+    "start": "nodemon --ext ts -x \"tsc && node dist/server.js\"",
     "build": "eslint . --ext .ts && tsc"
   },
   "name": "game",
@@ -15,6 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "http-status-codes": "^2.3.0",
     "joi": "^17.13.3",
