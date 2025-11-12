@@ -1,11 +1,11 @@
 ## A little multiplayer game.
 
-1) cd backend
-2) npm i
-2) npm start
-3) cd ../frontend
-4) npm i
-5) npm run dev
+1. cd backend
+2. npm i
+3. npm start
+4. cd ../frontend
+5. npm i
+6. npm run dev
 
 Client:
 http://localhost:7790/
