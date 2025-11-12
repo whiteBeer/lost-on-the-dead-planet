@@ -17,7 +17,7 @@ export interface EnemyJSON {
     id: string,
     color: string,
     health: number,
-    currentHealth: number,
+    maxHealth: number,
     length: number,
     width: number,
     speedInSecond: number,

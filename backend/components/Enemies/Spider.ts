@@ -15,7 +15,7 @@ export class Spider extends BaseEnemy {
         this.color = "black";
         this.speedInSecond = 30;
         this.health = 100;
-        this.currentHealth = 100;
+        this.maxHealth = 100;
 
         this.move();
     }

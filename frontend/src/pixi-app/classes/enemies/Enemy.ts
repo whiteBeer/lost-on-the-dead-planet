@@ -16,7 +16,7 @@ export class Enemy {
     dy:number;
 
     health = 0;
-    currentHealth = 0;
+    maxHealth = 0;
 
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
@@ -27,7 +27,7 @@ export class Enemy {
         this.width = enemyJson.width;
 
         this.health = enemyJson.health;
-        this.currentHealth = enemyJson.currentHealth;
+        this.maxHealth = enemyJson.maxHealth;
 
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
@@ -92,7 +92,7 @@ export class Enemy {
 
     setHealth (health:number) {
         this.health = health;
-        this.pixiObj.alpha = health / this.currentHealth;
+        this.pixiObj.alpha = health / this.maxHealth;
     }
 }
 

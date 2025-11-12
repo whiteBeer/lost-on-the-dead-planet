@@ -11,7 +11,7 @@ export class BaseEnemy implements EnemyJSON {
     id: string;
     color = "black";
     health = -1;
-    currentHealth = -1;
+    maxHealth = -1;
     length = -1;
     width = -1;
     rotation = 0;
@@ -61,7 +61,7 @@ export class BaseEnemy implements EnemyJSON {
             length: this.length,
             width: this.width,
             health: this.health,
-            currentHealth: this.currentHealth,
+            maxHealth: this.maxHealth,
             rotation: this.rotation,
             speedInSecond: this.speedInSecond,
             startX: this.startX,
