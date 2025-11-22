@@ -16,6 +16,10 @@ export class Players {
         return this.players;
     }
 
+    getPlayerById(socketId: string) {
+        return this.players.find(player => player.socketId === socketId);
+    }
+
     addPlayer (socketId:string) {
         const playersColors = this.players.map((el:PlayerJSON) => el.color);
         const color = this.playerColors.find((el:string) => {

@@ -6,6 +6,7 @@ import {server} from "../../classes/ServerFacade";
 export class BaseMissile implements MissileJSON {
 
     scene:Scene;
+    previousPos: {x: number, y: number, timestamp: number} | null = null;
 
     id: string;
     ownerId: string;

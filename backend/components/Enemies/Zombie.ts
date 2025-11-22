@@ -1,6 +1,6 @@
 import {Scene} from "../Scene";
 import {BaseEnemy} from "./BaseEnemy";
-import {BaseCoords, EnemyParams} from "../../types";
+import {Coords, EnemyParams} from "../../types";
 import {calcTimedPoint} from "../../utils/geometry";
 import {server} from "../../classes/ServerFacade";
 
@@ -42,7 +42,7 @@ export class Zombie extends BaseEnemy {
         }, 200);
     }
 
-    findNearestPlayer (enemyCoords:BaseCoords) {
+    findNearestPlayer (enemyCoords:Coords) {
         const players = this.scene.playersCollection.getPlayers();
         if (players[0]) {
             let nearestPlayer = players[0];

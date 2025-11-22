@@ -8,8 +8,8 @@ export class RifleMissile extends BaseMissile {
         super(scene, params);
         this.scene = scene;
         this.damage = 25;
-        this.speedInSecond = 500;
-        this.range = 700;
+        this.speedInSecond = 3000;
+        this.range = 1000;
 
         this.handleEvents();
     }

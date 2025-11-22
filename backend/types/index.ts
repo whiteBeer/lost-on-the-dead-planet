@@ -1,6 +1,12 @@
-export interface BaseCoords {
+export interface Coords {
     x: number,
     y: number
+}
+
+export interface Rectangle {
+    width: number,
+    length: number,
+    rotation:number
 }
 
 export interface PlayerJSON {

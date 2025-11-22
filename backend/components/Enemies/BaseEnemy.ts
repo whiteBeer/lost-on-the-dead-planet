@@ -1,12 +1,13 @@
 import {randomUUID} from "crypto";
-import {EnemyParams, EnemyJSON} from "../../types";
+import {EnemyParams, EnemyJSON, Rectangle} from "../../types";
 import {Scene} from "../Scene";
 import {clearInterval} from "timers";
 import {server} from "../../classes/ServerFacade";
 
-export class BaseEnemy implements EnemyJSON {
+export class BaseEnemy implements EnemyJSON, Rectangle {
 
     scene:Scene;
+    moveInterval:NodeJS.Timeout|null = null;
 
     id: string;
     color = "black";
@@ -20,7 +21,6 @@ export class BaseEnemy implements EnemyJSON {
     startY:number;
     createdAt:string;
     updatedAt:string;
-    moveInterval:NodeJS.Timeout|null = null;
 
     constructor(scene:Scene, params:EnemyParams) {
         this.scene = scene;
