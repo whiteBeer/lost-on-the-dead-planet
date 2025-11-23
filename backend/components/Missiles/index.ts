@@ -2,7 +2,7 @@ import {MissileParams} from "../../types";
 import {Scene} from "../Scene";
 import {RifleMissile} from "./RifleMissile";
 import {BaseMissile} from "./BaseMissile";
-import {server} from "../../classes/ServerFacade";
+import { emitManager } from "../../classes/EmitManager";
 
 export class Missiles {
 
@@ -39,6 +39,6 @@ export class Missiles {
 
     removeMissileById (missileId:string) {
         this.items = this.items.filter(el => el.id !== missileId);
-        server.emit(this.scene.roomId, "missilesRemoved", missileId);
+        emitManager.emit(this.scene.roomId, "missilesRemoved", missileId);
     }
 }

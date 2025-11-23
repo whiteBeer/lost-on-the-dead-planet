@@ -1,6 +1,7 @@
+import { Request, Response, NextFunction } from "express";
 import joi from "joi";
 
-export default function errorHandler (err:any, req:any, res:any, next:any) {
+export default function errorHandler (err: any, req: Request, res: Response, next: NextFunction) {
     let message = "Bad request";
     let name = "Unknown";
     let code = 400;

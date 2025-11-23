@@ -2,7 +2,7 @@ import {randomUUID} from "crypto";
 import {EnemyParams, EnemyJSON, Rectangle} from "../../types";
 import {Scene} from "../Scene";
 import {clearInterval} from "timers";
-import {server} from "../../classes/ServerFacade";
+import { emitManager } from "../../classes/EmitManager";
 
 export class BaseEnemy implements EnemyJSON, Rectangle {
 
@@ -37,7 +37,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     }
 
     damageEvent () {
-        server.emit(this.scene.roomId, "enemiesDamaged",{
+        emitManager.emit(this.scene.roomId, "enemiesDamaged",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });
@@ -47,7 +47,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
         }
-        server.emit(this.scene.roomId, "enemiesRemoved",{
+        emitManager.emit(this.scene.roomId, "enemiesRemoved",{
             serverCurrentDateTime: new Date().toISOString(),
             enemy: this.toJSON()
         });

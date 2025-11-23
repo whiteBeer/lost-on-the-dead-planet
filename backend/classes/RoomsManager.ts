@@ -1,26 +1,34 @@
-import {server} from "../classes/ServerFacade";
 import {Scene} from "../components/Scene";
 
 export class RoomsManager {
 
-    rooms:any = [];
+    private rooms: Map<string, Scene> = new Map();
 
-    createRoom (roomId:string) {
-        const existRoom = this.rooms.find((el:any) => el.roomId === roomId);
-        if (!existRoom) {
-            const newRoom = {
-                roomId: roomId,
-                scene: new Scene(roomId)
-            };
-            this.rooms.push(newRoom);
-            return true;
-        } else {
+    public createRoom (roomId:string) {
+        if (this.rooms.has(roomId)) {
             return false;
         }
+
+        const newScene = new Scene(roomId);
+        this.rooms.set(roomId, newScene);
+
+        console.log(`Room created: ${roomId}. Total rooms: ${this.rooms.size}`);
+        return true;
     }
 
-    getRoomScene (roomId:string) {
-        const existRoom = this.rooms.find((el:any) => el.roomId === roomId);
-        return existRoom && existRoom.scene;
+    public  getRoomScene (roomId:string) {
+        return this.rooms.get(roomId);
+    }
+
+    public removeRoom(roomId: string): void {
+        const scene = this.rooms.get(roomId);
+        if (scene) {
+            if (typeof (scene as any).destroy === "function") {
+                (scene as any).destroy();
+            }
+
+            this.rooms.delete(roomId);
+            console.log(`🗑️ Room deleted: ${roomId}. Total rooms: ${this.rooms.size}`);
+        }
     }
 }

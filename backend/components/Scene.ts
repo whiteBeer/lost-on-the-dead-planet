@@ -28,6 +28,10 @@ export class Scene {
         }, 30);
     }
 
+    destroy () {
+        clearInterval(this.verifyInterval);
+    }
+
     newGame () {
         this.enemiesCollection.removeAllEnemies();
         this.enemiesCollection = new Enemies(this);

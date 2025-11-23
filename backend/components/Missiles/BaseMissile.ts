@@ -1,7 +1,7 @@
 import {randomUUID} from "crypto";
 import {MissileParams, MissileJSON} from "../../types";
 import {Scene} from "../Scene";
-import {server} from "../../classes/ServerFacade";
+import { emitManager } from "../../classes/EmitManager";
 
 export class BaseMissile implements MissileJSON {
 
@@ -32,7 +32,7 @@ export class BaseMissile implements MissileJSON {
     }
 
     handleEvents () {
-        server.emit(this.scene.roomId, "missilesAdded", {
+        emitManager.emit(this.scene.roomId, "missilesAdded", {
             serverCurrentDateTime: new Date().toISOString(),
             newMissile: this.toJSON()
         });
