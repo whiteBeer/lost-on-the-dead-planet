@@ -17,6 +17,8 @@ class Server {
 
         this.apiService = new AppApiServer(this.httpServer, this.roomsManager);
         this.socketService = new AppSocketServer(this.httpServer, this.roomsManager);
+
+        this.handleGlobalErrors();
     }
 
     start(): void {
@@ -25,12 +27,24 @@ class Server {
             console.log(`Server running on port ${PORT}`);
         });
         // Обработка graceful shutdown
-        process.on("SIGTERM", () => this.shutdown());
-        process.on("SIGINT", () => this.shutdown());
+        process.on("SIGTERM", () => this.shutdown("SIGTERM"));
+        process.on("SIGINT", () => this.shutdown("SIGINT"));
     }
 
-    private shutdown(): void {
-        console.log("Shutting down server...");
+    private handleGlobalErrors(): void {
+        process.on("uncaughtException", (err) => {
+            console.error("Uncaught Exception:", err);
+            this.shutdown("Uncaught Exception");
+        });
+
+        process.on("unhandledRejection", (reason) => {
+            console.error("Unhandled Rejection:", reason);
+            this.shutdown("Unhandled Rejection");
+        });
+    }
+
+    private shutdown(signal: string): void {
+        console.log(`Received ${signal}. Shutting down gracefully...`);
         this.httpServer.close(() => {
             console.log("Server closed");
             process.exit(0);
