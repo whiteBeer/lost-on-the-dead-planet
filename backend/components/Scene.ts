@@ -1,3 +1,4 @@
+import { EventEmitter } from "events";
 import {checkLineRectangleCollision, calcTimedPoint} from "../utils/geometry";
 import {Enemies} from "./Enemies";
 import {Missiles} from "./Missiles";
@@ -5,7 +6,7 @@ import {Players} from "./Players";
 import {clearInterval} from "timers";
 import {Rectangle} from "../types";
 
-export class Scene {
+export class Scene extends EventEmitter {
 
     verifyInterval:NodeJS.Timeout;
     roomId = "";
@@ -17,6 +18,7 @@ export class Scene {
     playersCollection:Players;
 
     constructor(roomId:string) {
+        super();
         this.roomId = roomId;
 
         this.enemiesCollection = new Enemies(this);
@@ -30,6 +32,7 @@ export class Scene {
 
     destroy () {
         clearInterval(this.verifyInterval);
+        this.removeAllListeners();
     }
 
     newGame () {

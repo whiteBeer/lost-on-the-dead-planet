@@ -2,7 +2,6 @@ import {randomUUID} from "crypto";
 import {EnemyParams, EnemyJSON, Rectangle} from "../../types";
 import {Scene} from "../Scene";
 import {clearInterval} from "timers";
-import { emitManager } from "../../classes/EmitManager";
 
 export class BaseEnemy implements EnemyJSON, Rectangle {
 
@@ -36,21 +35,10 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         this.health = this.health - missileDamage;
     }
 
-    damageEvent () {
-        emitManager.emit(this.scene.roomId, "enemiesDamaged",{
-            serverCurrentDateTime: new Date().toISOString(),
-            enemy: this.toJSON()
-        });
-    }
-
     remove () {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
         }
-        emitManager.emit(this.scene.roomId, "enemiesRemoved",{
-            serverCurrentDateTime: new Date().toISOString(),
-            enemy: this.toJSON()
-        });
     }
 
     toJSON() {

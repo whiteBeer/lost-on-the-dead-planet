@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from "express";
 import { Server as HttpServer } from "http";
 import { roomIdValidator } from "./classes/Validator";
 import { RoomsManager } from "./classes/RoomsManager";
-import { emitManager } from "./classes/EmitManager";
+import { EmitManager } from "./classes/EmitManager";
 import { NotFoundError, BadRequestError } from "./errors";
 import errorHandlerMiddleware from "./middleware/errorHandler";
 import notFoundMiddleware from "./middleware/notFound";
@@ -12,15 +12,15 @@ import cors from "cors";
 export class AppApiServer {
     private readonly app: Express;
     private readonly roomsManager: RoomsManager;
+    private readonly emitManager: EmitManager;
 
-    constructor(httpServer: HttpServer, roomsManager: RoomsManager) {
+    constructor(app: Express, roomsManager: RoomsManager, emitManager: EmitManager) {
+        this.app = app;
         this.roomsManager = roomsManager;
-        this.app = express();
+        this.emitManager = emitManager;
         this.setupMiddleware();
         this.setupRoutes();
         this.setupErrorHandling();
-
-        httpServer.on("request", this.app);
     }
 
     private setupMiddleware(): void {
@@ -43,11 +43,26 @@ export class AppApiServer {
 
     private async createRoom(req: Request, res: Response): Promise<void> {
         await roomIdValidator.validateAsync(req.params);
-        const isCreated = this.roomsManager.createRoom(req.params.roomId);
-        if (!isCreated) {
+        const roomId = req.params.roomId;
+        const scene = this.roomsManager.createRoom(roomId);
+        if (!scene) {
             throw new BadRequestError("Scene already exists");
         } else {
-            res.json({isCreated});
+            const sceneEvents = [
+                "enemiesUpdated",
+                "enemiesRemoved",
+                "enemiesDamaged",
+                "missilesAdded",
+                "missilesRemoved"
+            ];
+            sceneEvents.forEach((sceneEvent) => {
+                scene.on(sceneEvent, (data) => {
+                    this.emitManager.emit(roomId, sceneEvent, Object.assign(data, {
+                        serverCurrentDateTime: new Date().toISOString()
+                    }));
+                });
+            });
+            res.json({isCreated: true});
         }
     }
 
@@ -69,7 +84,7 @@ export class AppApiServer {
             throw new NotFoundError("Scene not found");
         } else {
             roomScene.newGame();
-            emitManager.emitSceneChanged(roomId, roomScene.getScene());
+            this.emitManager.emitSceneChanged(roomId, roomScene.getScene());
             res.json({});
         }
     }
@@ -81,7 +96,7 @@ export class AppApiServer {
             throw new NotFoundError("Scene not found");
         } else {
             roomScene.enemiesCollection.addZombie();
-            emitManager.emitSceneChanged(roomId, roomScene.getScene());
+            this.emitManager.emitSceneChanged(roomId, roomScene.getScene());
             res.json({});
         }
     }
@@ -93,7 +108,7 @@ export class AppApiServer {
             throw new NotFoundError("Scene not found");
         } else {
             roomScene.enemiesCollection.addSpider();
-            emitManager.emitSceneChanged(roomId, roomScene.getScene());
+            this.emitManager.emitSceneChanged(roomId, roomScene.getScene());
             res.json({});
         }
     }

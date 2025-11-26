@@ -2,8 +2,8 @@ import {Missile} from "./Missile";
 import {App} from "../../App";
 import {BackendScene, BackendMissile} from "../../Types";
 
-interface BackendMissileAddedSocket {
-    newMissile: BackendMissile,
+interface BackendMissileSocket {
+    missile: BackendMissile,
     serverCurrentDateTime: string
 }
 
@@ -21,17 +21,17 @@ export class MissilesCollection {
             }
         });
 
-        this.app.socket?.on("missilesRemoved", (missileId:string) => {
+        this.app.socket?.on("missilesRemoved", (missileSocket:BackendMissileSocket) => {
             this.missiles.forEach((el:Missile) => {
-                if (el.id === missileId) {
+                if (el.id === missileSocket?.missile?.id) {
                     el.remove();
                 }
             });
-            this.missiles = this.missiles.filter(el => el.id !== missileId);
+            this.missiles = this.missiles.filter(el => el.id !== missileSocket?.missile?.id);
         });
 
-        this.app.socket?.on("missilesAdded", (params:BackendMissileAddedSocket) => {
-            this.createMissile(params.newMissile, params.serverCurrentDateTime);
+        this.app.socket?.on("missilesAdded", (params:BackendMissileSocket) => {
+            this.createMissile(params.missile, params.serverCurrentDateTime);
         });
     }
 

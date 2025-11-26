@@ -4,9 +4,9 @@ import {config} from "../../config";
 
 export class Players {
 
-    scene:Scene;
-    playerColors:string[] = config.playerColors || [];
-    players:PlayerJSON[] = [];
+    private readonly scene:Scene;
+    private playerColors:string[] = config.playerColors || [];
+    private players:PlayerJSON[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;

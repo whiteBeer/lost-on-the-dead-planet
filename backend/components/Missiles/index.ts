@@ -2,31 +2,27 @@ import {MissileParams} from "../../types";
 import {Scene} from "../Scene";
 import {RifleMissile} from "./RifleMissile";
 import {BaseMissile} from "./BaseMissile";
-import { emitManager } from "../../classes/EmitManager";
 
 export class Missiles {
 
-    scene:Scene;
-    items:BaseMissile[] = [];
+    private readonly scene:Scene;
+    private items:BaseMissile[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;
     }
 
     createMissile (params:MissileParams) {
+        let newMissile;
         if (params.weaponType === "Rifle") {
-            const newMissile = new RifleMissile(this.scene, params);
-            this.items.push(newMissile);
+            newMissile = new RifleMissile(this.scene, params);
         } else {
             // TODO: unsupported weapon
         }
-    }
-
-    getMissilesWithServerTime () {
-        return {
-            serverCurrentDateTime: new Date().toISOString(),
-            missiles: this.items
-        };
+        if (newMissile) {
+            this.items.push(newMissile);
+            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
+        }
     }
 
     getMissiles () {
@@ -38,7 +34,10 @@ export class Missiles {
     }
 
     removeMissileById (missileId:string) {
-        this.items = this.items.filter(el => el.id !== missileId);
-        emitManager.emit(this.scene.roomId, "missilesRemoved", missileId);
+        const missile = this.items.find(el => el.id === missileId);
+        if (missile) {
+            this.items = this.items.filter(el => el.id !== missileId);
+            this.scene.emit("missilesRemoved", { missile: missile.toJSON() });
+        }
     }
 }

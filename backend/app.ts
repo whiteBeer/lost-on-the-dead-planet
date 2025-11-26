@@ -1,22 +1,36 @@
 import dotenv from "dotenv";
-dotenv.config();
 import { createServer } from "http";
+import express, {Express} from "express";
+import { Server as SocketIOServer } from "socket.io";
 import { AppApiServer } from "./appApiServer";
 import { AppSocketServer } from "./appSocketServer";
 import { RoomsManager } from "./classes/RoomsManager";
+import { EmitManager } from "./classes/EmitManager";
+
+dotenv.config();
 
 class Server {
-    private readonly roomsManager: RoomsManager;
     private readonly httpServer: ReturnType<typeof createServer>;
+    private readonly app: Express;
+    private readonly io: SocketIOServer;
+    private readonly roomsManager: RoomsManager;
+    private readonly emitManager: EmitManager;
     private readonly socketService: AppSocketServer;
     private readonly apiService: AppApiServer;
 
     constructor() {
-        this.roomsManager = new RoomsManager();
-        this.httpServer = createServer();
+        // this is here because init order important
+        this.app = express();
+        this.httpServer = createServer(this.app);
+        this.io = new SocketIOServer(this.httpServer, {
+            cors: { origin: "*" }
+        });
 
-        this.apiService = new AppApiServer(this.httpServer, this.roomsManager);
-        this.socketService = new AppSocketServer(this.httpServer, this.roomsManager);
+        this.roomsManager = new RoomsManager();
+        this.emitManager = new EmitManager(this.io);
+
+        this.apiService = new AppApiServer(this.app, this.roomsManager, this.emitManager);
+        this.socketService = new AppSocketServer(this.io, this.roomsManager, this.emitManager);
 
         this.handleGlobalErrors();
     }
@@ -26,7 +40,6 @@ class Server {
         this.httpServer.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
-        // Обработка graceful shutdown
         process.on("SIGTERM", () => this.shutdown("SIGTERM"));
         process.on("SIGINT", () => this.shutdown("SIGINT"));
     }

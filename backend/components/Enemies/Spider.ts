@@ -1,7 +1,6 @@
 import {Scene} from "../Scene";
 import {BaseEnemy} from "./BaseEnemy";
 import {EnemyParams} from "../../types";
-import { emitManager } from "../../classes/EmitManager";
 
 export class Spider extends BaseEnemy {
 
@@ -37,10 +36,7 @@ export class Spider extends BaseEnemy {
             this.rotation += 0.5;
             this.updatedAt = currentTime.toISOString();
 
-            emitManager.emit(this.scene.roomId, "enemiesUpdated", {
-                serverCurrentDateTime: new Date().toISOString(),
-                enemy: this.toJSON()
-            });
+            this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
         }, 5000);
     }
 }

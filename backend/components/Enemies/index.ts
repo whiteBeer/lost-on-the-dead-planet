@@ -5,8 +5,8 @@ import {BaseEnemy} from "./BaseEnemy";
 
 export class Enemies {
 
-    scene:Scene;
-    enemies:BaseEnemy[] = [];
+    private readonly scene:Scene;
+    private enemies:BaseEnemy[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;
@@ -40,8 +40,9 @@ export class Enemies {
             enemy.damage(missileDamage);
             if (enemy.health <= 0) {
                 this.removeEnemyById(enemyId);
+                this.scene.emit("enemiesRemoved", { enemy: enemy.toJSON() });
             } else {
-                enemy.damageEvent();
+                this.scene.emit("enemiesDamaged", { enemy: enemy.toJSON() });
             }
         }
     }

@@ -1,26 +1,16 @@
-import { Server, Socket } from "socket.io";
-import { Server as HttpServer } from "http";
+import { Server as SocketIOServer, Socket } from "socket.io";
 import { RoomsManager } from "./classes/RoomsManager";
 import { PlayerJSON } from "./types";
-import { emitManager } from "./classes/EmitManager";
+import { EmitManager } from "./classes/EmitManager";
 
 export class AppSocketServer {
-    private io: Server;
+    private io: SocketIOServer;
     private roomsManager: RoomsManager;
 
-    constructor(httpServer: HttpServer, roomsManager: RoomsManager) {
+    constructor(io: SocketIOServer, roomsManager: RoomsManager, emitManager: EmitManager) {
+        this.io = io;
         this.roomsManager = roomsManager;
-        this.io = new Server(httpServer, {
-            cors: { origin: "*" }
-        });
-        emitManager.initialize(this.io);
         this.setupSocketHandlers();
-    }
-
-    emit (roomId:string, eventName:string, ...data:any[]) {
-        // console.log("WebSocket emit: ", eventName, data);
-        const room = this.io.to(roomId);
-        room.emit.apply(room, [eventName, ...data]);
     }
 
     private setupSocketHandlers(): void {

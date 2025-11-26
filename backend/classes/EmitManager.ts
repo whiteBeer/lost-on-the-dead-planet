@@ -1,17 +1,9 @@
-import { Server } from "socket.io";
+import { Server as SocketIOServer } from "socket.io";
 
 export class EmitManager {
-    private static instance: EmitManager;
-    private io: Server | null = null;
+    private io: SocketIOServer | null = null;
 
-    static getInstance(): EmitManager {
-        if (!EmitManager.instance) {
-            EmitManager.instance = new EmitManager();
-        }
-        return EmitManager.instance;
-    }
-
-    initialize(io: Server): void {
+    constructor(io: SocketIOServer) {
         this.io = io;
     }
 
@@ -28,5 +20,3 @@ export class EmitManager {
         this.emit(roomId, "sceneChanged", sceneData);
     }
 }
-
-export const emitManager = EmitManager.getInstance();

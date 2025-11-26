@@ -1,7 +1,6 @@
 import {randomUUID} from "crypto";
 import {MissileParams, MissileJSON} from "../../types";
 import {Scene} from "../Scene";
-import { emitManager } from "../../classes/EmitManager";
 
 export class BaseMissile implements MissileJSON {
 
@@ -32,11 +31,6 @@ export class BaseMissile implements MissileJSON {
     }
 
     handleEvents () {
-        emitManager.emit(this.scene.roomId, "missilesAdded", {
-            serverCurrentDateTime: new Date().toISOString(),
-            newMissile: this.toJSON()
-        });
-
         setTimeout(() => {
             this.scene.missilesCollection.removeMissileById(this.id);
         }, this.range / this.speedInSecond * 1000);

@@ -6,14 +6,14 @@ export class RoomsManager {
 
     public createRoom (roomId:string) {
         if (this.rooms.has(roomId)) {
-            return false;
+            return null;
         }
 
         const newScene = new Scene(roomId);
         this.rooms.set(roomId, newScene);
 
         console.log(`Room created: ${roomId}. Total rooms: ${this.rooms.size}`);
-        return true;
+        return newScene;
     }
 
     public  getRoomScene (roomId:string) {
