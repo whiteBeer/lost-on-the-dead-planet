@@ -31,8 +31,8 @@ export class Players {
                 color: color,
                 length: 40,
                 width: 16,
-                pageX: Math.round(Math.random() * this.scene.width),
-                pageY: Math.round(Math.random() * this.scene.height),
+                pageX: Math.round(Math.random() * this.scene.getWidth()),
+                pageY: Math.round(Math.random() * this.scene.getHeight()),
                 rotation: Math.random() * 6
             };
             this.players.push(newPlayer);

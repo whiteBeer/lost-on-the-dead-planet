@@ -4,8 +4,9 @@ import {Scene} from "../Scene";
 
 export class BaseMissile implements MissileJSON {
 
-    scene:Scene;
-    previousPos: {x: number, y: number, timestamp: number} | null = null;
+    public readonly scene:Scene;
+    public previousPos: {x: number, y: number} | null = null;
+    private lifeTimeout: NodeJS.Timeout | null = null;
 
     id: string;
     ownerId: string;
@@ -31,23 +32,22 @@ export class BaseMissile implements MissileJSON {
     }
 
     handleEvents () {
-        setTimeout(() => {
-            this.scene.missilesCollection.removeMissileById(this.id);
+        this.lifeTimeout = setTimeout(() => {
+            if (this.scene && this.scene.missilesCollection) {
+                this.scene.missilesCollection.removeMissileById(this.id);
+            }
         }, this.range / this.speedInSecond * 1000);
     }
 
+    destroy() {
+        if (this.lifeTimeout) {
+            clearTimeout(this.lifeTimeout);
+            this.lifeTimeout = null;
+        }
+    }
+
     toJSON() {
-        //TODO: https://stackoverflow.com/questions/43909566/get-keys-of-a-typescript-interface-as-array-of-strings
-        return {
-            id: this.id,
-            ownerId: this.ownerId,
-            damage: this.damage,
-            startX: this.startX,
-            startY: this.startY,
-            speedInSecond: this.speedInSecond,
-            rotation: this.rotation,
-            range: this.range,
-            createdAt: this.createdAt
-        };
+        const { scene, previousPos, lifeTimeout, ...json } = this;
+        return json;
     }
 }

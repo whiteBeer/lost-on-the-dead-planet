@@ -3,15 +3,21 @@ import {checkLineRectangleCollision, calcTimedPoint} from "../utils/geometry";
 import {Enemies} from "./Enemies";
 import {Missiles} from "./Missiles";
 import {Players} from "./Players";
+import {BaseEnemy} from "./Enemies/BaseEnemy";
 import {clearInterval} from "timers";
-import {Rectangle} from "../types";
+
+interface CachedEnemy {
+    original: BaseEnemy;
+    x: number;
+    y: number;
+}
 
 export class Scene extends EventEmitter {
 
-    verifyInterval:NodeJS.Timeout;
-    roomId = "";
-    width = 1000;
-    height = 1000;
+    private verifyInterval: NodeJS.Timeout | null = null;
+    private readonly roomId: string = "";
+    private readonly width: number = 1000;
+    private readonly height: number = 1000;
 
     enemiesCollection:Enemies;
     missilesCollection:Missiles;
@@ -25,26 +31,36 @@ export class Scene extends EventEmitter {
         this.missilesCollection = new Missiles(this);
         this.playersCollection = new Players(this);
 
+        this.startGameLoop();
+    }
+
+    private startGameLoop() {
+        if (this.verifyInterval) {
+            clearInterval(this.verifyInterval);
+        }
         this.verifyInterval = setInterval(() => {
-            this.verifyScene();
-        }, 30);
+            this.update();
+        }, 20);
+    }
+
+    private update () {
+        this.verifyEnemyMissileCollisions();
     }
 
     destroy () {
-        clearInterval(this.verifyInterval);
+        if (this.verifyInterval) {
+            clearInterval(this.verifyInterval);
+            this.verifyInterval = null;
+        }
         this.removeAllListeners();
     }
 
     newGame () {
         this.enemiesCollection.removeAllEnemies();
-        this.enemiesCollection = new Enemies(this);
         this.enemiesCollection.addSpider();
         this.enemiesCollection.addZombie();
 
-        clearInterval(this.verifyInterval);
-        this.verifyInterval = setInterval(() => {
-            this.verifyScene();
-        }, 30);
+        this.startGameLoop();
     }
 
     getScene () {
@@ -58,71 +74,74 @@ export class Scene extends EventEmitter {
         };
     }
 
-    verifyScene () {
-        const players = this.playersCollection.getPlayers();
+    getWidth () {
+        return this.width;
+    }
+
+    getHeight () {
+        return this.height;
+    }
+
+    private verifyEnemyMissileCollisions() {
         const enemies = this.enemiesCollection.getEnemies();
         const missiles = this.missilesCollection.getMissiles();
 
-        // Проверяем столкновения пуль с врагами
+        // 1. КЭШИРОВАНИЕ: Считаем позиции врагов ОДИН раз за кадр
+        const cachedEnemies: CachedEnemy[] = enemies.map(enemy => {
+            const pos = calcTimedPoint(
+                enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
+            );
+            return {
+                original: enemy,
+                x: pos.x,
+                y: pos.y
+            };
+        });
+
         missiles.forEach((missile) => {
             const currentMissilePos = calcTimedPoint(
                 missile.startX, missile.startY, missile.rotation, missile.speedInSecond, missile.createdAt
             );
 
-            // Получаем предыдущую позицию пули или используем стартовую позицию игрока
             let previousPos = missile.previousPos;
-
             if (!previousPos) {
-                // Первая проверка - используем позицию игрока как предыдущую
                 const owner = this.playersCollection.getPlayerById(missile.ownerId);
                 if (owner) {
-                    previousPos = {
-                        x: owner.pageX,
-                        y: owner.pageY,
-                        timestamp: Date.parse(missile.createdAt)
-                    };
+                    previousPos = { x: owner.pageX, y: owner.pageY };
                 } else {
-                    // Если игрок не найден, используем стартовую позицию пули
-                    previousPos = {
-                        x: missile.startX,
-                        y: missile.startY,
-                        timestamp: Date.parse(missile.createdAt)
-                    };
+                    previousPos = { x: missile.startX, y: missile.startY };
                 }
             }
 
-            // Сортируем врагов по расстоянию от начала траектории пули
-            const sortedEnemies = [...enemies].sort((a, b) => {
-                const aPos = calcTimedPoint(a.startX, a.startY, a.rotation, a.speedInSecond, a.updatedAt);
-                const bPos = calcTimedPoint(b.startX, b.startY, b.rotation, b.speedInSecond, b.updatedAt);
+            let closestHitEnemy: CachedEnemy | null = null;
+            let minDistanceSq = Infinity;
 
-                const distA = Math.sqrt(Math.pow(aPos.x - previousPos.x, 2) + Math.pow(aPos.y - previousPos.y, 2));
-                const distB = Math.sqrt(Math.pow(bPos.x - previousPos.x, 2) + Math.pow(bPos.y - previousPos.y, 2));
-
-                return distA - distB;
-            });
-
-            // Проверяем столкновение по траектории от предыдущей до текущей позиции
-            let hitEnemy = false;
-            for (const enemy of sortedEnemies) {
-                const enemyPos = calcTimedPoint(
-                    enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
+            for (const cachedEnemy of cachedEnemies) {
+                const isHit = checkLineRectangleCollision(
+                    previousPos,
+                    currentMissilePos,
+                    { x: cachedEnemy.x, y: cachedEnemy.y },
+                    cachedEnemy.original           // Размеры берем напрямую из врага
                 );
 
-                if (checkLineRectangleCollision(previousPos, currentMissilePos, enemyPos, enemy as Rectangle)) {
-                    this.missilesCollection.removeMissileById(missile.id);
-                    this.enemiesCollection.damageEnemyById(enemy.id, missile.damage);
-                    hitEnemy = true;
-                    break; // Прерываем цикл после первого попадания
+                if (isHit) {
+                    const distSq = Math.pow(cachedEnemy.x - previousPos.x, 2) +
+                        Math.pow(cachedEnemy.y - previousPos.y, 2);
+
+                    if (distSq < minDistanceSq) {
+                        minDistanceSq = distSq;
+                        closestHitEnemy = cachedEnemy;
+                    }
                 }
             }
 
-            // Если пуля не попала ни в кого, сохраняем позицию для следующей проверки
-            if (!hitEnemy) {
+            if (closestHitEnemy) {
+                this.missilesCollection.removeMissileById(missile.id);
+                this.enemiesCollection.damageEnemyById(closestHitEnemy.original.id, missile.damage);
+            } else {
                 missile.previousPos = {
                     x: currentMissilePos.x,
-                    y: currentMissilePos.y,
-                    timestamp: Date.now()
+                    y: currentMissilePos.y
                 };
             }
         });

@@ -6,7 +6,7 @@ import {BaseEnemy} from "./BaseEnemy";
 export class Enemies {
 
     private readonly scene:Scene;
-    private enemies:BaseEnemy[] = [];
+    private readonly enemies:BaseEnemy[] = [];
 
     constructor(scene:Scene) {
         this.scene = scene;
@@ -29,18 +29,21 @@ export class Enemies {
     }
 
     removeAllEnemies () {
-        this.enemies.forEach(el => {
-            el.remove();
-        });
+        this.enemies.forEach(el => el.remove());
+        // Очищаем массив без пересоздания объекта (оптимизация GC)
+        this.enemies.length = 0;
+    }
+
+    getEnemyById(id: string): BaseEnemy | undefined {
+        return this.enemies.find(el => el.id === id);
     }
 
     damageEnemyById (enemyId:string, missileDamage:number) {
-        const enemy = this.enemies.find(el => el.id === enemyId);
+        const enemy = this.getEnemyById(enemyId);
         if (enemy) {
             enemy.damage(missileDamage);
             if (enemy.health <= 0) {
                 this.removeEnemyById(enemyId);
-                this.scene.emit("enemiesRemoved", { enemy: enemy.toJSON() });
             } else {
                 this.scene.emit("enemiesDamaged", { enemy: enemy.toJSON() });
             }
@@ -48,19 +51,20 @@ export class Enemies {
     }
 
     removeEnemyById (enemyId:string) {
-        const enemy = this.enemies.find(el => el.id === enemyId);
-        if (enemy) {
+        const index = this.enemies.findIndex(el => el.id === enemyId);
+        if (index !== -1) {
+            const enemy = this.enemies[index];
             enemy.remove();
-            this.enemies = this.enemies.filter(el => el.id !== enemyId);
+            this.enemies.splice(index, 1);
+            this.scene.emit("enemiesRemoved", { enemy: enemy.toJSON() });
         }
     }
 
-    getEnemies () {
+    getEnemies(): readonly BaseEnemy[] {
         return this.enemies;
     }
 
     getEnemiesJSON () {
         return this.enemies.map(el => el.toJSON());
     }
-
 }

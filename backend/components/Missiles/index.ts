@@ -3,6 +3,12 @@ import {Scene} from "../Scene";
 import {RifleMissile} from "./RifleMissile";
 import {BaseMissile} from "./BaseMissile";
 
+const MISSILE_MAP: Record<string, new (scene: Scene, params: MissileParams) => BaseMissile> = {
+    "Rifle": RifleMissile
+    // "Shotgun": ShotgunMissile,
+    // "Bazooka": BazookaMissile
+};
+
 export class Missiles {
 
     private readonly scene:Scene;
@@ -13,16 +19,16 @@ export class Missiles {
     }
 
     createMissile (params:MissileParams) {
-        let newMissile;
-        if (params.weaponType === "Rifle") {
-            newMissile = new RifleMissile(this.scene, params);
-        } else {
-            // TODO: unsupported weapon
+        const MissileClass = MISSILE_MAP[params.weaponType];
+
+        if (!MissileClass) {
+            console.warn(`Unknown weapon type: ${params.weaponType}`);
+            return;
         }
-        if (newMissile) {
-            this.items.push(newMissile);
-            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
-        }
+
+        const newMissile = new MissileClass(this.scene, params);
+        this.items.push(newMissile);
+        this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
     }
 
     getMissiles () {
@@ -34,9 +40,11 @@ export class Missiles {
     }
 
     removeMissileById (missileId:string) {
-        const missile = this.items.find(el => el.id === missileId);
-        if (missile) {
-            this.items = this.items.filter(el => el.id !== missileId);
+        const index = this.items.findIndex(el => el.id === missileId);
+        if (index !== -1) {
+            const missile = this.items[index];
+            missile.destroy();
+            this.items.splice(index, 1);
             this.scene.emit("missilesRemoved", { missile: missile.toJSON() });
         }
     }

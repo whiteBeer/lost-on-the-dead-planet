@@ -42,20 +42,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     }
 
     toJSON() {
-        //TODO: https://stackoverflow.com/questions/43909566/get-keys-of-a-typescript-interface-as-array-of-strings
-        return {
-            id: this.id,
-            color: this.color,
-            length: this.length,
-            width: this.width,
-            health: this.health,
-            maxHealth: this.maxHealth,
-            rotation: this.rotation,
-            speedInSecond: this.speedInSecond,
-            startX: this.startX,
-            startY: this.startY,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt
-        };
+        const { scene, moveInterval, ...json } = this;
+        return json;
     }
 }
