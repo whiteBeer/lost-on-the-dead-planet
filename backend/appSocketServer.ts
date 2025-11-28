@@ -31,7 +31,8 @@ export class AppSocketServer {
 
         const started = weapon.reload((newAmmo: number) => {
             this.emitToRoom(roomId, "playersReloadFinished", {
-                socketId: socketId
+                socketId: socketId,
+                newAmmo: newAmmo
             });
         });
 
