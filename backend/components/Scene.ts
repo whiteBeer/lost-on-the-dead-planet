@@ -5,6 +5,7 @@ import {Missiles} from "./Missiles";
 import {Players} from "./Players";
 import {BaseEnemy} from "./Enemies/BaseEnemy";
 import {clearInterval} from "timers";
+import {WEAPONS} from "../configs/Weapons";
 
 interface CachedEnemy {
     original: BaseEnemy;
@@ -71,6 +72,15 @@ export class Scene extends EventEmitter {
             players: this.playersCollection.getPlayersJSON(),
             enemies: this.enemiesCollection.getEnemiesJSON(),
             missiles: this.missilesCollection.getMissilesJSON()
+        };
+    }
+
+    getSceneWithConfigs () {
+        return {
+            ...this.getScene(),
+            configs: {
+                weapons: WEAPONS
+            }
         };
     }
 

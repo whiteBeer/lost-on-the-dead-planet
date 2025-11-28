@@ -6,6 +6,11 @@ interface IPlayerDisconnected {
     socketId: string;
 }
 
+interface IPlayerReloadEvent {
+    socketId: string;
+    newAmmo: number;
+}
+
 export class PlayersCollection {
 
     app:App;
@@ -16,44 +21,72 @@ export class PlayersCollection {
         this.app = app;
 
         this.app.socket?.on("playersUpdated", (backendPlayers:BackendPlayer[]) => {
-            this.initPlayers(backendPlayers);
+            this.updatePlayers(backendPlayers);
         });
 
         this.app.socket?.on("playerMoved", (params:BackendPlayer) => {
             if (params.socketId !== this.app.socket?.id) {
-                const player = this.players.find(el => el.socketId === params.socketId);
+                const player = this.findPlayer(params.socketId);
                 if (player) {
                     player.moveTo(params.pageX, params.pageY, params.rotation);
                 } else {
-                    const anotherPlayer = new Player(app, params);
-                    this.players.push(anotherPlayer);
-                    app.pixiApp.stage.addChild(anotherPlayer.pixiObj);
+                    this.addPlayer(params);
                 }
             }
         });
 
         this.app.socket?.on("playerDisconnected", (params:IPlayerDisconnected) => {
-            const player = this.players.find(el => el.socketId === params.socketId);
+            const player = this.findPlayer(params.socketId);
             if (player) {
                 player.remove();
                 this.players = this.players.filter(el => el.socketId !== params.socketId);
             }
         });
+
+        this.app.socket?.on("playersReloadStarted", (params: IPlayerReloadEvent) => {
+            const player = this.findPlayer(params.socketId);
+            if (player && player.socketId === this.app.socket?.id) {
+                player.weapon.isReloading = true;
+            }
+        });
+
+        this.app.socket?.on("playersReloadFinished", (params: IPlayerReloadEvent) => {
+            const player = this.findPlayer(params.socketId);
+            if (player && player.socketId === this.app.socket?.id) {
+                player.weapon.ammo = params.newAmmo;
+                player.weapon.isReloading = false;
+            }
+        });
     }
 
-    initPlayers (backendPlayers:BackendPlayer[]) {
-        let mePlayer;
-        backendPlayers.forEach((player: BackendPlayer) => {
-            if (this.players.map(el => el.socketId).indexOf(player.socketId) === -1) {
-                const p = new Player(this.app, player);
-                this.players.push(p);
-                this.app.pixiApp.stage.addChild(p.pixiObj);
-                if (p.socketId === this.app.socket?.id) {
-                    mePlayer = p;
+    findPlayer(socketId: string): Player | undefined {
+        return this.players.find(el => el.socketId === socketId);
+    }
+
+    addPlayer(params: BackendPlayer): Player {
+        const player = new Player(this.app, params);
+        this.players.push(player);
+        this.app.pixiApp.stage.addChild(player.pixiObj);
+        return player;
+    }
+
+    updatePlayers(backendPlayers: BackendPlayer[]) {
+        backendPlayers.forEach((backendPlayer: BackendPlayer) => {
+            const player = this.findPlayer(backendPlayer.socketId);
+            if (player) {
+                player.update(backendPlayer);
+            } else {
+                const newPlayer = this.addPlayer(backendPlayer);
+                if (newPlayer.socketId === this.app.socket?.id) {
+                    this.app.scene?.setMePlayer(newPlayer);
                 }
             }
         });
-        return mePlayer;
+    }
+
+    initPlayers (backendPlayers:BackendPlayer[]) {
+        this.updatePlayers(backendPlayers);
+        return this.findPlayer(this.app.socket?.id || "");
     }
 
     getPlayers () {

@@ -25,7 +25,7 @@ export const WEAPONS: Record<string, WeaponConfig> = {
 
         spreadBase: 0,
         spreadMax: 0.35,         // ~20 градусов максимальный разброс
-        spreadIncrement: 0.07,   // За 7 выстрелов подряд достигнет максимума
+        spreadIncrement: 0.07,   // За 5 выстрелов подряд достигнет максимума
         spreadRecovery: 0.35,    // Быстро восстанавливается, если отпустить
 
         clipSize: 30,

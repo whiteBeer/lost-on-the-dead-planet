@@ -3,7 +3,7 @@ import axios from "axios";
 import {Scene} from "./classes/Scene";
 import {Control} from "./classes/Control";
 import {io, Socket} from "socket.io-client";
-import {BackendScene} from "./Types";
+import {BackendWeaponsConfig} from "./Types";
 import {getRoomId} from "../utils/getRoomId";
 
 export class App {
@@ -14,6 +14,7 @@ export class App {
     socket:Socket|null = null;
     scene:Scene|null = null;
     control:Control|null = null;
+    weaponsConfig: BackendWeaponsConfig | null = null;
     move2ButtonsKof = 0.7071; // cos(45)
 
     constructor ($domEl:HTMLElement)  {
@@ -32,6 +33,7 @@ export class App {
             background: "#1099aa",
             resizeTo: window
         });
+        
         this.socket = io(this.backendUrl, {
             extraHeaders: {
                 "room-id": roomId
@@ -39,13 +41,14 @@ export class App {
         });
 
         try {
-            const addRoomData = (await axios.put(this.backendUrl + "/api/rooms/" + roomId)).data;
+            await axios.put(this.backendUrl + "/api/rooms/" + roomId);
         } catch (error) {
             console.log("Room was created early. Join room.");
         }
 
         this.socket.on("connect", async () => {
-            const backendScene: BackendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
+            const backendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
+            this.weaponsConfig = backendScene?.configs?.weapons;
             this.control = new Control(this);
             this.scene = new Scene(this, backendScene);
 
@@ -89,6 +92,11 @@ export class App {
                     this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
                 }
             });
+            this.control.onKey("KeyR", () => {
+                if (this.scene?.mePlayer) {
+                    this.scene.mePlayer.reload();
+                }
+            });
             this.control.onMouseMove((e: MouseEvent) => {
                 if (this.control?.isSpace()) {
                     this.scene?.incrementTxTy(e.movementX, e.movementY);
@@ -114,15 +122,27 @@ export class App {
             });
         });
 
-        this.pixiApp.ticker.add(() => {
-            if (this.scene?.mePlayer && this.control) {
-                this.scene?.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
+        this.pixiApp.ticker.add((ticker) => {
+            if (this.scene && this.control) {
+                if (this.scene.mePlayer) {
+                    this.scene.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
+                    // Update weapon spread recovery
+                    this.scene.mePlayer.weapon.update(ticker.deltaMS);
+                }
+                // Update cursor circle position and radius
+                this.scene.updateCursorCircle(this.control.getMouseCoords());
+                // Update ammo display
+                this.scene.updateAmmoDisplay();
             }
         });
     }
 
     getCanvasOffsetTop () {
         return this.$domEl.offsetTop || 0;
+    }
+    
+    getCanvasOffsetLeft () {
+        return this.$domEl.offsetLeft || 0;
     }
 
     getView () {

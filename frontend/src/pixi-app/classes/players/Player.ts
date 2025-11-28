@@ -21,12 +21,14 @@ export class Player {
         this.app = app;
         this.socketId = params.socketId || "me";
         this.pixiObj = new PIXI.Container();
-        this.weapon = new Weapon(app, this);
-
-        this.x = params.pageX;
-        this.y = params.pageY;
-        this.length = params.length;
-        this.width = params.width;
+        
+        const weaponConfig = this.app.weaponsConfig ? this.app.weaponsConfig[params.weapon.id] : null;
+        if (!weaponConfig) {
+            throw new Error(`Weapon config not found for ID: ${params.weapon.id}`);
+        }
+        this.weapon = new Weapon(app, this, weaponConfig);
+        
+        this.update(params);
 
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
@@ -42,16 +44,21 @@ export class Player {
         container.addChild(rectangle);
         container.addChild(circle);
 
-        this.x = params.pageX;
-        this.y = params.pageY;
-        this.rotation = params.rotation;
-        container.position.set(tx + params.pageX * scale, ty + params.pageY * scale);
-
+        container.position.set(tx + this.x * scale, ty + this.y * scale);
         container.pivot.x = container.width;
         container.pivot.y = container.height / 2;
         container.scale = scale;
 
         this.pixiObj = container;
+    }
+
+    update(params: BackendPlayer) {
+        this.x = params.pageX;
+        this.y = params.pageY;
+        this.length = params.length;
+        this.width = params.width;
+        this.rotation = params.rotation;
+        this.weapon.updateState(params.weapon);
     }
 
     remove () {
@@ -79,6 +86,10 @@ export class Player {
 
     fire () {
         this.weapon.fire();
+    }
+
+    reload() {
+        this.weapon.reload();
     }
 
     getCoords () {

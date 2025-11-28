@@ -1,17 +1,33 @@
+export interface BackendWeaponConfig {
+    fireRate: number;
+    reloadTime: number;
+    clipSize: number;
+    spreadBase: number;
+    spreadIncrement: number;
+    spreadMax: number;
+    spreadRecovery: number;
+}
+
+export interface BackendWeaponsConfig {
+    [weaponId: string]: BackendWeaponConfig;
+}
+
+export interface BackendWeaponState {
+    id: string;
+    ammo: number;
+    clipSize: number;
+    isReloading: boolean;
+}
+
 export interface BackendPlayer {
-    socketId: string,
-    color: string,
-    length: number,
-    width: number,
-    rotation: number,
-    pageX: number,
-    pageY: number
-    weapon: {
-        id: string,
-        ammo: number,
-        clipSize: number,
-        isReloading: boolean
-    }
+    socketId: string;
+    color: string;
+    length: number;
+    width: number;
+    rotation: number;
+    pageX: number;
+    pageY: number;
+    weapon: BackendWeaponState;
 }
 
 export interface BackendEnemy {

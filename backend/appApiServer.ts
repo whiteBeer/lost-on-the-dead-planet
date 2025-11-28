@@ -72,7 +72,7 @@ export class AppApiServer {
         if (!roomScene) {
             throw new NotFoundError("Scene not found");
         } else {
-            res.json(roomScene.getScene());
+            res.json(roomScene.getSceneWithConfigs());
         }
     }
 

@@ -4,12 +4,14 @@ import {PlayersCollection} from "./players";
 import {EnemiesCollection} from "./enemies";
 import {MissilesCollection} from "./missiles";
 import {App} from "../App";
-import {BackendScene} from "../Types";
+import {BackendScene, IMouseCoords} from "../Types";
 
 export class Scene {
 
     app:App;
     pixiObj:PIXI.Container<PIXI.ContainerChild>;
+    cursorCircle: PIXI.Graphics;
+    ammoText: PIXI.Text;
 
     width:number;
     height:number;
@@ -60,6 +62,23 @@ export class Scene {
 
         this.pixiObj = container;
         this.app.pixiApp.stage.addChild(this.pixiObj);
+        
+        this.cursorCircle = new PIXI.Graphics();
+        this.app.pixiApp.stage.addChild(this.cursorCircle);
+
+        // Initialize ammo display
+        this.ammoText = new PIXI.Text({
+            text: "Ammo: --/--",
+            style: {
+                fill: 0xffffff,
+                fontSize: 24,
+                align: "right"
+            }
+        });
+        this.ammoText.anchor.set(1, 0); // Anchor to top-right
+        this.ammoText.x = this.app.pixiApp.screen.width - 10; // 10px padding from right
+        this.ammoText.y = 10; // 10px padding from top
+        this.app.pixiApp.stage.addChild(this.ammoText);
 
         const mePlayer = this.playersCollection.initPlayers(backendScene.players);
         if (mePlayer) {
@@ -67,8 +86,57 @@ export class Scene {
         }
 
         this.app.socket?.on("sceneChanged", (newScene:BackendScene) => {
+            this.playersCollection.updatePlayers(newScene.players);
             this.enemiesCollection.enemiesFromBackendScene(newScene);
         });
+    }
+    
+    updateCursorCircle (mouseCoords: IMouseCoords) {
+        if (!this.mePlayer) {
+            this.cursorCircle.clear();
+            return;
+        }
+
+        // 1. Get cursor position on canvas
+        const cursorX = mouseCoords.pageX - this.app.getCanvasOffsetLeft();
+        const cursorY = mouseCoords.pageY - this.app.getCanvasOffsetTop();
+
+        // 2. Get player's visual position on canvas
+        const playerX = this.mePlayer.pixiObj.x;
+        const playerY = this.mePlayer.pixiObj.y;
+
+        // 3. Calculate distance between player and cursor
+        const distance = Math.hypot(cursorX - playerX, cursorY - playerY);
+
+        // 4. Get the current spread angle in radians
+        const spreadAngle = this.mePlayer.weapon.currentSpread;
+
+        // 5. Calculate the radius of the spread circle at that distance using trigonometry
+        const spreadRadiusInPixels = distance * Math.tan(spreadAngle);
+
+        // 6. Draw the circle
+        this.cursorCircle.clear();
+        if (spreadRadiusInPixels > 10) {
+            this.cursorCircle.position.set(cursorX, cursorY);
+            this.cursorCircle.circle(0, 0, spreadRadiusInPixels);
+            this.cursorCircle.stroke({color: 0xffffff, width: 1, alpha: 0.5});
+        }
+    }
+
+    updateAmmoDisplay() {
+        if (this.mePlayer) {
+            const ammo = this.mePlayer.weapon.ammo;
+            const clipSize = this.mePlayer.weapon.clipSize;
+            const isReloading = this.mePlayer.weapon.isReloading;
+
+            if (isReloading || ammo < 0) {
+                this.ammoText.text = "Ammo: (Reloading...)";
+            } else {
+                this.ammoText.text = `Ammo: ${ammo}/${clipSize}`;
+            }
+        } else {
+            this.ammoText.text = "Ammo: --/--";
+        }
     }
 
     setMePlayer (mePlayer:Player) {
