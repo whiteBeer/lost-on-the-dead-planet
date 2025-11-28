@@ -5,7 +5,7 @@ export class Weapon {
 
     app:App;
     player:Player;
-    missilesPeriod = 200;
+    fireRate = 100;
     lastFire = new Date().toISOString();
 
     constructor (app:App, player:Player) {
@@ -15,7 +15,7 @@ export class Weapon {
 
     fire () {
         if (this.app.scene && this.app?.socket?.id) {
-            if (new Date().getTime() - new Date(this.lastFire).getTime() > this.missilesPeriod) {
+            if (new Date().getTime() - new Date(this.lastFire).getTime() > this.fireRate) {
                 const playerCoords = this.player.getCoords();
                 this.app.socket.emit("missileCreate", {
                     weaponType: "Rifle",

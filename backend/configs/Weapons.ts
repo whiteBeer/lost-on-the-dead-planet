@@ -3,7 +3,7 @@ export interface WeaponConfig {
     damage: number;
     speed: number;
     range: number;
-    fireRate: number, // выстрелов в секунду
+    fireRate: number, // задержка в миллисекундах
 
     // Параметры разброса (в радианах)
     spreadBase: number;      // Начальный разброс (обычно 0)
@@ -21,7 +21,7 @@ export const WEAPONS: Record<string, WeaponConfig> = {
         damage: 25,
         speed: 3000,
         range: 1000,
-        fireRate: 5,
+        fireRate: 100,
 
         spreadBase: 0,
         spreadMax: 0.35,         // ~20 градусов максимальный разброс

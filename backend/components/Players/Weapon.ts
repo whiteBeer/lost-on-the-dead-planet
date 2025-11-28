@@ -36,7 +36,7 @@ export class Weapon {
         if (now < this.nextShotAvailableTime) {
             return false;
         }
-        const delayMs = 1000 / this.config.fireRate;
+        const delayMs = this.config.fireRate;
         this.nextShotAvailableTime = now + delayMs;
 
         this.ammo--;
