@@ -5,7 +5,7 @@ export class Weapon {
 
     app:App;
     player:Player;
-    missilesPeriod = 150;
+    missilesPeriod = 200;
     lastFire = new Date().toISOString();
 
     constructor (app:App, player:Player) {

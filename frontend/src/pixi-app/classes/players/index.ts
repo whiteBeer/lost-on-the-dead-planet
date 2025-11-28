@@ -15,7 +15,7 @@ export class PlayersCollection {
     constructor (app:App) {
         this.app = app;
 
-        this.app.socket?.on("allPlayers", (backendPlayers:BackendPlayer[]) => {
+        this.app.socket?.on("playersUpdated", (backendPlayers:BackendPlayer[]) => {
             this.initPlayers(backendPlayers);
         });
 

@@ -17,6 +17,12 @@ export interface PlayerJSON {
     rotation: number,
     pageX: number,
     pageY: number
+    weapon: {
+        id: string,
+        ammo: number,
+        clipSize: number,
+        isReloading: boolean
+    }
 }
 
 export interface EnemyJSON {

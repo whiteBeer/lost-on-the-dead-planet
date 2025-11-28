@@ -68,7 +68,7 @@ export class Scene extends EventEmitter {
             serverCurrentDateTime: new Date().toISOString(),
             width: this.width,
             height: this.height,
-            players: this.playersCollection.getPlayers(),
+            players: this.playersCollection.getPlayersJSON(),
             enemies: this.enemiesCollection.getEnemiesJSON(),
             missiles: this.missilesCollection.getMissilesJSON()
         };
@@ -80,6 +80,10 @@ export class Scene extends EventEmitter {
 
     getHeight () {
         return this.height;
+    }
+
+    getRoomId () {
+        return this.roomId;
     }
 
     private verifyEnemyMissileCollisions() {
