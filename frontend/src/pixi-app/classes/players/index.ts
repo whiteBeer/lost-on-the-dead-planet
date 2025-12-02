@@ -84,7 +84,7 @@ export class PlayersCollection {
         });
     }
 
-    initPlayers (backendPlayers:BackendPlayer[]) {
+    initPlayers (backendPlayers:BackendPlayer[]):Player|undefined {
         this.updatePlayers(backendPlayers);
         return this.findPlayer(this.app.socket?.id || "");
     }

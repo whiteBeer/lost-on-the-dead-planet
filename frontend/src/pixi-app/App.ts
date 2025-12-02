@@ -1,39 +1,39 @@
 import * as PIXI from "pixi.js";
 import axios from "axios";
-import {Scene} from "./classes/Scene";
-import {Control} from "./classes/Control";
-import {io, Socket} from "socket.io-client";
-import {BackendWeaponsConfig} from "./Types";
-import {getRoomId} from "../utils/getRoomId";
+import { Scene } from "./classes/Scene";
+import { Control } from "./classes/Control";
+import { io, Socket } from "socket.io-client";
+import { BackendWeaponsConfig } from "./Types";
+import { getRoomId } from "../utils/getRoomId";
 
 export class App {
 
-    pixiApp:PIXI.Application;
-    $domEl:HTMLElement;
-    backendUrl:string;
-    socket:Socket|null = null;
-    scene:Scene|null = null;
-    control:Control|null = null;
+    pixiApp: PIXI.Application;
+    $domEl: HTMLElement;
+    backendUrl: string;
+    socket: Socket | null = null;
+    scene: Scene | null = null;
+    control: Control | null = null;
     weaponsConfig: BackendWeaponsConfig | null = null;
     move2ButtonsKof = 0.7071; // cos(45)
 
-    constructor ($domEl:HTMLElement)  {
+    constructor($domEl: HTMLElement) {
         this.$domEl = $domEl;
         this.pixiApp = new PIXI.Application();
         this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
     }
 
-    disconnect () {
+    disconnect() {
         this.socket?.disconnect();
     }
 
-    async init () {
+    async init() {
         const roomId = getRoomId();
         await this.pixiApp.init({
             background: "#1099aa",
             resizeTo: window
         });
-        
+
         this.socket = io(this.backendUrl, {
             extraHeaders: {
                 "room-id": roomId
@@ -126,26 +126,23 @@ export class App {
             if (this.scene && this.control) {
                 if (this.scene.mePlayer) {
                     this.scene.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
-                    // Update weapon spread recovery
                     this.scene.mePlayer.weapon.update(ticker.deltaMS);
+                    this.scene.cursor.update(this.control.getMouseCoords());
+                    this.scene.hud.update();
                 }
-                // Update cursor circle position and radius
-                this.scene.updateCursorCircle(this.control.getMouseCoords());
-                // Update ammo display
-                this.scene.updateAmmoDisplay();
             }
         });
     }
 
-    getCanvasOffsetTop () {
+    getCanvasOffsetTop() {
         return this.$domEl.offsetTop || 0;
     }
-    
-    getCanvasOffsetLeft () {
+
+    getCanvasOffsetLeft() {
         return this.$domEl.offsetLeft || 0;
     }
 
-    getView () {
+    getView() {
         return this?.pixiApp.canvas;
     }
 }
