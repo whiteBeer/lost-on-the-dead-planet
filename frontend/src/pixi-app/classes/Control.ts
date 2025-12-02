@@ -1,5 +1,5 @@
-import {App} from "../App";
-import {IMouseCoords} from "../Types";
+import { App } from "../App";
+import { IMouseCoords } from "../Types";
 
 const keys:any = {
     isKeyW: false,
@@ -22,7 +22,7 @@ export class Control {
 
     app:App;
 
-    constructor (app:App) {
+    constructor(app:App) {
         this.app = app;
         document.addEventListener("keydown", (e) => {
             keys["is" + e.code] = true;
@@ -31,9 +31,8 @@ export class Control {
             keys["is" + e.code] = false;
         });
         document.addEventListener("mousemove", (e) => {
-            const menuHeight = document.getElementById("menu")?.clientHeight || 0;
             mouseCoords.pageX = e.pageX;
-            mouseCoords.pageY = e.pageY - menuHeight;
+            mouseCoords.pageY = e.pageY;
             mouseMoveCallbacks.forEach(el => el(e));
         });
         document.addEventListener("mousedown", (e) => {
@@ -54,30 +53,30 @@ export class Control {
         document.addEventListener("contextmenu", clearKeys);
         window.addEventListener("blur", clearKeys);
 
-        function clearKeys () {
+        function clearKeys() {
             Object.keys(keys).forEach(key => {
                 keys[key] = false;
             });
         }
     }
 
-    getMouseCoords () {
+    getMouseCoords() {
         return mouseCoords;
     }
 
-    getKeys () {
+    getKeys() {
         return keys;
     }
 
-    isSpace () {
+    isSpace() {
         return keys["isSpace"];
     }
 
-    isKey (keyCode:string) {
+    isKey(keyCode:string) {
         return keys["is" + keyCode];
     }
 
-    onKey (keyCode:string, callback:any) {
+    onKey(keyCode:string, callback:any) {
         this.app.pixiApp.ticker.add((ticker) => {
             if (keys["is" + keyCode]) {
                 callback(ticker);
@@ -85,15 +84,15 @@ export class Control {
         });
     }
 
-    onMouseMove (callback:any) {
+    onMouseMove(callback:any) {
         mouseMoveCallbacks.push(callback);
     }
 
-    onMouseWheel (callback:(direction:string) => void) {
+    onMouseWheel(callback:(direction:string) => void) {
         mouseScrollCallbacks.push(callback);
     }
 
-    onMousePressed (callback:any) {
+    onMousePressed(callback:any) {
         this.app.pixiApp.ticker.add((ticker) => {
             if (isMousePressed) {
                 callback(ticker.deltaTime);

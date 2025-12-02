@@ -1,12 +1,12 @@
-import {App} from "../../App";
-import {Player} from "./Player";
-import {BackendWeaponState, BackendWeaponConfig} from "../../Types";
+import { App } from "../../App";
+import { Player } from "./Player";
+import { BackendWeaponState, BackendWeaponConfig } from "../../Types";
 
 export class Weapon {
 
-    app: App;
-    player: Player;
-    config: BackendWeaponConfig;
+    app:App;
+    player:Player;
+    config:BackendWeaponConfig;
 
     // Client-side fire rate limiting
     lastFire = 0;
@@ -21,14 +21,14 @@ export class Weapon {
     currentSpread = 0;
     lastShotTime = 0; // Will be 0 until the first shot
 
-    constructor (app:App, player:Player, config: BackendWeaponConfig) {
+    constructor(app:App, player:Player, config:BackendWeaponConfig) {
         this.app = app;
         this.player = player;
         this.config = config;
         this.currentSpread = config.spreadBase;
     }
 
-    updateState(state: BackendWeaponState) {
+    updateState(state:BackendWeaponState) {
         this.id = state.id;
         this.ammo = state.ammo;
         this.clipSize = state.clipSize;
@@ -36,7 +36,7 @@ export class Weapon {
     }
 
     // Called on every frame from App ticker
-    update(deltaMS: number) {
+    update(deltaMS:number) {
         // Only start recovering spread *after* the first shot has been fired.
         if (this.lastShotTime > 0) {
             const recoveryPerSecond = this.config.spreadRecovery;
@@ -45,7 +45,7 @@ export class Weapon {
         }
     }
 
-    fire () {
+    fire() {
         const now = Date.now();
         const fireRateDelay = this.config.fireRate;
 

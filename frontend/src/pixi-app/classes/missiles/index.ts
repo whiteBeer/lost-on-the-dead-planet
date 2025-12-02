@@ -1,10 +1,10 @@
-import {Missile} from "./Missile";
-import {App} from "../../App";
-import {BackendScene, BackendMissile} from "../../Types";
+import { Missile } from "./Missile";
+import { App } from "../../App";
+import { BackendScene, BackendMissile } from "../../Types";
 
-interface BackendMissileSocket {
-    missile: BackendMissile,
-    serverCurrentDateTime: string
+interface IBackendMissileSocket {
+    missile:BackendMissile,
+    serverCurrentDateTime:string
 }
 
 export class MissilesCollection {
@@ -12,7 +12,7 @@ export class MissilesCollection {
     app:App;
     missiles:Missile[] = [];
 
-    constructor (app:App, backendScene:BackendScene) {
+    constructor(app:App, backendScene:BackendScene) {
         this.app = app;
 
         backendScene.missiles.forEach((el:BackendMissile) => {
@@ -21,7 +21,7 @@ export class MissilesCollection {
             }
         });
 
-        this.app.socket?.on("missilesRemoved", (missileSocket:BackendMissileSocket) => {
+        this.app.socket?.on("missilesRemoved", (missileSocket:IBackendMissileSocket) => {
             this.missiles.forEach((el:Missile) => {
                 if (el.id === missileSocket?.missile?.id) {
                     el.remove();
@@ -30,24 +30,24 @@ export class MissilesCollection {
             this.missiles = this.missiles.filter(el => el.id !== missileSocket?.missile?.id);
         });
 
-        this.app.socket?.on("missilesAdded", (params:BackendMissileSocket) => {
+        this.app.socket?.on("missilesAdded", (params:IBackendMissileSocket) => {
             this.createMissile(params.missile, params.serverCurrentDateTime);
         });
     }
 
-    getMissiles () {
+    getMissiles() {
         return this.missiles;
     }
 
-    createMissile (params:BackendMissile, serverCurrentDateTime:string) {
+    createMissile(params:BackendMissile, serverCurrentDateTime:string) {
         this.missiles.push(new Missile(this.app, params, serverCurrentDateTime));
     }
 
-    getMissilesByOwnerId (ownerId:string) {
+    getMissilesByOwnerId(ownerId:string) {
         return this.missiles.filter(el => el.getOwnerId() === ownerId);
     }
 
-    removeMissileByCreatedAt (createdAt:string) {
+    removeMissileByCreatedAt(createdAt:string) {
         this.missiles = this.missiles.filter(el => el.createdAt !== createdAt);
     }
 }

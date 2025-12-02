@@ -1,10 +1,10 @@
-import {Enemy} from "./Enemy";
-import {App} from "../../App";
-import {BackendScene, BackendEnemy} from "../../Types";
+import { Enemy } from "./Enemy";
+import { App } from "../../App";
+import { BackendScene, BackendEnemy } from "../../Types";
 
-interface BackendEnemyUpdatedSocket {
-    enemy: BackendEnemy,
-    serverCurrentDateTime: string
+interface IBackendEnemyUpdatedSocket {
+    enemy:BackendEnemy,
+    serverCurrentDateTime:string
 }
 
 export class EnemiesCollection {
@@ -13,12 +13,12 @@ export class EnemiesCollection {
     socket = null;
     enemies:Enemy[] = [];
 
-    constructor (app:App, backendScene:BackendScene) {
+    constructor(app:App, backendScene:BackendScene) {
         this.app = app;
 
         this.enemiesFromBackendScene(backendScene);
 
-        this.app.socket?.on("enemiesUpdated", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesUpdated", (beObj:IBackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.remove();
@@ -29,7 +29,7 @@ export class EnemiesCollection {
             app.pixiApp.stage.addChild(enemy.pixiObj);
         });
 
-        this.app.socket?.on("enemiesRemoved", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesRemoved", (beObj:IBackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.remove();
@@ -37,7 +37,7 @@ export class EnemiesCollection {
             }
         });
 
-        this.app.socket?.on("enemiesDamaged", (beObj:BackendEnemyUpdatedSocket) => {
+        this.app.socket?.on("enemiesDamaged", (beObj:IBackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.setHealth(beObj?.enemy?.health || 0);
@@ -45,7 +45,7 @@ export class EnemiesCollection {
         });
     }
 
-    enemiesFromBackendScene (backendScene:BackendScene) {
+    enemiesFromBackendScene(backendScene:BackendScene) {
         this.enemies.forEach(el => {
             el.remove();
         });
@@ -57,7 +57,7 @@ export class EnemiesCollection {
         });
     }
 
-    getEnemies () {
+    getEnemies() {
         return this.enemies;
     }
 }

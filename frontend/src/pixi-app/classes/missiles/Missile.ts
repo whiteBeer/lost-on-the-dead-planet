@@ -1,6 +1,6 @@
 import * as PIXI from "pixi.js";
-import {App} from "../../App";
-import {BackendMissile} from "../../Types";
+import { App } from "../../App";
+import { BackendMissile } from "../../Types";
 
 export class Missile {
 
@@ -19,7 +19,7 @@ export class Missile {
 
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
-    constructor (app:App, params:BackendMissile, serverCurrentDateTime:string) {
+    constructor(app:App, params:BackendMissile, serverCurrentDateTime:string) {
         this.app = app;
         this.id = params.id;
         this.ownerId = params.ownerId;
@@ -62,7 +62,7 @@ export class Missile {
         return this.ownerId;
     }
 
-    moveMissile (ticker:PIXI.Ticker) {
+    moveMissile(ticker:PIXI.Ticker) {
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
         const ty = this.app.scene?.ty || 0;
@@ -74,7 +74,7 @@ export class Missile {
         }
     }
 
-    remove () {
+    remove() {
         this.app.pixiApp.stage.removeChild(this.pixiObj);
         this.app.pixiApp.ticker.remove(this.tickerFunc);
     }

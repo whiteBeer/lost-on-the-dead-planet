@@ -1,9 +1,9 @@
 import React from "react";
 
 interface Props {
-    className: string;
-    children: React.ReactElement | string;
-    onClick: () => void;
+    className:string;
+    children:React.ReactElement | string;
+    onClick:() => void;
 }
 
 function Button(props:Props) {

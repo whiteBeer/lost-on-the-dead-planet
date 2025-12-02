@@ -4,18 +4,18 @@ import { IMouseCoords } from "../Types";
 import Player from "./players/Player";
 
 export class Cursor {
-    private app: App;
-    private mePlayer: Player;
-    private graphics: PIXI.Graphics;
+    private app:App;
+    private mePlayer:Player;
+    private graphics:PIXI.Graphics;
 
-    constructor(app: App, mePlayer: Player) {
+    constructor(app:App, mePlayer:Player) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.graphics = new PIXI.Graphics();
         this.app.pixiApp.stage.addChild(this.graphics);
     }
 
-    public update(mouseCoords: IMouseCoords): void {
+    public update(mouseCoords:IMouseCoords):void {
         if (!this.mePlayer) {
             this.graphics.clear();
             return;
@@ -40,9 +40,9 @@ export class Cursor {
 
         // 6. Draw the circle
         this.graphics.clear();
-        this.graphics.position.set(cursorX, cursorY);
 
         if (spreadRadiusInPixels > 10) { // Only draw if the circle is noticeable
+            this.graphics.position.set(cursorX, cursorY);
             this.graphics.circle(0, 0, spreadRadiusInPixels);
             this.graphics.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
         }

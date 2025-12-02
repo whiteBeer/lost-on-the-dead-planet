@@ -1,6 +1,6 @@
 import * as PIXI from "pixi.js";
-import {App} from "../../App";
-import {BackendEnemy} from "../../Types";
+import { App } from "../../App";
+import { BackendEnemy } from "../../Types";
 
 export class Enemy {
 
@@ -20,7 +20,7 @@ export class Enemy {
 
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
-    constructor (app:App, enemyJson:BackendEnemy, serverCurrentDateTime:string) {
+    constructor(app:App, enemyJson:BackendEnemy, serverCurrentDateTime:string) {
         this.app = app;
         this.id = enemyJson.id;
         this.length = enemyJson.length;
@@ -69,16 +69,16 @@ export class Enemy {
         this.app.pixiApp.ticker.add(this.tickerFunc);
     }
 
-    remove () {
+    remove() {
         this.app.pixiApp.stage.removeChild(this.pixiObj);
         this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
-    stop () {
+    stop() {
         this.app.pixiApp.ticker.remove(this.tickerFunc);
     }
 
-    moveEnemy (ticker:PIXI.Ticker) {
+    moveEnemy(ticker:PIXI.Ticker) {
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
         const ty = this.app.scene?.ty || 0;
@@ -90,7 +90,7 @@ export class Enemy {
         }
     }
 
-    setHealth (health:number) {
+    setHealth(health:number) {
         this.health = health;
         this.pixiObj.alpha = health / this.maxHealth;
     }

@@ -8,16 +8,16 @@ import { getRoomId } from "../utils/getRoomId";
 
 export class App {
 
-    pixiApp: PIXI.Application;
-    $domEl: HTMLElement;
-    backendUrl: string;
-    socket: Socket | null = null;
-    scene: Scene | null = null;
-    control: Control | null = null;
-    weaponsConfig: BackendWeaponsConfig | null = null;
+    pixiApp:PIXI.Application;
+    $domEl:HTMLElement;
+    backendUrl:string;
+    socket:Socket | null = null;
+    scene:Scene | null = null;
+    control:Control | null = null;
+    weaponsConfig:BackendWeaponsConfig | null = null;
     move2ButtonsKof = 0.7071; // cos(45)
 
-    constructor($domEl: HTMLElement) {
+    constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
         this.pixiApp = new PIXI.Application();
         this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
@@ -52,7 +52,7 @@ export class App {
             this.control = new Control(this);
             this.scene = new Scene(this, backendScene);
 
-            this.control.onKey("KeyW", (ticker: PIXI.Ticker) => {
+            this.control.onKey("KeyW", (ticker:PIXI.Ticker) => {
                 if (this.scene?.mePlayer) {
                     let dy = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
                     let dx = 0;
@@ -65,7 +65,7 @@ export class App {
                     this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
                 }
             });
-            this.control.onKey("KeyS", (ticker: PIXI.Ticker) => {
+            this.control.onKey("KeyS", (ticker:PIXI.Ticker) => {
                 if (this.scene?.mePlayer) {
                     let dy = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
                     let dx = 0;
@@ -78,14 +78,14 @@ export class App {
                     this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
                 }
             });
-            this.control.onKey("KeyA", (ticker: PIXI.Ticker) => {
+            this.control.onKey("KeyA", (ticker:PIXI.Ticker) => {
                 if (this.scene?.mePlayer && !this.control?.isKey("KeyW") && !this.control?.isKey("KeyS")) {
                     const dx = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
                     this.scene?.mePlayer?.moveX(dx);
                     this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
                 }
             });
-            this.control.onKey("KeyD", (ticker: PIXI.Ticker) => {
+            this.control.onKey("KeyD", (ticker:PIXI.Ticker) => {
                 if (this.scene?.mePlayer && !this.control?.isKey("KeyS") && !this.control?.isKey("KeyW")) {
                     const dx = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
                     this.scene?.mePlayer?.moveX(dx);
@@ -97,7 +97,7 @@ export class App {
                     this.scene.mePlayer.reload();
                 }
             });
-            this.control.onMouseMove((e: MouseEvent) => {
+            this.control.onMouseMove((e:MouseEvent) => {
                 if (this.control?.isSpace()) {
                     this.scene?.incrementTxTy(e.movementX, e.movementY);
                 } else {

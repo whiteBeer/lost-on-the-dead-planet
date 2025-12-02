@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import Weapon from "./Weapon";
 import { App } from "../../App";
-import {BackendPlayer, IMouseCoords} from "../../Types";
+import { BackendPlayer, IMouseCoords } from "../../Types";
 
 export class Player {
 
@@ -17,17 +17,17 @@ export class Player {
     rotation = 0;
     weapon:Weapon;
 
-    constructor (app:App, params:BackendPlayer) {
+    constructor(app:App, params:BackendPlayer) {
         this.app = app;
         this.socketId = params.socketId || "me";
         this.pixiObj = new PIXI.Container();
-        
+
         const weaponConfig = this.app.weaponsConfig ? this.app.weaponsConfig[params.weapon.id] : null;
         if (!weaponConfig) {
             throw new Error(`Weapon config not found for ID: ${params.weapon.id}`);
         }
         this.weapon = new Weapon(app, this, weaponConfig);
-        
+
         this.update(params);
 
         const scale = this.app.scene?.scale || 1;
@@ -40,7 +40,7 @@ export class Player {
             .rect(0, 0, this.length, this.width)
             .fill(params.color || "white");
         const circle = new PIXI.Graphics();
-        circle.circle(this.length - 2, this.width/2, 2).fill("white");
+        circle.circle(this.length - 2, this.width / 2, 2).fill("white");
         container.addChild(rectangle);
         container.addChild(circle);
 
@@ -52,7 +52,7 @@ export class Player {
         this.pixiObj = container;
     }
 
-    update(params: BackendPlayer) {
+    update(params:BackendPlayer) {
         this.x = params.pageX;
         this.y = params.pageY;
         this.length = params.length;
@@ -61,30 +61,30 @@ export class Player {
         this.weapon.updateState(params.weapon);
     }
 
-    remove () {
+    remove() {
         this.pixiObj.parent.removeChild(this.pixiObj);
     }
 
-    setColor (color:string) {
+    setColor(color:string) {
         try {
             this.pixiObj.getChildAt<PIXI.Graphics>(0)
                 .clear()
-                .rect( 0, 0, this.length, this.width)
+                .rect(0, 0, this.length, this.width)
                 .fill(color);
         } catch (e) {
             console.log(e);
         }
     }
 
-    hide () {
+    hide() {
         this.pixiObj.visible = false;
     }
 
-    show () {
+    show() {
         this.pixiObj.visible = true;
     }
 
-    fire () {
+    fire() {
         this.weapon.fire();
     }
 
@@ -92,7 +92,7 @@ export class Player {
         this.weapon.reload();
     }
 
-    getCoords () {
+    getCoords() {
         return {
             pageX: this.x,
             pageY: this.y,
@@ -100,7 +100,7 @@ export class Player {
         };
     }
 
-    moveTo (x:number, y:number, rotation:number|null = null) {
+    moveTo(x:number, y:number, rotation:number | null = null) {
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
         const ty = this.app.scene?.ty || 0;
@@ -118,7 +118,7 @@ export class Player {
         }
     }
 
-    moveX (step:number) {
+    moveX(step:number) {
         if (this.pixiObj && this.app.scene) {
             this.x += step;
             this.pixiObj.x += step * this.app.scene.scale;
@@ -126,7 +126,7 @@ export class Player {
         }
     }
 
-    moveY (step:number) {
+    moveY(step:number) {
         if (this.pixiObj && this.app.scene) {
             this.y += step;
             this.pixiObj.y += step * this.app.scene.scale;
@@ -134,9 +134,9 @@ export class Player {
         }
     }
 
-    refreshRotationAngleToMouse (mouseCoords:IMouseCoords) {
+    refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
-            const diffX = mouseCoords.pageX - this.pixiObj.x;
+            const diffX = mouseCoords.pageX - this.pixiObj.x - this.app.getCanvasOffsetLeft();
             const diffY = mouseCoords.pageY - this.pixiObj.y - this.app.getCanvasOffsetTop();
             const rotation = Math.PI + Math.atan2(diffY, diffX);
             this.rotation = rotation;

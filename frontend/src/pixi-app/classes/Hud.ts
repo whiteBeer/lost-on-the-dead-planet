@@ -3,11 +3,11 @@ import { App } from "../App";
 import Player from "./players/Player";
 
 export class Hud {
-    private readonly app: App;
-    private readonly mePlayer: Player;
-    private readonly ammoText: PIXI.Text;
+    private readonly app:App;
+    private readonly mePlayer:Player;
+    private readonly ammoText:PIXI.Text;
 
-    constructor(app: App, mePlayer: Player) {
+    constructor(app:App, mePlayer:Player) {
         this.app = app;
         this.mePlayer = mePlayer;
         this.ammoText = new PIXI.Text({
@@ -24,7 +24,7 @@ export class Hud {
         this.app.pixiApp.stage.addChild(this.ammoText);
     }
 
-    public update(): void {
+    public update():void {
         if (this.mePlayer) {
             const ammo = this.mePlayer.weapon.ammo;
             const clipSize = this.mePlayer.weapon.clipSize;

@@ -10,25 +10,25 @@ import { Hud } from "./Hud";
 
 export class Scene {
 
-    app: App;
-    pixiObj: PIXI.Container<PIXI.ContainerChild>;
-    cursor: Cursor;
-    hud: Hud;
+    app:App;
+    pixiObj:PIXI.Container<PIXI.ContainerChild>;
+    cursor:Cursor;
+    hud:Hud;
 
-    width: number;
-    height: number;
+    width:number;
+    height:number;
     scale = 1.7;
     tx = 0;
     ty = 0;
     marginX = 100;
     marginY = 100;
 
-    mePlayer: Player | null = null;
-    playersCollection: PlayersCollection;
-    enemiesCollection: EnemiesCollection;
-    missilesCollection: MissilesCollection;
+    mePlayer:Player | null = null;
+    playersCollection:PlayersCollection;
+    enemiesCollection:EnemiesCollection;
+    missilesCollection:MissilesCollection;
 
-    constructor(app: App, backendScene: BackendScene) {
+    constructor(app:App, backendScene:BackendScene) {
         this.app = app;
 
         this.width = backendScene.width;
@@ -74,24 +74,24 @@ export class Scene {
             throw new Error("Me player not found");
         }
 
-        this.app.socket?.on("sceneChanged", (newScene: BackendScene) => {
+        this.app.socket?.on("sceneChanged", (newScene:BackendScene) => {
             this.playersCollection.updatePlayers(newScene.players);
             this.enemiesCollection.enemiesFromBackendScene(newScene);
         });
     }
 
-    setMePlayer(mePlayer: Player) {
+    setMePlayer(mePlayer:Player) {
         this.mePlayer = mePlayer;
         this.centerScene();
     }
 
-    incrementTxTy(dtx: number, dty: number) {
+    incrementTxTy(dtx:number, dty:number) {
         this.tx += dtx;
         this.ty += dty;
         this.updateScene();
     }
 
-    incrementScale(val: number) {
+    incrementScale(val:number) {
         this.scale += val;
         this.centerScene();
     }

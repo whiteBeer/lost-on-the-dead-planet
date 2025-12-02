@@ -1,14 +1,14 @@
-import {App} from "../../App";
-import {BackendPlayer} from "../../Types";
+import { App } from "../../App";
+import { BackendPlayer } from "../../Types";
 import Player from "./Player";
 
 interface IPlayerDisconnected {
-    socketId: string;
+    socketId:string;
 }
 
 interface IPlayerReloadEvent {
-    socketId: string;
-    newAmmo: number;
+    socketId:string;
+    newAmmo:number;
 }
 
 export class PlayersCollection {
@@ -17,7 +17,7 @@ export class PlayersCollection {
 
     players:Player[] = [];
 
-    constructor (app:App) {
+    constructor(app:App) {
         this.app = app;
 
         this.app.socket?.on("playersUpdated", (backendPlayers:BackendPlayer[]) => {
@@ -43,14 +43,14 @@ export class PlayersCollection {
             }
         });
 
-        this.app.socket?.on("playersReloadStarted", (params: IPlayerReloadEvent) => {
+        this.app.socket?.on("playersReloadStarted", (params:IPlayerReloadEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player && player.socketId === this.app.socket?.id) {
                 player.weapon.isReloading = true;
             }
         });
 
-        this.app.socket?.on("playersReloadFinished", (params: IPlayerReloadEvent) => {
+        this.app.socket?.on("playersReloadFinished", (params:IPlayerReloadEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player && player.socketId === this.app.socket?.id) {
                 player.weapon.ammo = params.newAmmo;
@@ -59,19 +59,19 @@ export class PlayersCollection {
         });
     }
 
-    findPlayer(socketId: string): Player | undefined {
+    findPlayer(socketId:string):Player | undefined {
         return this.players.find(el => el.socketId === socketId);
     }
 
-    addPlayer(params: BackendPlayer): Player {
+    addPlayer(params:BackendPlayer):Player {
         const player = new Player(this.app, params);
         this.players.push(player);
         this.app.pixiApp.stage.addChild(player.pixiObj);
         return player;
     }
 
-    updatePlayers(backendPlayers: BackendPlayer[]) {
-        backendPlayers.forEach((backendPlayer: BackendPlayer) => {
+    updatePlayers(backendPlayers:BackendPlayer[]) {
+        backendPlayers.forEach((backendPlayer:BackendPlayer) => {
             const player = this.findPlayer(backendPlayer.socketId);
             if (player) {
                 player.update(backendPlayer);
@@ -84,12 +84,12 @@ export class PlayersCollection {
         });
     }
 
-    initPlayers (backendPlayers:BackendPlayer[]):Player|undefined {
+    initPlayers(backendPlayers:BackendPlayer[]):Player | undefined {
         this.updatePlayers(backendPlayers);
         return this.findPlayer(this.app.socket?.id || "");
     }
 
-    getPlayers () {
+    getPlayers() {
         return this.players;
     }
 }
