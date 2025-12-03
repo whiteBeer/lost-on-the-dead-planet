@@ -136,8 +136,8 @@ export class Player {
 
     refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
-            const diffX = mouseCoords.pageX - this.pixiObj.x - this.app.getCanvasOffsetLeft();
-            const diffY = mouseCoords.pageY - this.pixiObj.y - this.app.getCanvasOffsetTop();
+            const diffX = mouseCoords.pageX - this.pixiObj.x;
+            const diffY = mouseCoords.pageY - this.pixiObj.y;
             const rotation = Math.PI + Math.atan2(diffY, diffX);
             this.rotation = rotation;
             if (this.pixiObj) {

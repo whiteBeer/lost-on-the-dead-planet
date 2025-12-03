@@ -134,14 +134,6 @@ export class App {
         });
     }
 
-    getCanvasOffsetTop() {
-        return this.$domEl.offsetTop || 0;
-    }
-
-    getCanvasOffsetLeft() {
-        return this.$domEl.offsetLeft || 0;
-    }
-
     getView() {
         return this?.pixiApp.canvas;
     }

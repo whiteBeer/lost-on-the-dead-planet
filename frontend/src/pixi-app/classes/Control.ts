@@ -31,18 +31,18 @@ export class Control {
             keys["is" + e.code] = false;
         });
         document.addEventListener("mousemove", (e) => {
-            mouseCoords.pageX = e.pageX;
-            mouseCoords.pageY = e.pageY;
+            mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
+            mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
             mouseMoveCallbacks.forEach(el => el(e));
         });
         document.addEventListener("mousedown", (e) => {
-            mouseCoords.pageX = e.pageX;
-            mouseCoords.pageY = e.pageY;
+            mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
+            mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
             isMousePressed = true;
         });
         document.addEventListener("mouseup", (e) => {
-            mouseCoords.pageX = e.pageX;
-            mouseCoords.pageY = e.pageY;
+            mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
+            mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
             isMousePressed = false;
         });
 
@@ -99,4 +99,13 @@ export class Control {
             }
         });
     }
+
+    getCanvasOffsetTop() {
+        return this.app.$domEl.offsetTop || 0;
+    }
+
+    getCanvasOffsetLeft() {
+        return this.app.$domEl.offsetLeft || 0;
+    }
+
 }
