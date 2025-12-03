@@ -19,26 +19,22 @@ export class EnemiesCollection {
         this.enemiesFromBackendScene(backendScene);
 
         this.app.socket?.on("enemiesUpdated", (beObj:IBackendEnemyUpdatedSocket) => {
-            const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
+            const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
             if (existEnemy) {
-                existEnemy.remove();
-                this.enemies = this.enemies.filter(el => el.id !== beObj.enemy.id);
+                existEnemy.update(beObj.enemy, beObj.serverCurrentDateTime);
             }
-            const enemy = new Enemy(this.app, beObj.enemy, beObj.serverCurrentDateTime);
-            this.enemies.push(enemy);
-            app.pixiApp.stage.addChild(enemy.pixiObj);
         });
 
         this.app.socket?.on("enemiesRemoved", (beObj:IBackendEnemyUpdatedSocket) => {
-            const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
+            const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.remove();
-                this.enemies = this.enemies.filter(el => el.id !== beObj.enemy.id);
+                this.enemies = this.enemies.filter(el => el.getId() !== beObj.enemy.id);
             }
         });
 
         this.app.socket?.on("enemiesDamaged", (beObj:IBackendEnemyUpdatedSocket) => {
-            const existEnemy = this.enemies.find(el => el.id === beObj.enemy.id);
+            const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.setHealth(beObj?.enemy?.health || 0);
             }
@@ -53,7 +49,7 @@ export class EnemiesCollection {
         backendScene.enemies.forEach((el:BackendEnemy) => {
             const enemy = new Enemy(this.app, el, backendScene.serverCurrentDateTime);
             this.enemies.push(enemy);
-            this.app.pixiApp.stage.addChild(enemy.pixiObj);
+            enemy.addToStage();
         });
     }
 

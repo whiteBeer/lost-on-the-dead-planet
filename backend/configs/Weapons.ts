@@ -1,7 +1,7 @@
 export interface WeaponConfig {
     id: string;
     damage: number;
-    speed: number;
+    speedInSecond: number;
     range: number;
     fireRate: number, // задержка в миллисекундах
 
@@ -19,7 +19,7 @@ export const WEAPONS: Record<string, WeaponConfig> = {
     "Rifle": {
         id: "Rifle",
         damage: 25,
-        speed: 3000,
+        speedInSecond: 1200,
         range: 1000,
         fireRate: 100,
 

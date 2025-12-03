@@ -118,24 +118,10 @@ export class Player {
         }
     }
 
-    moveX(step:number) {
-        if (this.pixiObj && this.app.scene) {
-            this.x += step;
-            this.pixiObj.x += step * this.app.scene.scale;
-            this.app.scene.centerScene();
-        }
-    }
-
-    moveY(step:number) {
-        if (this.pixiObj && this.app.scene) {
-            this.y += step;
-            this.pixiObj.y += step * this.app.scene.scale;
-            this.app.scene.centerScene();
-        }
-    }
-
+    // Возвращает isRotationChanged
     refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
+            const oldRotation = this.rotation;
             const diffX = mouseCoords.pageX - this.pixiObj.x;
             const diffY = mouseCoords.pageY - this.pixiObj.y;
             const rotation = Math.PI + Math.atan2(diffY, diffX);
@@ -143,6 +129,7 @@ export class Player {
             if (this.pixiObj) {
                 this.pixiObj.rotation = rotation;
             }
+            return oldRotation !== rotation;
         } catch (e) {
             console.log(e);
         }

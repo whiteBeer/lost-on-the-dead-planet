@@ -16,18 +16,15 @@ export class MissilesCollection {
         this.app = app;
 
         backendScene.missiles.forEach((el:BackendMissile) => {
-            if (el.ownerId !== app.socket?.id) {
-                this.createMissile(el, backendScene.serverCurrentDateTime);
-            }
+            this.createMissile(el, backendScene.serverCurrentDateTime);
         });
 
-        this.app.socket?.on("missilesRemoved", (missileSocket:IBackendMissileSocket) => {
-            this.missiles.forEach((el:Missile) => {
-                if (el.id === missileSocket?.missile?.id) {
-                    el.remove();
-                }
-            });
-            this.missiles = this.missiles.filter(el => el.id !== missileSocket?.missile?.id);
+        this.app.socket?.on("missilesRemoved", (mObj:IBackendMissileSocket) => {
+            const existMissile = this.missiles.find(el => el.getId() === mObj.missile.id);
+            if (existMissile) {
+                existMissile.remove();
+                this.missiles = this.missiles.filter(el => el.getId() !== mObj.missile.id);
+            }
         });
 
         this.app.socket?.on("missilesAdded", (params:IBackendMissileSocket) => {
@@ -41,13 +38,5 @@ export class MissilesCollection {
 
     createMissile(params:BackendMissile, serverCurrentDateTime:string) {
         this.missiles.push(new Missile(this.app, params, serverCurrentDateTime));
-    }
-
-    getMissilesByOwnerId(ownerId:string) {
-        return this.missiles.filter(el => el.getOwnerId() === ownerId);
-    }
-
-    removeMissileByCreatedAt(createdAt:string) {
-        this.missiles = this.missiles.filter(el => el.createdAt !== createdAt);
     }
 }

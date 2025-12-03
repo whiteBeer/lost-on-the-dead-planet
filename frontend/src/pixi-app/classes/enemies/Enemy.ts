@@ -4,95 +4,116 @@ import { BackendEnemy } from "../../Types";
 
 export class Enemy {
 
-    app:App;
-    pixiObj:PIXI.Container<PIXI.ContainerChild>;
+    // ЛОГИЧЕСКИЕ координаты (в игровом мире)
+    public x = 0;
+    public y = 0;
 
-    id:string;
-    x = -1;
-    y = -1;
-    length = 0;
-    width = 0;
-    dx:number;
-    dy:number;
+    private app:App;
+    private pixiObj:PIXI.Container;
+    private id:string;
 
-    health = 0;
-    maxHealth = 0;
+    // Скорость движения за 1 тик (кадр)
+    private dx = 0;
+    private dy = 0;
 
-    tickerFunc:(ticker:PIXI.Ticker) => void;
+    private health = 0;
+    private maxHealth = 0;
+
+    private tickerFunc:(ticker:PIXI.Ticker) => void;
 
     constructor(app:App, enemyJson:BackendEnemy, serverCurrentDateTime:string) {
         this.app = app;
         this.id = enemyJson.id;
-        this.length = enemyJson.length;
-        this.width = enemyJson.width;
 
         this.health = enemyJson.health;
         this.maxHealth = enemyJson.maxHealth;
 
-        const scale = this.app.scene?.scale || 1;
-        const tx = this.app.scene?.tx || 0;
-        const ty = this.app.scene?.ty || 0;
+        this.pixiObj = this.createGraphics(enemyJson);
+        this.update(enemyJson, serverCurrentDateTime);
+        this.tickerFunc = this.moveEnemy.bind(this);
+        this.app.addTicker(this.tickerFunc);
+    }
 
-        const container = new PIXI.Container();
-        const rectangle = new PIXI.Graphics();
-        rectangle
-            .rect( -enemyJson.width/2, -enemyJson.length/2, enemyJson.width, enemyJson.length)
-            .fill(enemyJson.color || "black");
-        const circle = new PIXI.Graphics();
-        circle.circle(0, 0, 3).fill("white");
+    getId() {
+        return this.id;
+    }
 
-        container.addChild(rectangle);
-        container.addChild(circle);
+    addToStage() {
+        this.app.addToStage(this.pixiObj);
+    }
+
+    update(enemyJson:BackendEnemy, serverCurrentDateTime:string) {
+        if (enemyJson.health !== undefined) {
+            this.setHealth(enemyJson.health);
+        }
+        if (enemyJson.maxHealth) {
+            this.maxHealth = enemyJson.maxHealth;
+        }
+        this.pixiObj.rotation = enemyJson.rotation;
 
         const dirCos = Math.cos(enemyJson.rotation);
         const dirSin = Math.sin(enemyJson.rotation);
-        const dTimeSeconds = (
-            new Date(serverCurrentDateTime).getTime() - new Date(enemyJson.updatedAt).getTime()
-        ) / 1000;
-        this.x = enemyJson.startX + -dirCos * (enemyJson.speedInSecond * dTimeSeconds);
-        this.y = enemyJson.startY + -dirSin * (enemyJson.speedInSecond * dTimeSeconds);
-        container.position.set(
-            tx + this.x * scale,
-            ty + this.y * scale
-        );
-        this.pixiObj = container;
-        this.pixiObj.scale = scale;
-        this.pixiObj.rotation = enemyJson.rotation;
 
-        // 16.66 is PIXI updater in ms
-        this.dx = -dirCos * (enemyJson.speedInSecond / (1000 / 16.66));
-        this.dy = -dirSin * (enemyJson.speedInSecond / (1000 / 16.66));
+        const serverTime = new Date(serverCurrentDateTime).getTime();
+        const updateTime = new Date(enemyJson.updatedAt).getTime();
+        const dTimeSeconds = Math.max(0, (serverTime - updateTime) / 1000);
 
-        this.setHealth(this.health);
+        this.x = enemyJson.startX + (-dirCos * enemyJson.speedInSecond * dTimeSeconds);
+        this.y = enemyJson.startY + (-dirSin * enemyJson.speedInSecond * dTimeSeconds);
 
-        this.tickerFunc = this.moveEnemy.bind(this);
-        this.app.pixiApp.ticker.add(this.tickerFunc);
+        this.dx = -dirCos * (enemyJson.speedInSecond / 60);
+        this.dy = -dirSin * (enemyJson.speedInSecond / 60);
+
+        this.updateVisuals();
     }
 
     remove() {
-        this.app.pixiApp.stage.removeChild(this.pixiObj);
-        this.app.pixiApp.ticker.remove(this.tickerFunc);
-    }
-
-    stop() {
-        this.app.pixiApp.ticker.remove(this.tickerFunc);
+        this.app.removeFromStage(this.pixiObj);
+        this.app.removeTicker(this.tickerFunc);
+        this.pixiObj.destroy({ children: true });
     }
 
     moveEnemy(ticker:PIXI.Ticker) {
-        const scale = this.app.scene?.scale || 1;
-        const tx = this.app.scene?.tx || 0;
-        const ty = this.app.scene?.ty || 0;
-        if (this.pixiObj && this.app && this.app.pixiApp) {
-            this.x += this.dx * ticker.deltaTime;
-            this.y += this.dy * ticker.deltaTime;
-            this.pixiObj.x = tx + this.x * scale;
-            this.pixiObj.y = ty + this.y * scale;
-        }
+        if (!this.pixiObj || this.pixiObj.destroyed) return;
+        this.x += this.dx * ticker.deltaTime;
+        this.y += this.dy * ticker.deltaTime;
+        this.updateVisuals();
     }
 
     setHealth(health:number) {
         this.health = health;
-        this.pixiObj.alpha = health / this.maxHealth;
+        this.pixiObj.alpha = Math.max(0.2, this.health / this.maxHealth);
+    }
+
+    private createGraphics(json:BackendEnemy):PIXI.Container {
+        const container = new PIXI.Container();
+
+        const rectangle = new PIXI.Graphics();
+        rectangle
+            .rect(-json.width / 2, -json.length / 2, json.width, json.length)
+            .fill(json.color || "black");
+
+        const circle = new PIXI.Graphics();
+        circle.circle(json.width / 2, 0, 0).fill("white");
+
+        container.addChild(rectangle);
+        container.addChild(circle);
+
+        return container;
+    }
+
+    private updateVisuals() {
+        const scene = this.app.scene;
+        // Защита, если сцена еще не прогрузилась
+        const scale = scene?.scale || 1;
+        const tx = scene?.tx || 0;
+        const ty = scene?.ty || 0;
+
+        this.pixiObj.position.set(
+            tx + this.x * scale,
+            ty + this.y * scale
+        );
+        this.pixiObj.scale.set(scale); // Зум врага тоже меняется!
     }
 }
 

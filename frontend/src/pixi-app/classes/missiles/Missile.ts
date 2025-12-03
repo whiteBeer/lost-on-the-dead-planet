@@ -4,18 +4,22 @@ import { BackendMissile } from "../../Types";
 
 export class Missile {
 
-    app:App;
-    pixiObj:PIXI.Container<PIXI.ContainerChild>;
-
-    id:string;
-    ownerId:string;
-
+    // ЛОГИЧЕСКИЕ координаты (в игровом мире)
     x = -1;
     y = -1;
-    createdAt:string;
-    speedInSecond = 0;
-    dx = 0;
-    dy = 0;
+
+    private app:App;
+    private pixiObj:PIXI.Container<PIXI.ContainerChild>;
+
+    private id:string;
+    private ownerId:string;
+
+    private createdAt:string;
+    private speedInSecond = 0;
+
+    // Скорость движения за 1 тик (кадр)
+    private dx = 0;
+    private dy = 0;
 
     tickerFunc:(ticker:PIXI.Ticker) => void;
 
@@ -25,37 +29,37 @@ export class Missile {
         this.ownerId = params.ownerId;
         this.createdAt = params.createdAt;
         this.speedInSecond = params.speedInSecond || 100;
-        this.x = params.startX;
-        this.y = params.startY;
 
-        const scale = this.app.scene?.scale || 1;
-        const tx = this.app.scene?.tx || 0;
-        const ty = this.app.scene?.ty || 0;
+        const startX = params.startX;
+        const startY = params.startY;
+
+        this.pixiObj = this.createGraphics();
+        this.app.addToStage(this.pixiObj);
+
         const dirCos = Math.cos(params.rotation);
         const dirSin = Math.sin(params.rotation);
 
-        const container = new PIXI.Container();
-        const circle = new PIXI.Graphics();
-        circle.circle(0, 0, 5).fill("white");
-        container.addChild(circle);
-        const dTimeSeconds = (
-            new Date(serverCurrentDateTime).getTime() - new Date(params.createdAt).getTime()
-        ) / 1000;
-        this.x = params.startX + -dirCos * (params.speedInSecond * dTimeSeconds);
-        this.y = params.startY + -dirSin * (params.speedInSecond * dTimeSeconds);
-        container.position.set(
-            tx + this.x * scale,
-            ty + this.y * scale
-        );
-        this.pixiObj = container;
-        this.pixiObj.scale = scale;
-        app.pixiApp.stage.addChild(this.pixiObj);
+        const serverTime = new Date(serverCurrentDateTime).getTime();
+        const createTime = new Date(params.createdAt).getTime();
 
-        this.dx = -dirCos * (this.speedInSecond / (1000 / 16.66));
-        this.dy = -dirSin * (this.speedInSecond / (1000 / 16.66));
+        // Защита от отрицательного времени (если часы рассинхронены)
+        const dTimeSeconds = Math.max(0, (serverTime - createTime) / 1000);
+
+        this.x = startX + (-dirCos * this.speedInSecond * dTimeSeconds);
+        this.y = startY + (-dirSin * this.speedInSecond * dTimeSeconds);
+
+        this.dx = -dirCos * (this.speedInSecond / 60);
+        this.dy = -dirSin * (this.speedInSecond / 60);
+
+        // 3. Синхронизируем визуальную часть первый раз
+        this.updateVisuals();
 
         this.tickerFunc = this.moveMissile.bind(this);
-        this.app.pixiApp.ticker.add(this.tickerFunc);
+        this.app.addTicker(this.tickerFunc);
+    }
+
+    getId() {
+        return this.id;
     }
 
     getOwnerId() {
@@ -63,19 +67,41 @@ export class Missile {
     }
 
     moveMissile(ticker:PIXI.Ticker) {
-        const scale = this.app.scene?.scale || 1;
-        const tx = this.app.scene?.tx || 0;
-        const ty = this.app.scene?.ty || 0;
-        if (this.pixiObj && this.app && this.app.pixiApp) {
-            this.x += this.dx * ticker.deltaTime;
-            this.y += this.dy * ticker.deltaTime;
-            this.pixiObj.x = tx + this.x * scale;
-            this.pixiObj.y = ty + this.y * scale;
+        if (!this.pixiObj || this.pixiObj.destroyed) {
+            return;
         }
+
+        this.x += this.dx * ticker.deltaTime;
+        this.y += this.dy * ticker.deltaTime;
+        this.updateVisuals();
     }
 
     remove() {
-        this.app.pixiApp.stage.removeChild(this.pixiObj);
-        this.app.pixiApp.ticker.remove(this.tickerFunc);
+        this.app.removeFromStage(this.pixiObj);
+        this.app.removeTicker(this.tickerFunc);
+        this.pixiObj.destroy({ children: true });
+    }
+
+    private createGraphics():PIXI.Container {
+        const container = new PIXI.Container();
+        const circle = new PIXI.Graphics();
+
+        circle.circle(0, 0, 4).fill("white");
+
+        container.addChild(circle);
+        return container;
+    }
+
+    private updateVisuals() {
+        const scene = this.app.scene;
+        const scale = scene?.scale || 1;
+        const tx = scene?.tx || 0;
+        const ty = scene?.ty || 0;
+
+        this.pixiObj.position.set(
+            tx + this.x * scale,
+            ty + this.y * scale
+        );
+        this.pixiObj.scale.set(scale);
     }
 }

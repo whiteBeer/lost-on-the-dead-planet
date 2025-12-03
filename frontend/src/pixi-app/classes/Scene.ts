@@ -63,7 +63,7 @@ export class Scene {
         container._zIndex = -1;
 
         this.pixiObj = container;
-        this.app.pixiApp.stage.addChild(this.pixiObj);
+        this.app.addToStage(this.pixiObj);
 
         const mePlayer = this.playersCollection.initPlayers(backendScene.players);
         if (mePlayer) {
@@ -118,6 +118,7 @@ export class Scene {
     }
 
     updateScene() {
+        // TODO: need to use "worldContainer" (gemini recommendations)
         this.pixiObj.scale = this.scale;
         this.pixiObj.x = this.tx;
         this.pixiObj.y = this.ty;

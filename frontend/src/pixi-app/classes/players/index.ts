@@ -66,7 +66,7 @@ export class PlayersCollection {
     addPlayer(params:BackendPlayer):Player {
         const player = new Player(this.app, params);
         this.players.push(player);
-        this.app.pixiApp.stage.addChild(player.pixiObj);
+        this.app.addToStage(player.pixiObj);
         return player;
     }
 

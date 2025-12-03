@@ -15,7 +15,6 @@ function Room() {
     let app:PixiAPP;
 
     const mainMenu = async () => {
-        app && app.disconnect();
         router.push("/");
     };
 
@@ -46,6 +45,9 @@ function Room() {
                 $el.appendChild(app.getView());
             }
         })();
+        return () => {
+            app && app.destroy();
+        };
     }, []);
 
     return (

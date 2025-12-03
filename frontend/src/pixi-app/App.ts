@@ -8,14 +8,15 @@ import { getRoomId } from "../utils/getRoomId";
 
 export class App {
 
-    pixiApp:PIXI.Application;
-    $domEl:HTMLElement;
-    backendUrl:string;
-    socket:Socket | null = null;
-    scene:Scene | null = null;
-    control:Control | null = null;
-    weaponsConfig:BackendWeaponsConfig | null = null;
-    move2ButtonsKof = 0.7071; // cos(45)
+    private readonly backendUrl:string;
+    private pixiApp:PIXI.Application;
+    private control:Control | null = null;
+    private isInitialized = false;
+
+    public $domEl:HTMLElement;
+    public socket:Socket | null = null;
+    public scene:Scene | null = null;
+    public weaponsConfig:BackendWeaponsConfig | null = null;
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -23,11 +24,8 @@ export class App {
         this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
     }
 
-    disconnect() {
-        this.socket?.disconnect();
-    }
-
     async init() {
+        if (this.isInitialized) return;
         const roomId = getRoomId();
         await this.pixiApp.init({
             background: "#1099aa",
@@ -35,9 +33,7 @@ export class App {
         });
 
         this.socket = io(this.backendUrl, {
-            extraHeaders: {
-                "room-id": roomId
-            }
+            extraHeaders: { "room-id": roomId }
         });
 
         try {
@@ -47,94 +43,133 @@ export class App {
         }
 
         this.socket.on("connect", async () => {
-            const backendScene = (await axios.get(this.backendUrl + "/api/rooms/" + roomId + "/scene")).data;
+            await this.loadGameScene(roomId);
+        });
+
+        this.isInitialized = true;
+    }
+
+    private async loadGameScene(roomId:string) {
+        try {
+            const { data: backendScene } = await axios.get(`${this.backendUrl}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
             this.control = new Control(this);
             this.scene = new Scene(this, backendScene);
 
-            this.control.onKey("KeyW", (ticker:PIXI.Ticker) => {
-                if (this.scene?.mePlayer) {
-                    let dy = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
-                    let dx = 0;
-                    if (this.control?.isKey("KeyA") || this.control?.isKey("KeyD")) {
-                        dy *= this.move2ButtonsKof;
-                        dx = (this.control?.isKey("KeyD") ? -1 : 1) * dy;
-                        this.scene?.mePlayer?.moveX(dx);
-                    }
-                    this.scene?.mePlayer?.moveY(dy);
-                    this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
-                }
-            });
-            this.control.onKey("KeyS", (ticker:PIXI.Ticker) => {
-                if (this.scene?.mePlayer) {
-                    let dy = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
-                    let dx = 0;
-                    if (this.control?.isKey("KeyD") || this.control?.isKey("KeyA")) {
-                        dy *= this.move2ButtonsKof;
-                        dx = (this.control?.isKey("KeyA") ? -1 : 1) * dy;
-                        this.scene?.mePlayer?.moveX(dx);
-                    }
-                    this.scene?.mePlayer?.moveY(dy);
-                    this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
-                }
-            });
-            this.control.onKey("KeyA", (ticker:PIXI.Ticker) => {
-                if (this.scene?.mePlayer && !this.control?.isKey("KeyW") && !this.control?.isKey("KeyS")) {
-                    const dx = -this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
-                    this.scene?.mePlayer?.moveX(dx);
-                    this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
-                }
-            });
-            this.control.onKey("KeyD", (ticker:PIXI.Ticker) => {
-                if (this.scene?.mePlayer && !this.control?.isKey("KeyS") && !this.control?.isKey("KeyW")) {
-                    const dx = this.scene?.mePlayer.speedInSecond * ticker.deltaMS / 1000;
-                    this.scene?.mePlayer?.moveX(dx);
-                    this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
-                }
-            });
-            this.control.onKey("KeyR", () => {
-                if (this.scene?.mePlayer) {
-                    this.scene.mePlayer.reload();
-                }
-            });
-            this.control.onMouseMove((e:MouseEvent) => {
-                if (this.control?.isSpace()) {
-                    this.scene?.incrementTxTy(e.movementX, e.movementY);
-                } else {
-                    if (this.scene?.mePlayer) {
-                        this.socket?.emit("playerMoved", this.scene?.mePlayer.getCoords());
-                    }
-                }
-            });
-            this.control.onMousePressed(() => {
-                if (this.scene?.mePlayer) {
-                    this.scene?.mePlayer.fire();
-                }
-            });
-            this.control.onMouseWheel((wheelDirection) => {
-                if (this.scene) {
-                    if (wheelDirection === "down") {
-                        this.scene.incrementScale(-0.1);
-                    } else {
-                        this.scene.incrementScale(0.1);
-                    }
-                }
-            });
-        });
+            this.pixiApp.ticker.add(this.gameLoop.bind(this));
+        } catch (e) {
+            console.error("Failed to load scene:", e);
+        }
+    }
 
-        this.pixiApp.ticker.add((ticker) => {
-            if (this.scene && this.control) {
-                if (this.scene.mePlayer) {
-                    this.scene.mePlayer.refreshRotationAngleToMouse(this.control.getMouseCoords());
-                    this.scene.mePlayer.weapon.update(ticker.deltaMS);
-                    this.scene.cursor.update(this.control.getMouseCoords());
-                    this.scene.hud.update();
-                }
+    private gameLoop(ticker:PIXI.Ticker) {
+        if (!this.scene || !this.control || !this.scene.mePlayer) return;
+
+        const player = this.scene.mePlayer;
+        const deltaSec = ticker.deltaMS / 1000; // Дельта в секундах
+
+        // 1. ОБРАБОТКА ДВИЖЕНИЯ (Векторная логика)
+        let dx = 0;
+        let dy = 0;
+
+        if (this.control.isKey("KeyW")) dy -= 1;
+        if (this.control.isKey("KeyS")) dy += 1;
+        if (this.control.isKey("KeyA")) dx -= 1;
+        if (this.control.isKey("KeyD")) dx += 1;
+
+        // Нормализация диагонального движения
+        if (dx !== 0 || dy !== 0) {
+            // Если движемся по диагонали (dx и dy не 0), делим на корень из 2 (~1.41)
+            if (dx !== 0 && dy !== 0) {
+                const k = 0.7071; // 1 / Math.sqrt(2)
+                dx *= k;
+                dy *= k;
             }
-        });
+            const moveX = dx * player.speedInSecond * deltaSec;
+            const moveY = dy * player.speedInSecond * deltaSec;
+            player.moveTo(player.x + moveX, player.y + moveY);
+            this.scene.centerScene();
+        }
+
+        // 2. ОБРАБОТКА МЫШИ (Поворот)
+        const mouseCoords = this.control.getMouseCoords();
+        const isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+
+        // 3. ЗУМ И ПЕРЕМЕЩЕНИЕ КАМЕРЫ (DEBUG)
+        // Если зажат пробел - двигаем карту
+        const mouseMovement = this.control.getAndResetMouseMovement();
+        if (this.control.isSpace()) {
+            if (mouseMovement.x !== 0 || mouseMovement.y !== 0) {
+                this.scene.incrementTxTy(mouseMovement.x, mouseMovement.y);
+            }
+        }
+        // Если был скрол - зумим
+        const scrollDelta = this.control.getAndResetScrollDelta();
+        if (scrollDelta !== 0) {
+            this.scene.incrementScale(scrollDelta > 0 ? -0.1 : 0.1);
+        }
+
+        // 4. СЕТЕВАЯ СИНХРОНИЗАЦИЯ
+        // Отправляем данные, только если игрок двигался или поворачивался
+        // (Можно добавить throttle, чтобы слать не 60 раз, а 30 раз в сек)
+        if (dx !== 0 || dy !== 0 || isRotationChanged) {
+            this.socket?.emit("playerMoved", player.getCoords());
+        }
+
+        // 5. СТРЕЛЬБА
+        // Если мышь зажата -> стреляем
+        if (this.control.getIsMousePressed()) {
+            player.fire();
+        }
+
+        // Перезарядка
+        if (this.control.isKey("KeyR")) {
+            player.reload();
+        }
+
+        // 6. ОБНОВЛЕНИЕ СУЩНОСТЕЙ
+        player.weapon?.update(ticker.deltaMS);
+        this.scene.cursor?.update(mouseCoords);
+        this.scene.hud?.update();
+    }
+
+    addTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
+        this.pixiApp.ticker.add(tickerFunc);
+    }
+
+    removeTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
+        this.pixiApp.ticker.remove(tickerFunc);
+    }
+
+    addToStage(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
+        if (this?.pixiApp?.stage) {
+            this.pixiApp.stage.addChild(pixiObj);
+        }
+    }
+
+    removeFromStage(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
+        if (this?.pixiApp?.stage) {
+            this.pixiApp.stage.removeChild(pixiObj);
+        }
+    }
+
+    getScreenWidth() {
+        return this.pixiApp.screen.width;
     }
 
     getView() {
         return this?.pixiApp.canvas;
+    }
+
+    destroy() {
+        this.control?.destroy();
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
+        }
+        // 3. Останавливаем Pixi (освобождаем WebGL контекст)
+        // true = удалить canvas из DOM
+        // { children: true } = удалить все спрайты и текстуры
+        this.pixiApp.destroy(true, { children: true, texture: true });
     }
 }
