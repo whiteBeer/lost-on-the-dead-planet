@@ -23,8 +23,9 @@ export class Enemies {
     addSpider() {
         this.enemies.push(new Spider(this.scene, {
             rotation: 0.1,
-            startX: 500 + Math.round(Math.random() * 300),
-            startY: 500 + Math.round(Math.random() * 300)
+            startX: 500,
+            startY: 500,
+            radius: 200 + Math.round(Math.random() * 200)
         }));
     }
 
