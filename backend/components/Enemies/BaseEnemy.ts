@@ -1,14 +1,14 @@
-import {randomUUID} from "crypto";
-import {EnemyParams, EnemyJSON, Rectangle} from "../../types";
-import {Scene} from "../Scene";
-import {clearInterval} from "timers";
+import { randomUUID } from "crypto";
+import { EnemyParams, EnemyJSON, Rectangle } from "../../types";
+import { Scene } from "../Scene";
+import { clearInterval } from "timers";
 
 export class BaseEnemy implements EnemyJSON, Rectangle {
 
     scene:Scene;
     moveInterval:NodeJS.Timeout|null = null;
 
-    id: string;
+    id:string;
     color = "black";
     health = -1;
     maxHealth = -1;
@@ -31,11 +31,11 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         this.updatedAt = createdAt;
     }
 
-    damage (missileDamage:number) {
+    damage(missileDamage:number) {
         this.health = this.health - missileDamage;
     }
 
-    remove () {
+    remove() {
         if (this.moveInterval !== null) {
             clearInterval(this.moveInterval);
         }

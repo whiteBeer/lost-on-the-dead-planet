@@ -1,7 +1,7 @@
-import {Scene} from "../Scene";
-import {Spider} from "./Spider";
-import {Zombie} from "./Zombie";
-import {BaseEnemy} from "./BaseEnemy";
+import { Scene } from "../Scene";
+import { Spider } from "./Spider";
+import { Zombie } from "./Zombie";
+import { BaseEnemy } from "./BaseEnemy";
 
 export class Enemies {
 
@@ -12,7 +12,7 @@ export class Enemies {
         this.scene = scene;
     }
 
-    addZombie () {
+    addZombie() {
         this.enemies.push(new Zombie(this.scene, {
             rotation: Math.PI,
             startX: -100,
@@ -20,7 +20,7 @@ export class Enemies {
         }));
     }
 
-    addSpider () {
+    addSpider() {
         this.enemies.push(new Spider(this.scene, {
             rotation: 0.1,
             startX: 500 + Math.round(Math.random() * 300),
@@ -28,17 +28,17 @@ export class Enemies {
         }));
     }
 
-    removeAllEnemies () {
+    removeAllEnemies() {
         this.enemies.forEach(el => el.remove());
         // Очищаем массив без пересоздания объекта (оптимизация GC)
         this.enemies.length = 0;
     }
 
-    getEnemyById(id: string): BaseEnemy | undefined {
+    getEnemyById(id:string):BaseEnemy | undefined {
         return this.enemies.find(el => el.id === id);
     }
 
-    damageEnemyById (enemyId:string, missileDamage:number) {
+    damageEnemyById(enemyId:string, missileDamage:number) {
         const enemy = this.getEnemyById(enemyId);
         if (enemy) {
             enemy.damage(missileDamage);
@@ -50,7 +50,7 @@ export class Enemies {
         }
     }
 
-    removeEnemyById (enemyId:string) {
+    removeEnemyById(enemyId:string) {
         const index = this.enemies.findIndex(el => el.id === enemyId);
         if (index !== -1) {
             const enemy = this.enemies[index];
@@ -60,11 +60,11 @@ export class Enemies {
         }
     }
 
-    getEnemies(): readonly BaseEnemy[] {
+    getEnemies():readonly BaseEnemy[] {
         return this.enemies;
     }
 
-    getEnemiesJSON () {
+    getEnemiesJSON() {
         return this.enemies.map(el => el.toJSON());
     }
 }

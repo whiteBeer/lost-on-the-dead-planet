@@ -1,15 +1,15 @@
-import {randomUUID} from "crypto";
-import {MissileParams, MissileJSON} from "../../types";
-import {Scene} from "../Scene";
+import { randomUUID } from "crypto";
+import { MissileParams, MissileJSON } from "../../types";
+import { Scene } from "../Scene";
 
 export class BaseMissile implements MissileJSON {
 
     public readonly scene:Scene;
-    public previousPos: {x: number, y: number} | null = null;
-    private lifeTimeout: NodeJS.Timeout | null = null;
+    public previousPos:{x:number, y:number} | null = null;
+    private lifeTimeout:NodeJS.Timeout | null = null;
 
-    id: string;
-    ownerId: string;
+    id:string;
+    ownerId:string;
     damage = -1;
     startX = -1;
     startY = -1;
@@ -31,7 +31,7 @@ export class BaseMissile implements MissileJSON {
         this.updatedAt = createdAt;
     }
 
-    handleEvents () {
+    handleEvents() {
         this.lifeTimeout = setTimeout(() => {
             if (this.scene && this.scene.missilesCollection) {
                 this.scene.missilesCollection.removeMissileById(this.id);

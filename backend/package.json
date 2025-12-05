@@ -1,6 +1,7 @@
 {
   "scripts": {
     "dev": "nodemon --ext ts -x \"tsc && node dist/app.js\"",
+    "lint": "eslint . --ext .ts",
     "build": "eslint . --ext .ts && tsc"
   },
   "name": "game",

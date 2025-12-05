@@ -15,6 +15,23 @@
     "indent": ["error", 4],
     "quotes": ["error", "double"],
     "semi": ["error", "always"],
-    "comma-dangle": ["error", "never"]
+    "comma-dangle": ["error", "never"],
+    "func-call-spacing": ["error", "never"],
+    "space-before-function-paren": ["error", {
+      "anonymous": "always",
+      "named": "never",
+      "asyncArrow": "always"
+    }],
+    "@typescript-eslint/type-annotation-spacing": ["error", {
+      "before": false,
+      "after": false,
+      "overrides": {
+        "arrow": {
+          "before": true,
+          "after": true
+        }
+      }
+    }],
+    "object-curly-spacing": ["error", "always"]
   }
 }

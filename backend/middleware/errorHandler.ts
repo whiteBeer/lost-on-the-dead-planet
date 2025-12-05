@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import joi from "joi";
 
-export default function errorHandler (err: any, req: Request, res: Response, next: NextFunction) {
+export default function errorHandler(err:any, req:Request, res:Response, next:NextFunction) {
     let message = "Bad request";
     let name = "Unknown";
     let code = 400;
@@ -23,6 +23,6 @@ export default function errorHandler (err: any, req: Request, res: Response, nex
     }
 
     res.status(code).json({
-        error: {name, message}
+        error: { name, message }
     });
 }

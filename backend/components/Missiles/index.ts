@@ -1,9 +1,9 @@
-import {MissileParams} from "../../types";
-import {Scene} from "../Scene";
-import {RifleMissile} from "./RifleMissile";
-import {BaseMissile} from "./BaseMissile";
+import { MissileParams } from "../../types";
+import { Scene } from "../Scene";
+import { RifleMissile } from "./RifleMissile";
+import { BaseMissile } from "./BaseMissile";
 
-const MISSILE_MAP: Record<string, new (scene: Scene, params: MissileParams) => BaseMissile> = {
+const MISSILE_MAP:Record<string, new (scene:Scene, params:MissileParams) => BaseMissile> = {
     "Rifle": RifleMissile
     // "Shotgun": ShotgunMissile,
     // "Bazooka": BazookaMissile
@@ -18,7 +18,7 @@ export class Missiles {
         this.scene = scene;
     }
 
-    createMissile (params:MissileParams) {
+    createMissile(params:MissileParams) {
         const MissileClass = MISSILE_MAP[params.weaponType];
 
         if (!MissileClass) {
@@ -31,15 +31,15 @@ export class Missiles {
         this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
     }
 
-    getMissiles () {
+    getMissiles() {
         return this.items;
     }
 
-    getMissilesJSON () {
+    getMissilesJSON() {
         return this.items.map(el => el.toJSON());
     }
 
-    removeMissileById (missileId:string) {
+    removeMissileById(missileId:string) {
         const index = this.items.findIndex(el => el.id === missileId);
         if (index !== -1) {
             const missile = this.items[index];

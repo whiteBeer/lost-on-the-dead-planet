@@ -1,11 +1,11 @@
-import {Scene} from "../Scene";
-import {BaseEnemy} from "./BaseEnemy";
-import {Coords, EnemyParams} from "../../types";
-import {calcTimedPoint} from "../../utils/geometry";
+import { Scene } from "../Scene";
+import { BaseEnemy } from "./BaseEnemy";
+import { Coords, EnemyParams } from "../../types";
+import { calcTimedPoint } from "../../utils/geometry";
 
 export class Zombie extends BaseEnemy {
 
-    moveInterval: NodeJS.Timeout|null = null;
+    moveInterval:NodeJS.Timeout|null = null;
 
     constructor(scene:Scene, params:EnemyParams) {
         super(scene, params);
@@ -20,7 +20,7 @@ export class Zombie extends BaseEnemy {
         this.move();
     }
 
-    move () {
+    move() {
         this.moveInterval = setInterval(() => {
             const enemyCoords = calcTimedPoint(
                 this.startX, this.startY, this.rotation, this.speedInSecond, this.updatedAt
@@ -38,7 +38,7 @@ export class Zombie extends BaseEnemy {
         }, 200);
     }
 
-    findNearestPlayer (enemyCoords:Coords) {
+    findNearestPlayer(enemyCoords:Coords) {
         const players = this.scene.playersCollection.getPlayers();
         if (players[0]) {
             let nearestPlayer = players[0];

@@ -4,17 +4,17 @@ import { PlayerJSON } from "./types";
 import { EmitManager } from "./classes/EmitManager";
 
 export class AppSocketServer {
-    private io: SocketIOServer;
-    private roomsManager: RoomsManager;
+    private io:SocketIOServer;
+    private roomsManager:RoomsManager;
 
-    constructor(io: SocketIOServer, roomsManager: RoomsManager, emitManager: EmitManager) {
+    constructor(io:SocketIOServer, roomsManager:RoomsManager, emitManager:EmitManager) {
         this.io = io;
         this.roomsManager = roomsManager;
         this.setupSocketHandlers();
     }
 
-    private setupSocketHandlers(): void {
-        this.io.on("connection", (socket: Socket) => {
+    private setupSocketHandlers():void {
+        this.io.on("connection", (socket:Socket) => {
             const roomId = (socket.handshake.headers["room-id"] as string) || "";
             const roomScene = this.roomsManager.getRoomScene(roomId);
 
@@ -26,10 +26,10 @@ export class AppSocketServer {
         });
     }
 
-    private triggerReload(player: any, roomId:string, socketId: string) {
+    private triggerReload(player:any, roomId:string, socketId:string) {
         const weapon = player.weapon;
 
-        const started = weapon.reload((newAmmo: number) => {
+        const started = weapon.reload((newAmmo:number) => {
             this.emitToRoom(roomId, "playersReloadFinished", {
                 socketId: socketId,
                 newAmmo: newAmmo
@@ -44,7 +44,7 @@ export class AppSocketServer {
         }
     }
 
-    private handleGameConnection(socket: Socket, roomId: string, roomScene: any): void {
+    private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
         socket.join(roomId);
         const scenePlayers = roomScene.playersCollection;
         const newPlayer = scenePlayers.addPlayer(socket.id);
@@ -52,7 +52,7 @@ export class AppSocketServer {
         if (newPlayer) {
             console.log("Connected: " + socket.id, newPlayer.toJSON());
 
-            socket.on("playerMoved", (params: PlayerJSON) => {
+            socket.on("playerMoved", (params:PlayerJSON) => {
                 this.handlePlayerMoved(socket, roomId, scenePlayers, params);
             });
 
@@ -63,7 +63,7 @@ export class AppSocketServer {
                 }
             });
 
-            socket.on("missileCreate", (params: any) => {
+            socket.on("missileCreate", (params:any) => {
                 this.handleMissileCreate(roomScene, params, socket.id);
             });
 
@@ -75,14 +75,14 @@ export class AppSocketServer {
         }
     }
 
-    private handlePlayerMoved(socket: Socket, roomId: string, scenePlayers: any, params: PlayerJSON): void {
+    private handlePlayerMoved(socket:Socket, roomId:string, scenePlayers:any, params:PlayerJSON):void {
         const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
         if (currentPlayerIndex !== -1) {
             this.emitToRoom(roomId, "playerMoved", scenePlayers.getPlayersJSON()[currentPlayerIndex]);
         }
     }
 
-    private handleMissileCreate(roomScene: any, params: any, socketId: string): void {
+    private handleMissileCreate(roomScene:any, params:any, socketId:string):void {
         const player = roomScene.playersCollection.getPlayerById(socketId);
         if (!player) {
             return;
@@ -107,7 +107,7 @@ export class AppSocketServer {
         });
     }
 
-    private handlePlayerDisconnect(socket: Socket, roomId: string, scenePlayers: any): void {
+    private handlePlayerDisconnect(socket:Socket, roomId:string, scenePlayers:any):void {
         scenePlayers.deletePlayer(socket.id);
         this.emitToRoom(roomId, "playerDisconnected", { socketId: socket.id });
         console.log("Disconnected ", socket.id);
@@ -123,7 +123,7 @@ export class AppSocketServer {
         }
     }
 
-    public emitToRoom(roomId: string, eventName: string, data: any): void {
+    public emitToRoom(roomId:string, eventName:string, data:any):void {
         this.io.to(roomId).emit(eventName, data);
     }
 }

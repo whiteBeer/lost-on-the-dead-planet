@@ -1,10 +1,10 @@
-import {Scene} from "../components/Scene";
+import { Scene } from "../components/Scene";
 
 export class RoomsManager {
 
-    private rooms: Map<string, Scene> = new Map();
+    private rooms:Map<string, Scene> = new Map();
 
-    public createRoom (roomId:string) {
+    public createRoom(roomId:string) {
         if (this.rooms.has(roomId)) {
             return null;
         }
@@ -16,11 +16,11 @@ export class RoomsManager {
         return newScene;
     }
 
-    public  getRoomScene (roomId:string) {
+    public  getRoomScene(roomId:string) {
         return this.rooms.get(roomId);
     }
 
-    public removeRoom(roomId: string): void {
+    public removeRoom(roomId:string):void {
         const scene = this.rooms.get(roomId);
         if (scene) {
             if (typeof (scene as any).destroy === "function") {
@@ -28,7 +28,7 @@ export class RoomsManager {
             }
 
             this.rooms.delete(roomId);
-            console.log(`🗑️ Room deleted: ${roomId}. Total rooms: ${this.rooms.size}`);
+            console.log(`Room deleted: ${roomId}. Total rooms: ${this.rooms.size}`);
         }
     }
 }

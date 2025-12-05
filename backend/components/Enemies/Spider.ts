@@ -1,10 +1,10 @@
-import {Scene} from "../Scene";
-import {BaseEnemy} from "./BaseEnemy";
-import {EnemyParams} from "../../types";
+import { Scene } from "../Scene";
+import { BaseEnemy } from "./BaseEnemy";
+import { EnemyParams } from "../../types";
 
 export class Spider extends BaseEnemy {
 
-    moveInterval: NodeJS.Timeout|null = null;
+    moveInterval:NodeJS.Timeout|null = null;
 
     constructor(scene:Scene, params:EnemyParams) {
         super(scene, params);
@@ -19,7 +19,7 @@ export class Spider extends BaseEnemy {
         this.move();
     }
 
-    move () {
+    move() {
         this.moveInterval = setInterval(() => {
             const currentTime = new Date();
             const timeDistSeconds = (

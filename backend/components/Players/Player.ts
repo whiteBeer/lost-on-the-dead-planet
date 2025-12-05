@@ -2,17 +2,17 @@ import { Weapon } from "./Weapon";
 import { PLAYER_CONFIG } from "../../configs/Players";
 
 export class Player {
-    public socketId: string;
-    public color: string;
-    public pageX: number;
-    public pageY: number;
-    public rotation: number;
-    public width: number;
-    public length: number;
+    public socketId:string;
+    public color:string;
+    public pageX:number;
+    public pageY:number;
+    public rotation:number;
+    public width:number;
+    public length:number;
 
-    public weapon: Weapon;
+    public weapon:Weapon;
 
-    constructor(socketId: string, color: string, startX: number, startY: number) {
+    constructor(socketId:string, color:string, startX:number, startY:number) {
         this.socketId = socketId;
         this.color = color;
         this.pageX = startX;
@@ -28,7 +28,7 @@ export class Player {
         this.weapon.cancelReload();
     }
 
-    public toJSON () {
+    public toJSON() {
         const { weapon, ...json } = this;
         return {
             ...json,

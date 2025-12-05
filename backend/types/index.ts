@@ -1,67 +1,67 @@
 export interface Coords {
-    x: number,
-    y: number
+    x:number,
+    y:number
 }
 
 export interface Rectangle {
-    width: number,
-    length: number,
+    width:number,
+    length:number,
     rotation:number
 }
 
 export interface PlayerJSON {
-    socketId: string,
-    color: string,
-    length: number,
-    width: number,
-    rotation: number,
-    pageX: number,
-    pageY: number
-    weapon: {
-        id: string,
-        ammo: number,
-        clipSize: number,
-        isReloading: boolean
+    socketId:string,
+    color:string,
+    length:number,
+    width:number,
+    rotation:number,
+    pageX:number,
+    pageY:number
+    weapon:{
+        id:string,
+        ammo:number,
+        clipSize:number,
+        isReloading:boolean
     }
 }
 
 export interface EnemyJSON {
-    id: string,
-    color: string,
-    health: number,
-    maxHealth: number,
-    length: number,
-    width: number,
-    speedInSecond: number,
-    rotation: number,
-    startX: number,
-    startY: number,
-    createdAt: string,
-    updatedAt: string
+    id:string,
+    color:string,
+    health:number,
+    maxHealth:number,
+    length:number,
+    width:number,
+    speedInSecond:number,
+    rotation:number,
+    startX:number,
+    startY:number,
+    createdAt:string,
+    updatedAt:string
 }
 
 export interface EnemyParams {
-    rotation: number,
-    startX: number,
-    startY: number
+    rotation:number,
+    startX:number,
+    startY:number
 }
 
 export interface MissileJSON {
-    id: string,
-    ownerId: string,
-    damage: number,
-    startX: number,
-    startY: number,
-    speedInSecond: number,
-    rotation: number,
-    range: number,
-    createdAt: string
+    id:string,
+    ownerId:string,
+    damage:number,
+    startX:number,
+    startY:number,
+    speedInSecond:number,
+    rotation:number,
+    range:number,
+    createdAt:string
 }
 
 export interface MissileParams {
-    weaponType: string,
-    rotation: number,
-    startX: number,
-    startY: number
-    ownerId: string
+    weaponType:string,
+    rotation:number,
+    startX:number,
+    startY:number
+    ownerId:string
 }

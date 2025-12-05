@@ -1,9 +1,9 @@
-import {Coords, Rectangle} from "../types";
+import { Coords, Rectangle } from "../types";
 
 /**
  * Вращение отночительно центра мировых координат
  */
-export function rotate (x:number, y:number, angleRad:number) {
+export function rotate(x:number, y:number, angleRad:number) {
     const cos = Math.cos(angleRad),
         sin = Math.sin(angleRad),
         nx = (cos * x) + (sin * y),
@@ -17,7 +17,7 @@ export function rotate (x:number, y:number, angleRad:number) {
 /**
  * Вычисление положения точки в текущий момент времени
  */
-export function calcTimedPoint (
+export function calcTimedPoint(
     startX:number, startY:number, rotation:number, speedInSecond:number, createdAt:string
 ):Coords {
     const dirCosMissile = Math.cos(rotation);
@@ -38,11 +38,11 @@ export function calcTimedPoint (
  * Проверка пересечения двух линий a-b vs c-d
  */
 export function linesIntersect(
-    a: Coords,
-    b: Coords,
-    c: Coords,
-    d: Coords
-): boolean {
+    a:Coords,
+    b:Coords,
+    c:Coords,
+    d:Coords
+):boolean {
     // Векторные вычисления для определения пересечения
     const denominator = ((b.y - a.y) * (d.x - c.x) - (b.x - a.x) * (d.y - c.y));
     if (Math.abs(denominator) < 0.0001) return false; // параллельны
@@ -57,11 +57,11 @@ export function linesIntersect(
  * Проверка столкновения отрезка с прямоугольником
  */
 export function checkLineRectangleCollision(
-    lineStart: Coords,
-    lineEnd: Coords,
-    rectanglePos: Coords,
-    rectangle: Rectangle
-): boolean {
+    lineStart:Coords,
+    lineEnd:Coords,
+    rectanglePos:Coords,
+    rectangle:Rectangle
+):boolean {
     // Получаем вершины врага в мировых координатах
     const enemyVertices = getRectangleVertices(rectanglePos.x, rectanglePos.y, rectangle);
 
@@ -82,19 +82,19 @@ export function checkLineRectangleCollision(
  * Получить все 4 вершины прямоугольника в мировых координатах
  */
 export function getRectangleVertices(
-    centerX: number,
-    centerY: number,
-    rectangle: Rectangle
+    centerX:number,
+    centerY:number,
+    rectangle:Rectangle
 ) {
     const halfWidth = rectangle.width / 2;
     const halfLength = rectangle.length / 2;
 
     // Вершины до вращения (относительно центра)
     const localVertices = [
-        {x: -halfWidth, y: -halfLength},
-        {x: halfWidth, y: -halfLength},
-        {x: halfWidth, y: halfLength},
-        {x: -halfWidth, y: halfLength}
+        { x: -halfWidth, y: -halfLength },
+        { x: halfWidth, y: -halfLength },
+        { x: halfWidth, y: halfLength },
+        { x: -halfWidth, y: halfLength }
     ];
 
     return localVertices.map(vertex => {

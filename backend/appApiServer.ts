@@ -1,5 +1,4 @@
 import express, { Express, Request, Response } from "express";
-import { Server as HttpServer } from "http";
 import { roomIdValidator } from "./classes/Validator";
 import { RoomsManager } from "./classes/RoomsManager";
 import { EmitManager } from "./classes/EmitManager";
@@ -10,11 +9,11 @@ import notFoundMiddleware from "./middleware/notFound";
 import cors from "cors";
 
 export class AppApiServer {
-    private readonly app: Express;
-    private readonly roomsManager: RoomsManager;
-    private readonly emitManager: EmitManager;
+    private readonly app:Express;
+    private readonly roomsManager:RoomsManager;
+    private readonly emitManager:EmitManager;
 
-    constructor(app: Express, roomsManager: RoomsManager, emitManager: EmitManager) {
+    constructor(app:Express, roomsManager:RoomsManager, emitManager:EmitManager) {
         this.app = app;
         this.roomsManager = roomsManager;
         this.emitManager = emitManager;
@@ -23,12 +22,12 @@ export class AppApiServer {
         this.setupErrorHandling();
     }
 
-    private setupMiddleware(): void {
+    private setupMiddleware():void {
         this.app.use(cors());
         this.app.use(express.json());
     }
 
-    private setupRoutes(): void {
+    private setupRoutes():void {
         this.app.put("/api/rooms/:roomId", this.createRoom.bind(this));
         this.app.get("/api/rooms/:roomId/scene", this.getScene.bind(this));
         this.app.put("/api/rooms/:roomId/new-game", this.newGame.bind(this));
@@ -41,7 +40,7 @@ export class AppApiServer {
         this.app.use(errorHandlerMiddleware);
     }
 
-    private async createRoom(req: Request, res: Response): Promise<void> {
+    private async createRoom(req:Request, res:Response):Promise<void> {
         await roomIdValidator.validateAsync(req.params);
         const roomId = req.params.roomId;
         const scene = this.roomsManager.createRoom(roomId);
@@ -62,11 +61,11 @@ export class AppApiServer {
                     }));
                 });
             });
-            res.json({isCreated: true});
+            res.json({ isCreated: true });
         }
     }
 
-    private async getScene(req: Request, res: Response): Promise<void> {
+    private async getScene(req:Request, res:Response):Promise<void> {
         await roomIdValidator.validateAsync(req.params);
         const roomScene = this.roomsManager.getRoomScene(req.params.roomId);
         if (!roomScene) {
@@ -76,7 +75,7 @@ export class AppApiServer {
         }
     }
 
-    private async newGame(req: Request, res: Response): Promise<void> {
+    private async newGame(req:Request, res:Response):Promise<void> {
         await roomIdValidator.validateAsync(req.params);
         const roomId = req.params.roomId;
         const roomScene = this.roomsManager.getRoomScene(roomId);
@@ -89,7 +88,7 @@ export class AppApiServer {
         }
     }
 
-    private addZombie(req: Request, res: Response): void {
+    private addZombie(req:Request, res:Response):void {
         const roomId = req.params.roomId;
         const roomScene = this.roomsManager.getRoomScene(roomId);
         if (!roomScene) {
@@ -101,7 +100,7 @@ export class AppApiServer {
         }
     }
 
-    private addSpider(req: Request, res: Response): void {
+    private addSpider(req:Request, res:Response):void {
         const roomId = req.params.roomId;
         const roomScene = this.roomsManager.getRoomScene(roomId);
         if (!roomScene) {

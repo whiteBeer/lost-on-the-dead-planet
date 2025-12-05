@@ -1,13 +1,13 @@
 import { Server as SocketIOServer } from "socket.io";
 
 export class EmitManager {
-    private io: SocketIOServer | null = null;
+    private io:SocketIOServer | null = null;
 
-    constructor(io: SocketIOServer) {
+    constructor(io:SocketIOServer) {
         this.io = io;
     }
 
-    emit(roomId: string, eventName: string, ...data: any[]): void {
+    emit(roomId:string, eventName:string, ...data:any[]):void {
         if (!this.io) {
             console.warn("Socket.io server not initialized. Call initialize first.");
             return;
@@ -16,7 +16,7 @@ export class EmitManager {
         room.emit.apply(room, [eventName, ...data]);
     }
 
-    emitSceneChanged(roomId: string, sceneData: any): void {
+    emitSceneChanged(roomId:string, sceneData:any):void {
         this.emit(roomId, "sceneChanged", sceneData);
     }
 }

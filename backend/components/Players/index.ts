@@ -5,11 +5,11 @@ import { Player } from "./Player";
 
 export class Players {
 
-    private readonly scene: Scene;
-    private playerColors: string[] = PLAYER_COLORS || [];
-    private players: Player[] = [];
+    private readonly scene:Scene;
+    private playerColors:string[] = PLAYER_COLORS || [];
+    private players:Player[] = [];
 
-    constructor(scene: Scene) {
+    constructor(scene:Scene) {
         this.scene = scene;
     }
 
@@ -17,15 +17,15 @@ export class Players {
         return this.players;
     }
 
-    getPlayersJSON(): PlayerJSON[] {
+    getPlayersJSON():PlayerJSON[] {
         return this.players.map(el => el.toJSON());
     }
 
-    getPlayerById(socketId: string): Player | undefined {
+    getPlayerById(socketId:string):Player | undefined {
         return this.players.find(player => player.socketId === socketId);
     }
 
-    addPlayer(socketId: string): Player | null {
+    addPlayer(socketId:string):Player | null {
         const existingColors = this.players.map(el => el.color);
         const color = this.playerColors.find(el => !existingColors.includes(el));
 
@@ -42,7 +42,7 @@ export class Players {
         }
     }
 
-    updatePlayer(socketId: string, params: PlayerJSON): number {
+    updatePlayer(socketId:string, params:PlayerJSON):number {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             const player = this.players[index];
@@ -54,7 +54,7 @@ export class Players {
         return -1;
     }
 
-    deletePlayer(socketId: string): void {
+    deletePlayer(socketId:string):void {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             this.players.splice(index, 1);

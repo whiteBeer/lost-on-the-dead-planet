@@ -1,24 +1,24 @@
 import { EventEmitter } from "events";
-import {checkLineRectangleCollision, calcTimedPoint} from "../utils/geometry";
-import {Enemies} from "./Enemies";
-import {Missiles} from "./Missiles";
-import {Players} from "./Players";
-import {BaseEnemy} from "./Enemies/BaseEnemy";
-import {clearInterval} from "timers";
-import {WEAPONS} from "../configs/Weapons";
+import { checkLineRectangleCollision, calcTimedPoint } from "../utils/geometry";
+import { Enemies } from "./Enemies";
+import { Missiles } from "./Missiles";
+import { Players } from "./Players";
+import { BaseEnemy } from "./Enemies/BaseEnemy";
+import { clearInterval } from "timers";
+import { WEAPONS } from "../configs/Weapons";
 
 interface CachedEnemy {
-    original: BaseEnemy;
-    x: number;
-    y: number;
+    original:BaseEnemy;
+    x:number;
+    y:number;
 }
 
 export class Scene extends EventEmitter {
 
-    private verifyInterval: NodeJS.Timeout | null = null;
-    private readonly roomId: string = "";
-    private readonly width: number = 1000;
-    private readonly height: number = 1000;
+    private verifyInterval:NodeJS.Timeout | null = null;
+    private readonly roomId:string = "";
+    private readonly width:number = 1000;
+    private readonly height:number = 1000;
 
     enemiesCollection:Enemies;
     missilesCollection:Missiles;
@@ -44,12 +44,12 @@ export class Scene extends EventEmitter {
         }, 20);
     }
 
-    private update () {
+    private update() {
         // TODO: add enemy vs player collisions
         this.verifyEnemyMissileCollisions();
     }
 
-    destroy () {
+    destroy() {
         if (this.verifyInterval) {
             clearInterval(this.verifyInterval);
             this.verifyInterval = null;
@@ -57,7 +57,7 @@ export class Scene extends EventEmitter {
         this.removeAllListeners();
     }
 
-    newGame () {
+    newGame() {
         this.enemiesCollection.removeAllEnemies();
         this.enemiesCollection.addSpider();
         this.enemiesCollection.addZombie();
@@ -65,7 +65,7 @@ export class Scene extends EventEmitter {
         this.startGameLoop();
     }
 
-    getScene () {
+    getScene() {
         return {
             serverCurrentDateTime: new Date().toISOString(),
             width: this.width,
@@ -76,7 +76,7 @@ export class Scene extends EventEmitter {
         };
     }
 
-    getSceneWithConfigs () {
+    getSceneWithConfigs() {
         return {
             ...this.getScene(),
             configs: {
@@ -85,15 +85,15 @@ export class Scene extends EventEmitter {
         };
     }
 
-    getWidth () {
+    getWidth() {
         return this.width;
     }
 
-    getHeight () {
+    getHeight() {
         return this.height;
     }
 
-    getRoomId () {
+    getRoomId() {
         return this.roomId;
     }
 
@@ -102,7 +102,7 @@ export class Scene extends EventEmitter {
         const missiles = this.missilesCollection.getMissiles();
 
         // 1. КЭШИРОВАНИЕ: Считаем позиции врагов ОДИН раз за кадр
-        const cachedEnemies: CachedEnemy[] = enemies.map(enemy => {
+        const cachedEnemies:CachedEnemy[] = enemies.map(enemy => {
             const pos = calcTimedPoint(
                 enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
             );
@@ -128,7 +128,7 @@ export class Scene extends EventEmitter {
                 }
             }
 
-            let closestHitEnemy: CachedEnemy | null = null;
+            let closestHitEnemy:CachedEnemy | null = null;
             let minDistanceSq = Infinity;
 
             for (const cachedEnemy of cachedEnemies) {

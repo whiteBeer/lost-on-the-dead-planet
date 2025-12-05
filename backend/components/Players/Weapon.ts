@@ -1,11 +1,11 @@
 import { WEAPONS, WeaponConfig } from "../../configs/Weapons";
 
 export class Weapon {
-    public readonly id: string;
-    public readonly config: WeaponConfig;
+    public readonly id:string;
+    public readonly config:WeaponConfig;
 
     // Состояние
-    public ammo: number;
+    public ammo:number;
     public isReloading = false;
 
     // Разброс
@@ -14,9 +14,9 @@ export class Weapon {
 
     private nextShotAvailableTime = 0;
 
-    private reloadTimer: NodeJS.Timeout | null = null;
+    private reloadTimer:NodeJS.Timeout | null = null;
 
-    constructor(weaponId: string) {
+    constructor(weaponId:string) {
         this.id = weaponId;
         this.config = WEAPONS[weaponId];
 
@@ -27,7 +27,7 @@ export class Weapon {
         this.ammo = this.config.clipSize;
     }
 
-    public tryShoot(): boolean {
+    public tryShoot():boolean {
         const now = Date.now();
 
         if (this.isReloading || this.ammo <= 0) {
@@ -43,7 +43,7 @@ export class Weapon {
         return true;
     }
 
-    public applySpread(baseRotation: number): number {
+    public applySpread(baseRotation:number):number {
         const now = Date.now();
         const timeDelta = (now - this.lastShotTime) / 1000;
 
@@ -64,7 +64,7 @@ export class Weapon {
         return finalRotation;
     }
 
-    public reload(callback?: (ammo: number) => void): boolean {
+    public reload(callback?:(ammo:number) => void):boolean {
         if (this.ammo >= this.config.clipSize || this.isReloading) {
             return false;
         }

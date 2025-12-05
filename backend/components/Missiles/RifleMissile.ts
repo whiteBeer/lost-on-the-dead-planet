@@ -1,7 +1,7 @@
-import {Scene} from "../Scene";
-import {BaseMissile} from "./BaseMissile";
-import {MissileParams} from "../../types";
-import {WEAPONS} from "../../configs/Weapons";
+import { Scene } from "../Scene";
+import { BaseMissile } from "./BaseMissile";
+import { MissileParams } from "../../types";
+import { WEAPONS } from "../../configs/Weapons";
 
 export class RifleMissile extends BaseMissile {
 

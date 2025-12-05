@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { createServer } from "http";
-import express, {Express} from "express";
+import express, { Express } from "express";
 import { Server as SocketIOServer } from "socket.io";
 import { AppApiServer } from "./appApiServer";
 import { AppSocketServer } from "./appSocketServer";
@@ -10,13 +10,13 @@ import { EmitManager } from "./classes/EmitManager";
 dotenv.config();
 
 class Server {
-    private readonly httpServer: ReturnType<typeof createServer>;
-    private readonly app: Express;
-    private readonly io: SocketIOServer;
-    private readonly roomsManager: RoomsManager;
-    private readonly emitManager: EmitManager;
-    private readonly socketService: AppSocketServer;
-    private readonly apiService: AppApiServer;
+    private readonly httpServer:ReturnType<typeof createServer>;
+    private readonly app:Express;
+    private readonly io:SocketIOServer;
+    private readonly roomsManager:RoomsManager;
+    private readonly emitManager:EmitManager;
+    private readonly socketService:AppSocketServer;
+    private readonly apiService:AppApiServer;
 
     constructor() {
         // this is here because init order important
@@ -35,7 +35,7 @@ class Server {
         this.handleGlobalErrors();
     }
 
-    start(): void {
+    start():void {
         const PORT = process.env.APP_PORT || 3000;
         this.httpServer.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
@@ -44,7 +44,7 @@ class Server {
         process.on("SIGINT", () => this.shutdown("SIGINT"));
     }
 
-    private handleGlobalErrors(): void {
+    private handleGlobalErrors():void {
         process.on("uncaughtException", (err) => {
             console.error("Uncaught Exception:", err);
             this.shutdown("Uncaught Exception");
@@ -56,7 +56,7 @@ class Server {
         });
     }
 
-    private shutdown(signal: string): void {
+    private shutdown(signal:string):void {
         console.log(`Received ${signal}. Shutting down gracefully...`);
         this.httpServer.close(() => {
             console.log("Server closed");
