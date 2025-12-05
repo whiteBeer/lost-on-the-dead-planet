@@ -5,6 +5,8 @@ import { Control } from "./classes/Control";
 import { io, Socket } from "socket.io-client";
 import { BackendWeaponsConfig } from "./Types";
 import { getRoomId } from "../utils/getRoomId";
+import { Cursor } from "./classes/Cursor";
+import { Hud } from "./classes/Hud";
 
 export class App {
 
@@ -15,8 +17,11 @@ export class App {
 
     public $domEl:HTMLElement;
     public socket:Socket | null = null;
-    public scene:Scene | null = null;
     public weaponsConfig:BackendWeaponsConfig | null = null;
+
+    public scene:Scene | null = null;
+    private cursor:Cursor | null = null;
+    private hud:Hud | null = null;
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -29,7 +34,8 @@ export class App {
         const roomId = getRoomId();
         await this.pixiApp.init({
             background: "#1099aa",
-            resizeTo: window
+            resizeTo: window,
+            antialias: true
         });
 
         this.socket = io(this.backendUrl, {
@@ -43,18 +49,27 @@ export class App {
         }
 
         this.socket.on("connect", async () => {
-            await this.loadGameScene(roomId);
+            await this.loadGame(roomId);
         });
 
         this.isInitialized = true;
     }
 
-    private async loadGameScene(roomId:string) {
+    private async loadGame(roomId:string) {
         try {
             const { data: backendScene } = await axios.get(`${this.backendUrl}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
             this.control = new Control(this);
+
             this.scene = new Scene(this, backendScene);
+            this.pixiApp.stage.addChild(this.scene.getPixiObj());
+
+            const mePlayer = this.scene.getMePlayer();
+            this.cursor = new Cursor(this, mePlayer);
+            this.pixiApp.stage.addChild(this.cursor.getPixiObj());
+
+            this.hud = new Hud(this, mePlayer);
+            this.pixiApp.stage.addChild(this.hud.getPixiObj());
 
             this.pixiApp.ticker.add(this.gameLoop.bind(this));
         } catch (e) {
@@ -79,14 +94,12 @@ export class App {
 
         // Нормализация диагонального движения
         if (dx !== 0 || dy !== 0) {
-            // Если движемся по диагонали (dx и dy не 0), делим на корень из 2 (~1.41)
-            if (dx !== 0 && dy !== 0) {
-                const k = 0.7071; // 1 / Math.sqrt(2)
-                dx *= k;
-                dy *= k;
-            }
-            const moveX = dx * player.speedInSecond * deltaSec;
-            const moveY = dy * player.speedInSecond * deltaSec;
+            // Вычисляем длину вектора
+            const length = Math.sqrt(dx * dx + dy * dy);
+            dx /= length;
+            dy /= length;
+            const moveX = dx * player.getSpeed() * deltaSec;
+            const moveY = dy * player.getSpeed() * deltaSec;
             player.moveTo(player.x + moveX, player.y + moveY);
             this.scene.centerScene();
         }
@@ -129,8 +142,8 @@ export class App {
 
         // 6. ОБНОВЛЕНИЕ СУЩНОСТЕЙ
         player.weapon?.update(ticker.deltaMS);
-        this.scene.cursor?.update(mouseCoords);
-        this.scene.hud?.update();
+        this.cursor?.update(mouseCoords);
+        this.hud?.update();
     }
 
     addTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
@@ -139,18 +152,6 @@ export class App {
 
     removeTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
         this.pixiApp.ticker.remove(tickerFunc);
-    }
-
-    addToStage(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
-        if (this?.pixiApp?.stage) {
-            this.pixiApp.stage.addChild(pixiObj);
-        }
-    }
-
-    removeFromStage(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
-        if (this?.pixiApp?.stage) {
-            this.pixiApp.stage.removeChild(pixiObj);
-        }
     }
 
     getScreenWidth() {

@@ -41,14 +41,18 @@ export class Control {
             this._mouseMovement.y += e.movementY;
         };
         this._handlers.mousedown = (e) => {
-            this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
-            this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
-            this.isMousePressed = true;
+            if (e.button === 0) {
+                this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
+                this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
+                this.isMousePressed = true;
+            }
         };
         this._handlers.mouseup = (e) => {
-            this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
-            this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
-            this.isMousePressed = false;
+            if (e.button === 0) {
+                this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
+                this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
+                this.isMousePressed = false;
+            }
         };
         this._handlers.wheel = (e) => {
             this._scrollDelta += Math.sign(e.deltaY);

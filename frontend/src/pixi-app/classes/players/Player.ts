@@ -5,17 +5,18 @@ import { BackendPlayer, IMouseCoords } from "../../Types";
 
 export class Player {
 
-    app:App;
-    pixiObj:PIXI.Container<PIXI.ContainerChild>;
-    socketId = "";
+    public x = -1;
+    public y = -1;
+    public socketId = "";
+    public weapon:Weapon;
 
-    x = -1;
-    y = -1;
-    speedInSecond = 150;
-    length = 0;
-    width = 0;
-    rotation = 0;
-    weapon:Weapon;
+    private app:App;
+    private pixiObj:PIXI.Container<PIXI.ContainerChild>;
+
+    private speedInSecond = 150;
+    private length = 0;
+    private width = 0;
+    private rotation = 0;
 
     constructor(app:App, params:BackendPlayer) {
         this.app = app;
@@ -30,26 +31,7 @@ export class Player {
 
         this.update(params);
 
-        const scale = this.app.scene?.scale || 1;
-        const tx = this.app.scene?.tx || 0;
-        const ty = this.app.scene?.ty || 0;
-
-        const container = new PIXI.Container();
-        const rectangle = new PIXI.Graphics();
-        rectangle
-            .rect(0, 0, this.length, this.width)
-            .fill(params.color || "white");
-        const circle = new PIXI.Graphics();
-        circle.circle(this.length - 2, this.width / 2, 2).fill("white");
-        container.addChild(rectangle);
-        container.addChild(circle);
-
-        container.position.set(tx + this.x * scale, ty + this.y * scale);
-        container.pivot.x = container.width;
-        container.pivot.y = container.height / 2;
-        container.scale = scale;
-
-        this.pixiObj = container;
+        this.pixiObj = this.initGraphics(params);
     }
 
     update(params:BackendPlayer) {
@@ -65,31 +47,20 @@ export class Player {
         this.pixiObj.parent.removeChild(this.pixiObj);
     }
 
-    setColor(color:string) {
-        try {
-            this.pixiObj.getChildAt<PIXI.Graphics>(0)
-                .clear()
-                .rect(0, 0, this.length, this.width)
-                .fill(color);
-        } catch (e) {
-            console.log(e);
-        }
-    }
-
-    hide() {
-        this.pixiObj.visible = false;
-    }
-
-    show() {
-        this.pixiObj.visible = true;
-    }
-
     fire() {
         this.weapon.fire();
     }
 
     reload() {
         this.weapon.reload();
+    }
+
+    getPixiObj(){
+        return this.pixiObj;
+    }
+
+    getSpeed() {
+        return this.speedInSecond;
     }
 
     getCoords() {
@@ -100,15 +71,23 @@ export class Player {
         };
     }
 
-    moveTo(x:number, y:number, rotation:number | null = null) {
+    getStageCoords() {
         const scale = this.app.scene?.scale || 1;
         const tx = this.app.scene?.tx || 0;
         const ty = this.app.scene?.ty || 0;
+        return {
+            pageX: this.x * scale + tx,
+            pageY: this.y * scale + ty,
+            rotation: this.rotation
+        };
+    }
+
+    moveTo(x:number, y:number, rotation:number | null = null) {
         if (this.pixiObj && this.app.scene) {
             this.x = x;
             this.y = y;
-            this.pixiObj.x = tx + x * scale;
-            this.pixiObj.y = ty + y * scale;
+            this.pixiObj.x = x;
+            this.pixiObj.y = y;
             if (rotation !== null) {
                 this.rotation = rotation;
                 if (this.pixiObj) {
@@ -121,9 +100,10 @@ export class Player {
     // Возвращает isRotationChanged
     refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
+            const stageCoords = this.getStageCoords();
             const oldRotation = this.rotation;
-            const diffX = mouseCoords.pageX - this.pixiObj.x;
-            const diffY = mouseCoords.pageY - this.pixiObj.y;
+            const diffX = mouseCoords.pageX - stageCoords.pageX;
+            const diffY = mouseCoords.pageY - stageCoords.pageY;
             const rotation = Math.PI + Math.atan2(diffY, diffX);
             this.rotation = rotation;
             if (this.pixiObj) {
@@ -133,6 +113,24 @@ export class Player {
         } catch (e) {
             console.log(e);
         }
+    }
+
+    private initGraphics(params:BackendPlayer) {
+        const container = new PIXI.Container();
+        const rectangle = new PIXI.Graphics();
+        rectangle
+            .rect(0, 0, this.length, this.width)
+            .fill(params.color || "white");
+        const circle = new PIXI.Graphics();
+        circle.circle(this.length - 2, this.width / 2, 2).fill("white");
+        container.addChild(rectangle);
+        container.addChild(circle);
+
+        container.position.set(this.x, this.y);
+        container.pivot.x = container.width;
+        container.pivot.y = container.height / 2;
+
+        return container;
     }
 }
 

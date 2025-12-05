@@ -19,9 +19,12 @@ export class Hud {
             }
         });
         this.ammoText.anchor.set(1, 0); // Anchor to top-right
-        this.ammoText.x = this.app.pixiApp.screen.width - 20;
+        this.ammoText.x = this.app.getScreenWidth() - 20;
         this.ammoText.y = 20;
-        this.app.pixiApp.stage.addChild(this.ammoText);
+    }
+
+    public getPixiObj() {
+        return this.ammoText;
     }
 
     public update():void {

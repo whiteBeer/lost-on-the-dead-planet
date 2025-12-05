@@ -1,3 +1,4 @@
+import { Scene } from "../Scene";
 import { App } from "../../App";
 import { BackendPlayer } from "../../Types";
 import Player from "./Player";
@@ -14,11 +15,13 @@ interface IPlayerReloadEvent {
 export class PlayersCollection {
 
     app:App;
+    scene:Scene;
 
     players:Player[] = [];
 
-    constructor(app:App) {
+    constructor(app:App, scene:Scene) {
         this.app = app;
+        this.scene = scene;
 
         this.app.socket?.on("playersUpdated", (backendPlayers:BackendPlayer[]) => {
             this.updatePlayers(backendPlayers);
@@ -66,7 +69,7 @@ export class PlayersCollection {
     addPlayer(params:BackendPlayer):Player {
         const player = new Player(this.app, params);
         this.players.push(player);
-        this.app.addToStage(player.pixiObj);
+        this.scene.addToScene(player.getPixiObj());
         return player;
     }
 

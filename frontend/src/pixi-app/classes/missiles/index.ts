@@ -1,3 +1,4 @@
+import { Scene } from "../Scene";
 import { Missile } from "./Missile";
 import { App } from "../../App";
 import { BackendScene, BackendMissile } from "../../Types";
@@ -10,10 +11,12 @@ interface IBackendMissileSocket {
 export class MissilesCollection {
 
     app:App;
+    scene:Scene;
     missiles:Missile[] = [];
 
-    constructor(app:App, backendScene:BackendScene) {
+    constructor(app:App, scene:Scene, backendScene:BackendScene) {
         this.app = app;
+        this.scene = scene;
 
         backendScene.missiles.forEach((el:BackendMissile) => {
             this.createMissile(el, backendScene.serverCurrentDateTime);
@@ -22,7 +25,8 @@ export class MissilesCollection {
         this.app.socket?.on("missilesRemoved", (mObj:IBackendMissileSocket) => {
             const existMissile = this.missiles.find(el => el.getId() === mObj.missile.id);
             if (existMissile) {
-                existMissile.remove();
+                existMissile.clear();
+                this.scene.removeFromScene(existMissile.getPixiObj());
                 this.missiles = this.missiles.filter(el => el.getId() !== mObj.missile.id);
             }
         });
@@ -37,6 +41,8 @@ export class MissilesCollection {
     }
 
     createMissile(params:BackendMissile, serverCurrentDateTime:string) {
-        this.missiles.push(new Missile(this.app, params, serverCurrentDateTime));
+        const missile = new Missile(this.app, params, serverCurrentDateTime);
+        this.missiles.push(missile);
+        this.scene.addToScene(missile.getPixiObj());
     }
 }

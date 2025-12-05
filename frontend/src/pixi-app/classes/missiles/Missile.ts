@@ -1,12 +1,11 @@
 import * as PIXI from "pixi.js";
 import { App } from "../../App";
-import { BackendMissile } from "../../Types";
+import {BackendMissile, BackendPlayer} from "../../Types";
 
 export class Missile {
 
-    // ЛОГИЧЕСКИЕ координаты (в игровом мире)
-    x = -1;
-    y = -1;
+    public x = -1;
+    public y = -1;
 
     private app:App;
     private pixiObj:PIXI.Container<PIXI.ContainerChild>;
@@ -33,8 +32,7 @@ export class Missile {
         const startX = params.startX;
         const startY = params.startY;
 
-        this.pixiObj = this.createGraphics();
-        this.app.addToStage(this.pixiObj);
+        this.pixiObj = this.initGraphics();
 
         const dirCos = Math.cos(params.rotation);
         const dirSin = Math.sin(params.rotation);
@@ -42,7 +40,6 @@ export class Missile {
         const serverTime = new Date(serverCurrentDateTime).getTime();
         const createTime = new Date(params.createdAt).getTime();
 
-        // Защита от отрицательного времени (если часы рассинхронены)
         const dTimeSeconds = Math.max(0, (serverTime - createTime) / 1000);
 
         this.x = startX + (-dirCos * this.speedInSecond * dTimeSeconds);
@@ -51,11 +48,14 @@ export class Missile {
         this.dx = -dirCos * (this.speedInSecond / 60);
         this.dy = -dirSin * (this.speedInSecond / 60);
 
-        // 3. Синхронизируем визуальную часть первый раз
         this.updateVisuals();
 
         this.tickerFunc = this.moveMissile.bind(this);
         this.app.addTicker(this.tickerFunc);
+    }
+
+    getPixiObj() {
+        return this.pixiObj;
     }
 
     getId() {
@@ -66,7 +66,12 @@ export class Missile {
         return this.ownerId;
     }
 
-    moveMissile(ticker:PIXI.Ticker) {
+    clear() {
+        this.app.removeTicker(this.tickerFunc);
+        this.pixiObj.destroy({ children: true });
+    }
+
+    private moveMissile(ticker:PIXI.Ticker) {
         if (!this.pixiObj || this.pixiObj.destroyed) {
             return;
         }
@@ -76,13 +81,7 @@ export class Missile {
         this.updateVisuals();
     }
 
-    remove() {
-        this.app.removeFromStage(this.pixiObj);
-        this.app.removeTicker(this.tickerFunc);
-        this.pixiObj.destroy({ children: true });
-    }
-
-    private createGraphics():PIXI.Container {
+    private initGraphics():PIXI.Container {
         const container = new PIXI.Container();
         const circle = new PIXI.Graphics();
 
@@ -93,15 +92,9 @@ export class Missile {
     }
 
     private updateVisuals() {
-        const scene = this.app.scene;
-        const scale = scene?.scale || 1;
-        const tx = scene?.tx || 0;
-        const ty = scene?.ty || 0;
-
         this.pixiObj.position.set(
-            tx + this.x * scale,
-            ty + this.y * scale
+            this.x,
+            this.y
         );
-        this.pixiObj.scale.set(scale);
     }
 }

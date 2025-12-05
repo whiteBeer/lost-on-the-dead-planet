@@ -45,6 +45,7 @@ export class Scene extends EventEmitter {
     }
 
     private update () {
+        // TODO: add enemy vs player collisions
         this.verifyEnemyMissileCollisions();
     }
 

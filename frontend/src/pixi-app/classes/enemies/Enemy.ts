@@ -28,7 +28,7 @@ export class Enemy {
         this.health = enemyJson.health;
         this.maxHealth = enemyJson.maxHealth;
 
-        this.pixiObj = this.createGraphics(enemyJson);
+        this.pixiObj = this.initGraphics(enemyJson);
         this.update(enemyJson, serverCurrentDateTime);
         this.tickerFunc = this.moveEnemy.bind(this);
         this.app.addTicker(this.tickerFunc);
@@ -38,8 +38,8 @@ export class Enemy {
         return this.id;
     }
 
-    addToStage() {
-        this.app.addToStage(this.pixiObj);
+    getPixiObj() {
+        return this.pixiObj;
     }
 
     update(enemyJson:BackendEnemy, serverCurrentDateTime:string) {
@@ -67,8 +67,7 @@ export class Enemy {
         this.updateVisuals();
     }
 
-    remove() {
-        this.app.removeFromStage(this.pixiObj);
+    clear() {
         this.app.removeTicker(this.tickerFunc);
         this.pixiObj.destroy({ children: true });
     }
@@ -85,7 +84,7 @@ export class Enemy {
         this.pixiObj.alpha = Math.max(0.2, this.health / this.maxHealth);
     }
 
-    private createGraphics(json:BackendEnemy):PIXI.Container {
+    private initGraphics(json:BackendEnemy):PIXI.Container {
         const container = new PIXI.Container();
 
         const rectangle = new PIXI.Graphics();
@@ -103,17 +102,7 @@ export class Enemy {
     }
 
     private updateVisuals() {
-        const scene = this.app.scene;
-        // Защита, если сцена еще не прогрузилась
-        const scale = scene?.scale || 1;
-        const tx = scene?.tx || 0;
-        const ty = scene?.ty || 0;
-
-        this.pixiObj.position.set(
-            tx + this.x * scale,
-            ty + this.y * scale
-        );
-        this.pixiObj.scale.set(scale); // Зум врага тоже меняется!
+        this.pixiObj.position.set(this.x, this.y);
     }
 }
 

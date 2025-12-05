@@ -5,15 +5,11 @@ import { EnemiesCollection } from "./enemies";
 import { MissilesCollection } from "./missiles";
 import { App } from "../App";
 import { BackendScene } from "../Types";
-import { Cursor } from "./Cursor";
-import { Hud } from "./Hud";
 
 export class Scene {
 
     app:App;
     pixiObj:PIXI.Container<PIXI.ContainerChild>;
-    cursor:Cursor;
-    hud:Hud;
 
     width:number;
     height:number;
@@ -34,42 +30,15 @@ export class Scene {
         this.width = backendScene.width;
         this.height = backendScene.height;
 
-        this.playersCollection = new PlayersCollection(app);
-        this.enemiesCollection = new EnemiesCollection(app, backendScene);
-        this.missilesCollection = new MissilesCollection(app, backendScene);
+        this.pixiObj = this.initGraphics();
 
-        const container = new PIXI.Container();
-        const rect = new PIXI.Graphics();
-        rect.rect(0, 0, this.width, this.height);
-        rect.stroke({ color: "0xFFF", width: 4 });
-        rect.fill("#1099bb");
-        container.addChild(rect);
-        for (let i = 100; i < this.width; i += 100) {
-            const coordsLine = new PIXI.Graphics();
-            coordsLine.moveTo(i, 0).lineTo(i, this.height);
-            coordsLine.stroke({ color: "0xFFF", width: 1 });
-            container.addChild(coordsLine);
-        }
-        for (let i = 100; i < this.height; i += 100) {
-            const coordsLine = new PIXI.Graphics();
-            coordsLine.moveTo(0, i).lineTo(this.width, i);
-            coordsLine.stroke({ color: "0xFFF", width: 1 });
-            container.addChild(coordsLine);
-        }
-        this.tx = window.innerWidth / 2 - this.width / 2;
-        this.ty = window.innerHeight / 2 - this.height / 2;
-        container.x = this.tx;
-        container.y = this.ty;
-        container._zIndex = -1;
-
-        this.pixiObj = container;
-        this.app.addToStage(this.pixiObj);
+        this.playersCollection = new PlayersCollection(app, this);
+        this.enemiesCollection = new EnemiesCollection(app, this, backendScene);
+        this.missilesCollection = new MissilesCollection(app, this, backendScene);
 
         const mePlayer = this.playersCollection.initPlayers(backendScene.players);
         if (mePlayer) {
             this.setMePlayer(mePlayer);
-            this.cursor = new Cursor(this.app, mePlayer);
-            this.hud = new Hud(this.app, mePlayer);
         } else {
             throw new Error("Me player not found");
         }
@@ -80,9 +49,37 @@ export class Scene {
         });
     }
 
+    getPixiObj() {
+        return this.pixiObj;
+    }
+
+    addToScene(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
+        if (this?.pixiObj) {
+            this.pixiObj.addChild(pixiObj);
+        } else {
+            throw new Error("Scene graphics is not initialized.");
+        }
+    }
+
+    removeFromScene(pixiObj:PIXI.Container<PIXI.ContainerChild>) {
+        if (this?.pixiObj) {
+            this.pixiObj.removeChild(pixiObj);
+        } else {
+            throw new Error("Scene graphics is not initialized.");
+        }
+    }
+
     setMePlayer(mePlayer:Player) {
         this.mePlayer = mePlayer;
         this.centerScene();
+    }
+
+    getMePlayer() {
+        if (this.mePlayer) {
+            return this.mePlayer;
+        } else {
+            throw new Error("Me player not found");
+        }
     }
 
     incrementTxTy(dtx:number, dty:number) {
@@ -118,24 +115,36 @@ export class Scene {
     }
 
     updateScene() {
-        // TODO: need to use "worldContainer" (gemini recommendations)
         this.pixiObj.scale = this.scale;
         this.pixiObj.x = this.tx;
         this.pixiObj.y = this.ty;
-        this.playersCollection.getPlayers().forEach((el) => {
-            el.pixiObj.scale = this.scale;
-            el.pixiObj.x = this.tx + el.x * this.scale;
-            el.pixiObj.y = this.ty + el.y * this.scale;
-        });
-        this.missilesCollection.getMissiles().forEach((el) => {
-            el.pixiObj.scale = this.scale;
-            el.pixiObj.x = this.tx + el.x * this.scale;
-            el.pixiObj.y = this.ty + el.y * this.scale;
-        });
-        this.enemiesCollection.getEnemies().forEach((el) => {
-            el.pixiObj.scale = this.scale;
-            el.pixiObj.x = this.tx + el.x * this.scale;
-            el.pixiObj.y = this.ty + el.y * this.scale;
-        });
+    }
+
+    private initGraphics() {
+        const container = new PIXI.Container();
+        const rect = new PIXI.Graphics();
+        rect.rect(0, 0, this.width, this.height);
+        rect.stroke({ color: "0xFFF", width: 4 });
+        rect.fill("#1099bb");
+        container.addChild(rect);
+        for (let i = 100; i < this.width; i += 100) {
+            const coordsLine = new PIXI.Graphics();
+            coordsLine.moveTo(i, 0).lineTo(i, this.height);
+            coordsLine.stroke({ color: "0xFFF", width: 1 });
+            container.addChild(coordsLine);
+        }
+        for (let i = 100; i < this.height; i += 100) {
+            const coordsLine = new PIXI.Graphics();
+            coordsLine.moveTo(0, i).lineTo(this.width, i);
+            coordsLine.stroke({ color: "0xFFF", width: 1 });
+            container.addChild(coordsLine);
+        }
+        this.tx = window.innerWidth / 2 - this.width / 2;
+        this.ty = window.innerHeight / 2 - this.height / 2;
+        container.x = this.tx;
+        container.y = this.ty;
+        container._zIndex = -1;
+
+        return container;
     }
 }

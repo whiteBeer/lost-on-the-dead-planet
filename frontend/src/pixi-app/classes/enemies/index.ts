@@ -1,3 +1,4 @@
+import { Scene } from "../Scene";
 import { Enemy } from "./Enemy";
 import { App } from "../../App";
 import { BackendScene, BackendEnemy } from "../../Types";
@@ -10,11 +11,13 @@ interface IBackendEnemyUpdatedSocket {
 export class EnemiesCollection {
 
     app:App;
+    scene:Scene;
     socket = null;
     enemies:Enemy[] = [];
 
-    constructor(app:App, backendScene:BackendScene) {
+    constructor(app:App, scene:Scene, backendScene:BackendScene) {
         this.app = app;
+        this.scene = scene;
 
         this.enemiesFromBackendScene(backendScene);
 
@@ -28,7 +31,8 @@ export class EnemiesCollection {
         this.app.socket?.on("enemiesRemoved", (beObj:IBackendEnemyUpdatedSocket) => {
             const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
             if (existEnemy) {
-                existEnemy.remove();
+                existEnemy.clear();
+                this.scene.removeFromScene(existEnemy.getPixiObj());
                 this.enemies = this.enemies.filter(el => el.getId() !== beObj.enemy.id);
             }
         });
@@ -43,13 +47,14 @@ export class EnemiesCollection {
 
     enemiesFromBackendScene(backendScene:BackendScene) {
         this.enemies.forEach(el => {
-            el.remove();
+            el.clear();
+            this.scene.removeFromScene(el.getPixiObj());
         });
         this.enemies = [];
         backendScene.enemies.forEach((el:BackendEnemy) => {
             const enemy = new Enemy(this.app, el, backendScene.serverCurrentDateTime);
             this.enemies.push(enemy);
-            enemy.addToStage();
+            this.scene.addToScene(enemy.getPixiObj());
         });
     }
 
