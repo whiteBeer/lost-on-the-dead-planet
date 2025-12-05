@@ -52,7 +52,9 @@ export class AppApiServer {
                 "enemiesRemoved",
                 "enemiesDamaged",
                 "missilesAdded",
-                "missilesRemoved"
+                "missilesRemoved",
+                "playersDamaged",
+                "playersDied"
             ];
             sceneEvents.forEach((sceneEvent) => {
                 scene.on(sceneEvent, (data) => {

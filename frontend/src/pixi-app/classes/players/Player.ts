@@ -16,7 +16,11 @@ export class Player {
     private speedInSecond = 150;
     private length = 0;
     private width = 0;
+    private radius = 0;
     private rotation = 0;
+
+    private health = 0;
+    private maxHealth = 0;
 
     constructor(app:App, params:BackendPlayer) {
         this.app = app;
@@ -37,14 +41,31 @@ export class Player {
     update(params:BackendPlayer) {
         this.x = params.pageX;
         this.y = params.pageY;
+        this.health = params.health;
+        this.maxHealth = params.maxHealth;
         this.length = params.length;
         this.width = params.width;
+        this.radius = params.radius;
         this.rotation = params.rotation;
+        this.setHealth(this.health);
         this.weapon.updateState(params.weapon);
+    }
+
+    setHealth(health:number) {
+        this.health = health;
+        this.pixiObj.alpha = Math.max(0.2, this.health / this.maxHealth);
     }
 
     remove() {
         this.pixiObj.parent.removeChild(this.pixiObj);
+    }
+
+    hide() {
+        this.pixiObj.visible = false;
+    }
+
+    show() {
+        this.pixiObj.visible = true;
     }
 
     fire() {
@@ -119,16 +140,20 @@ export class Player {
         const container = new PIXI.Container();
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect(0, 0, this.length, this.width)
+            .rect(-this.length/2, -this.width/2, this.length, this.width)
             .fill(params.color || "white");
         const circle = new PIXI.Graphics();
-        circle.circle(this.length - 2, this.width / 2, 2).fill("white");
+        circle.circle(-this.length/2, 0, 2).fill("white");
         container.addChild(rectangle);
         container.addChild(circle);
 
+        const hitCircle = new PIXI.Graphics();
+        hitCircle.circle(0, 0, this.radius).stroke("white");
+        container.addChild(hitCircle);
+
         container.position.set(this.x, this.y);
-        container.pivot.x = container.width;
-        container.pivot.y = container.height / 2;
+        container.pivot.x = 0;
+        container.pivot.y = 0;
 
         return container;
     }

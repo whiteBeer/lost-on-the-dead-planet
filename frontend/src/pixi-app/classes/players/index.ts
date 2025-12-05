@@ -3,13 +3,30 @@ import { App } from "../../App";
 import { BackendPlayer } from "../../Types";
 import Player from "./Player";
 
-interface IPlayerDisconnected {
+interface IPlayerDisconnectedEvent {
     socketId:string;
 }
 
-interface IPlayerReloadEvent {
+interface IPlayerReloadStartedEvent {
+    socketId:string;
+    duration:number;
+}
+
+interface IPlayerReloadFinishedEvent {
     socketId:string;
     newAmmo:number;
+}
+
+interface IPlayerDamagedEvent {
+    socketId:string,
+    health:number,
+    maxHealth:number,
+    damage:number
+}
+
+interface IPlayerDiedEvent {
+    socketId:string,
+    killedBy:string
 }
 
 export class PlayersCollection {
@@ -27,7 +44,7 @@ export class PlayersCollection {
             this.updatePlayers(backendPlayers);
         });
 
-        this.app.socket?.on("playerMoved", (params:BackendPlayer) => {
+        this.app.socket?.on("playersMoved", (params:BackendPlayer) => {
             if (params.socketId !== this.app.socket?.id) {
                 const player = this.findPlayer(params.socketId);
                 if (player) {
@@ -38,7 +55,25 @@ export class PlayersCollection {
             }
         });
 
-        this.app.socket?.on("playerDisconnected", (params:IPlayerDisconnected) => {
+        this.app.socket?.on("playersDamaged", (params:IPlayerDamagedEvent) => {
+            const player = this.findPlayer(params.socketId);
+            if (player) {
+                player.setHealth(params.health);
+            }
+        });
+
+        this.app.socket?.on("playersDied", (params:IPlayerDiedEvent) => {
+            const player = this.findPlayer(params.socketId);
+            if (player) {
+                player.hide();
+                if (params.socketId === this.app.socket?.id) {
+                    alert("You died.");
+                    this.app.meDied();
+                }
+            }
+        });
+
+        this.app.socket?.on("playersDisconnected", (params:IPlayerDisconnectedEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player) {
                 player.remove();
@@ -46,14 +81,14 @@ export class PlayersCollection {
             }
         });
 
-        this.app.socket?.on("playersReloadStarted", (params:IPlayerReloadEvent) => {
+        this.app.socket?.on("playersReloadStarted", (params:IPlayerReloadStartedEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player && player.socketId === this.app.socket?.id) {
                 player.weapon.isReloading = true;
             }
         });
 
-        this.app.socket?.on("playersReloadFinished", (params:IPlayerReloadEvent) => {
+        this.app.socket?.on("playersReloadFinished", (params:IPlayerReloadFinishedEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player && player.socketId === this.app.socket?.id) {
                 player.weapon.ammo = params.newAmmo;

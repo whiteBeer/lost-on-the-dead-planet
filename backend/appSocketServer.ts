@@ -78,7 +78,7 @@ export class AppSocketServer {
     private handlePlayerMoved(socket:Socket, roomId:string, scenePlayers:any, params:PlayerJSON):void {
         const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
         if (currentPlayerIndex !== -1) {
-            this.emitToRoom(roomId, "playerMoved", scenePlayers.getPlayersJSON()[currentPlayerIndex]);
+            this.emitToRoom(roomId, "playersMoved", scenePlayers.getPlayersJSON()[currentPlayerIndex]);
         }
     }
 
@@ -109,7 +109,7 @@ export class AppSocketServer {
 
     private handlePlayerDisconnect(socket:Socket, roomId:string, scenePlayers:any):void {
         scenePlayers.deletePlayer(socket.id);
-        this.emitToRoom(roomId, "playerDisconnected", { socketId: socket.id });
+        this.emitToRoom(roomId, "playersDisconnected", { socketId: socket.id });
         console.log("Disconnected ", socket.id);
 
         if (scenePlayers.getPlayers().length === 0) {

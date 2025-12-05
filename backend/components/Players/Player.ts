@@ -9,6 +9,11 @@ export class Player {
     public rotation:number;
     public width:number;
     public length:number;
+    public radius:number;
+
+    public health = PLAYER_CONFIG.defaultHealth;
+    public maxHealth = PLAYER_CONFIG.defaultHealth;
+    public isDead = false;
 
     public weapon:Weapon;
 
@@ -20,8 +25,25 @@ export class Player {
         this.rotation = 0;
         this.width = PLAYER_CONFIG.width;
         this.length = PLAYER_CONFIG.length;
+        this.radius = PLAYER_CONFIG.radius;
 
         this.weapon = new Weapon("Rifle");
+    }
+
+    public takeDamage(amount:number):boolean {
+        if (this.isDead) return false;
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isDead = true;
+            return true;
+        }
+        return false;
+    }
+
+    public respawn() {
+        this.health = this.maxHealth;
+        this.isDead = false;
     }
 
     public destroy() {

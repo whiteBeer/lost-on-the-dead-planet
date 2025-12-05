@@ -44,4 +44,8 @@ export class Cursor {
             this.pixiObj.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
         }
     }
+
+    public destroy() {
+        this.pixiObj.destroy({ children: true });
+    }
 }

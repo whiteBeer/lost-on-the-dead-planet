@@ -24,6 +24,9 @@ export interface BackendPlayer {
     color:string;
     length:number;
     width:number;
+    radius:number,
+    health:number;
+    maxHealth:number;
     rotation:number;
     pageX:number;
     pageY:number;

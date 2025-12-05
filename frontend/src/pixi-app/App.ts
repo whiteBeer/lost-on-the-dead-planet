@@ -55,25 +55,48 @@ export class App {
         this.isInitialized = true;
     }
 
+    // TODO:
+    public meDied() {
+        this.control?.destroy();
+        this.cursor?.destroy();
+        this.hud?.destroy();
+        this.control = null;
+        this.cursor = null;
+        this.hud = null;
+    }
+
+    public meRespawn() {
+        if (!this.control) {
+            this.loadPlayer();
+        }
+    }
+
     private async loadGame(roomId:string) {
         try {
             const { data: backendScene } = await axios.get(`${this.backendUrl}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
-            this.control = new Control(this);
 
             this.scene = new Scene(this, backendScene);
             this.pixiApp.stage.addChild(this.scene.getPixiObj());
 
-            const mePlayer = this.scene.getMePlayer();
+            this.loadPlayer();
+
+            this.pixiApp.ticker.add(this.gameLoop.bind(this));
+        } catch (e) {
+            console.error("Failed to load scene:", e);
+        }
+    }
+
+    private loadPlayer() {
+        this.control = new Control(this);
+        const mePlayer = this.scene?.getMePlayer();
+        if (mePlayer) {
+            this.scene?.mePlayer?.show();
             this.cursor = new Cursor(this, mePlayer);
             this.pixiApp.stage.addChild(this.cursor.getPixiObj());
 
             this.hud = new Hud(this, mePlayer);
             this.pixiApp.stage.addChild(this.hud.getPixiObj());
-
-            this.pixiApp.ticker.add(this.gameLoop.bind(this));
-        } catch (e) {
-            console.error("Failed to load scene:", e);
         }
     }
 

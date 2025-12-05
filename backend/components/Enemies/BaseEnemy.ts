@@ -15,11 +15,17 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     length = -1;
     width = -1;
     rotation = 0;
+    defaultSpeedInSecond = 0;
     speedInSecond = 0;
     startX:number;
     startY:number;
     createdAt:string;
     updatedAt:string;
+
+    // Параметры атаки
+    public damageValue = 0;
+    public attackInterval = 1000;
+    private lastAttackTime = 0;
 
     constructor(scene:Scene, params:EnemyParams) {
         this.scene = scene;
@@ -29,6 +35,16 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         this.startY = params.startY;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
+    }
+
+    canAttack() {
+        const now = Date.now();
+        const cooldownMs = this.attackInterval;
+        return now - this.lastAttackTime >= cooldownMs;
+    }
+
+    attack() {
+        this.lastAttackTime = Date.now();
     }
 
     damage(missileDamage:number) {

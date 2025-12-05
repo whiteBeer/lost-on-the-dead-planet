@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { App as PixiAPP } from "../../../pixi-app/App";
 import axios from "axios";
 import styles from "./index.module.css";
@@ -12,14 +12,18 @@ function Room() {
 
     const router = useRouter();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    let app:PixiAPP;
+    const appRef = useRef<PixiAPP | null>(null);
 
     const mainMenu = async () => {
+        appRef.current && appRef.current.destroy();
         router.push("/");
     };
 
     const newGame = async () => {
         await axios.put(backendUrl + "/api/rooms/" + getRoomId() + "/new-game");
+        setTimeout(() => {
+            appRef.current?.meRespawn();
+        }, 500);
     };
 
     const addZombie = async () => {
@@ -40,13 +44,13 @@ function Room() {
         (async () => {
             const $el = document?.getElementById("game");
             if ($el) {
-                app = new PixiAPP($el);
-                await app.init();
-                $el.appendChild(app.getView());
+                appRef.current = new PixiAPP($el);
+                await appRef.current.init();
+                $el.appendChild(appRef.current.getView());
             }
         })();
         return () => {
-            app && app.destroy();
+            appRef.current && appRef.current.destroy();
         };
     }, []);
 

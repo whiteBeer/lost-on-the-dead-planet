@@ -105,3 +105,40 @@ export function getRectangleVertices(
         };
     });
 }
+
+/**
+ * Проверяет пересечение Круга и Повернутого Прямоугольника
+ */
+export function checkCircleRotatedRectangleCollision(
+    circle:{ x:number; y:number; radius:number },
+    rect:{ x:number; y:number; width:number; length:number; rotation:number }
+):boolean {
+    // 1. Переводим координаты круга в локальную систему координат прямоугольника
+    // (Сдвигаем так, чтобы центр прямоугольника был в 0,0)
+    const distX = circle.x - rect.x;
+    const distY = circle.y - rect.y;
+
+    // 2. Поворачиваем координаты круга в обратную сторону от вращения прямоугольника
+    // Чтобы прямоугольник стал "ровным" (axis-aligned)
+    const cos = Math.cos(-rect.rotation);
+    const sin = Math.sin(-rect.rotation);
+
+    const localX = distX * cos - distY * sin;
+    const localY = distX * sin + distY * cos;
+
+    // 3. Находим ближайшую точку на прямоугольнике к центру круга
+    // Прямоугольник теперь отцентрирован в 0,0, его границы: [-w/2, w/2] и [-h/2, h/2]
+    const halfWidth = rect.width / 2;
+    const halfHeight = rect.length / 2;
+
+    const closestX = Math.max(-halfWidth, Math.min(halfWidth, localX));
+    const closestY = Math.max(-halfHeight, Math.min(halfHeight, localY));
+
+    // 4. Проверяем расстояние от этой точки до центра круга (в локальных координатах)
+    const distanceX = localX - closestX;
+    const distanceY = localY - closestY;
+
+    const distanceSq = (distanceX * distanceX) + (distanceY * distanceY);
+
+    return distanceSq < (circle.radius * circle.radius);
+}

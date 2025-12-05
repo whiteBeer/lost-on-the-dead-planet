@@ -14,9 +14,13 @@ export interface PlayerJSON {
     color:string,
     length:number,
     width:number,
+    radius:number,
     rotation:number,
     pageX:number,
-    pageY:number
+    pageY:number,
+    health:number,
+    maxHealth:number,
+    isDead:boolean,
     weapon:{
         id:string,
         ammo:number,

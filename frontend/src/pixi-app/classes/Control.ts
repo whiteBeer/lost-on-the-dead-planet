@@ -21,12 +21,13 @@ export class Control {
         this.initListeners();
     }
 
+    private clearKeys() {
+        Object.keys(this.keys).forEach(key => {
+            this.keys[key] = false;
+        });
+    }
+
     private initListeners() {
-        const clearKeys = () => {
-            Object.keys(this.keys).forEach(key => {
-                this.keys[key] = false;
-            });
-        };
 
         this._handlers.keydown = (e) => {
             this.keys["is" + e.code] = true;
@@ -59,11 +60,11 @@ export class Control {
         };
         this._handlers.contextmenu = (e) => {
             e.preventDefault();
-            clearKeys.call(this);
+            this.clearKeys.call(this);
         };
 
         this._handlers.blur = () => {
-            clearKeys.call(this);
+            this.clearKeys.call(this);
         };
 
         window.addEventListener("keydown", this._handlers.keydown);
@@ -113,6 +114,7 @@ export class Control {
     }
 
     public destroy() {
+        this.clearKeys.call(this);
         window.removeEventListener("keydown", this._handlers.keydown);
         window.removeEventListener("keyup", this._handlers.keyup);
         document.removeEventListener("mousemove", this._handlers.mousemove);

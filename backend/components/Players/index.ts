@@ -17,6 +17,10 @@ export class Players {
         return this.players;
     }
 
+    getLivePlayers() {
+        return this.players.filter((el) => !el.isDead);
+    }
+
     getPlayersJSON():PlayerJSON[] {
         return this.players.map(el => el.toJSON());
     }

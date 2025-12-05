@@ -5,6 +5,8 @@ import Player from "./players/Player";
 export class Hud {
     private readonly app:App;
     private readonly mePlayer:Player;
+
+    private pixiObj:PIXI.Container;
     private readonly ammoText:PIXI.Text;
 
     constructor(app:App, mePlayer:Player) {
@@ -19,12 +21,14 @@ export class Hud {
             }
         });
         this.ammoText.anchor.set(1, 0); // Anchor to top-right
-        this.ammoText.x = this.app.getScreenWidth() - 20;
-        this.ammoText.y = 20;
+        this.pixiObj = new PIXI.Container();
+        this.pixiObj.x = this.app.getScreenWidth() - 20;
+        this.pixiObj.y = 20;
+        this.pixiObj.addChild(this.ammoText);
     }
 
     public getPixiObj() {
-        return this.ammoText;
+        return this.pixiObj;
     }
 
     public update():void {
@@ -41,5 +45,9 @@ export class Hud {
         } else {
             this.ammoText.text = "Ammo: --/--";
         }
+    }
+
+    public destroy() {
+        this.pixiObj.destroy({ children: true });
     }
 }
