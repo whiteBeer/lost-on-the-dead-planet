@@ -3,8 +3,6 @@ export const PLAYER_COLORS = [
 ];
 
 export const PLAYER_CONFIG = {
-    width: 26,
-    length: 40,
     radius: 13,
     defaultHealth: 100
 };

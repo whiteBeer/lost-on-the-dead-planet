@@ -5,15 +5,13 @@ export interface Coords {
 
 export interface Rectangle {
     width:number,
-    length:number,
+    height:number,
     rotation:number
 }
 
 export interface PlayerJSON {
     socketId:string,
     color:string,
-    length:number,
-    width:number,
     radius:number,
     rotation:number,
     pageX:number,
@@ -31,11 +29,12 @@ export interface PlayerJSON {
 
 export interface EnemyJSON {
     id:string,
+    type:string;
     color:string,
     health:number,
     maxHealth:number,
-    length:number,
     width:number,
+    height:number,
     speedInSecond:number,
     rotation:number,
     startX:number,

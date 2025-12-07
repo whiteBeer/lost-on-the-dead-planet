@@ -6,17 +6,20 @@ import { ENEMIES } from "../../configs/Enemies";
 
 export class Zombie extends BaseEnemy {
 
+    type = "zombie";
+
     moveInterval:NodeJS.Timeout | null = null;
 
-    // Новое свойство: Смещение (в радианах).
-    // Например: -0.5 (влево), 0 (прямо), +0.5 (вправо)
-    private flankBias = 0;
+    protected serverProps:{
+        flankBias:number;
+        viewDist:number;
+    }
 
     constructor(scene:Scene, params:EnemyParams) {
         super(scene, params);
         this.scene = scene;
         this.width = ENEMIES.Zombie.width;
-        this.length = ENEMIES.Zombie.length;
+        this.height = ENEMIES.Zombie.height;
         this.color = "0x6F8";
         this.defaultSpeedInSecond = ENEMIES.Zombie.speed + Math.round(Math.random() * 50);
         this.speedInSecond = this.defaultSpeedInSecond;
@@ -26,9 +29,10 @@ export class Zombie extends BaseEnemy {
         this.damageValue = ENEMIES.Zombie.damage;
         this.attackInterval = ENEMIES.Zombie.attackInterval;
 
-        // Инициализируем направление обхода
-        // Генерируем число от -0.6 до +0.6 радианов (~35 градусов)
-        this.flankBias = (Math.random() - 0.5) * 1.2;
+        this.serverProps = {
+            flankBias: (Math.random() - 0.5) * 1.2,
+            viewDist: 350
+        };
 
         this.move();
     }
@@ -59,12 +63,12 @@ export class Zombie extends BaseEnemy {
                 // Если близко - идем прямо, чтобы кусать
                 let finalAngle = directAngle;
 
-                if (distToPlayer > 150) {
-                    finalAngle += this.flankBias;
+                if (distToPlayer > this.serverProps.viewDist) {
+                    finalAngle += this.serverProps.flankBias;
                 }
 
                 // Сохраняем Math.PI, так как он был в твоей оригинальной логике (видимо, спрайт смотрит влево)
-                this.rotation = Math.PI + finalAngle;
+                this.rotation = finalAngle;
 
                 // Обновляем точку старта для следующего тика интерполяции
                 this.startX = enemyCoords.x;

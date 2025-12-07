@@ -9,6 +9,8 @@ export interface SpiderParams extends EnemyParams {
 
 export class Spider extends BaseEnemy {
 
+    type = "spider";
+
     moveInterval:NodeJS.Timeout | null = null;
 
     private pivotX:number;
@@ -19,14 +21,15 @@ export class Spider extends BaseEnemy {
     // Храним базовую скорость отдельно, чтобы не перезаписывать this.speedInSecond
     private baseSpeed:number;
 
-    private readonly UPDATE_DELAY = 500;
+    private readonly UPDATE_DELAY = 200;
 
     constructor(scene:Scene, params:SpiderParams) {
         super(scene, params);
         this.scene = scene;
 
         this.width = ENEMIES.Spider.width;
-        this.length = ENEMIES.Spider.length;
+        this.height = ENEMIES.Spider.height;
+
         this.color = "black";
         this.health = ENEMIES.Spider.health;
         this.maxHealth = ENEMIES.Spider.health;
@@ -67,7 +70,7 @@ export class Spider extends BaseEnemy {
         // Г. Обновляем свойства объекта (их увидит клиент при создании)
         this.startX = currentX;
         this.startY = currentY;
-        this.rotation = Math.atan2(dy, dx) + Math.PI; // Смотрим на следующую точку
+        this.rotation = Math.atan2(dy, dx); // Смотрим на следующую точку
         this.speedInSecond = chordDistance / timeStep; // Скорость для прохождения хорды
         this.updatedAt = new Date().toISOString();
 

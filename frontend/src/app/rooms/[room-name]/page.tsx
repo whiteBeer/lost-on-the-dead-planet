@@ -15,7 +15,6 @@ function Room() {
     const appRef = useRef<PixiAPP | null>(null);
 
     const mainMenu = async () => {
-        appRef.current && appRef.current.destroy();
         router.push("/");
     };
 
@@ -51,6 +50,7 @@ function Room() {
         })();
         return () => {
             appRef.current && appRef.current.destroy();
+            appRef.current = null;
         };
     }, []);
 

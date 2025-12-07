@@ -30,13 +30,19 @@ export class App {
     }
 
     async init() {
-        if (this.isInitialized) return;
+        if (this.isInitialized) {
+            return;
+        }
         const roomId = getRoomId();
         await this.pixiApp.init({
             background: "#1099aa",
             resizeTo: window,
             antialias: true
         });
+
+        PIXI.Assets.add({ alias: "playerTex", src: "/img/player.png" });
+        PIXI.Assets.add({ alias: "enemyZombieTex", src: "/img/zombie.png" });
+        await PIXI.Assets.load(["playerTex", "enemyZombieTex"]);
 
         this.socket = io(this.backendUrl, {
             extraHeaders: { "room-id": roomId }

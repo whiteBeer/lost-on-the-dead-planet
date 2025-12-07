@@ -6,8 +6,8 @@ import { Coords, Rectangle } from "../types";
 export function rotate(x:number, y:number, angleRad:number) {
     const cos = Math.cos(angleRad),
         sin = Math.sin(angleRad),
-        nx = (cos * x) + (sin * y),
-        ny = (cos * y) - (sin * x);
+        nx = (cos * x) - (sin * y),
+        ny = (cos * y) + (sin * x);
     return {
         x: nx,
         y: ny
@@ -25,8 +25,8 @@ export function calcTimedPoint(
     const dTimeSecondsMissile = (
         new Date().getTime() - new Date(createdAt).getTime()
     ) / 1000;
-    const newX = startX + -dirCosMissile * (speedInSecond * dTimeSecondsMissile);
-    const newY = startY + -dirSinMissile * (speedInSecond * dTimeSecondsMissile);
+    const newX = startX + dirCosMissile * (speedInSecond * dTimeSecondsMissile);
+    const newY = startY + dirSinMissile * (speedInSecond * dTimeSecondsMissile);
 
     return {
         x: newX,
@@ -87,14 +87,14 @@ export function getRectangleVertices(
     rectangle:Rectangle
 ) {
     const halfWidth = rectangle.width / 2;
-    const halfLength = rectangle.length / 2;
+    const halfHeight = rectangle.height / 2;
 
     // Вершины до вращения (относительно центра)
     const localVertices = [
-        { x: -halfWidth, y: -halfLength },
-        { x: halfWidth, y: -halfLength },
-        { x: halfWidth, y: halfLength },
-        { x: -halfWidth, y: halfLength }
+        { x: -halfWidth, y: -halfHeight },
+        { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight }
     ];
 
     return localVertices.map(vertex => {
@@ -111,7 +111,7 @@ export function getRectangleVertices(
  */
 export function checkCircleRotatedRectangleCollision(
     circle:{ x:number; y:number; radius:number },
-    rect:{ x:number; y:number; width:number; length:number; rotation:number }
+    rect:{ x:number; y:number; width:number; height:number; rotation:number }
 ):boolean {
     // 1. Переводим координаты круга в локальную систему координат прямоугольника
     // (Сдвигаем так, чтобы центр прямоугольника был в 0,0)
@@ -129,7 +129,7 @@ export function checkCircleRotatedRectangleCollision(
     // 3. Находим ближайшую точку на прямоугольнике к центру круга
     // Прямоугольник теперь отцентрирован в 0,0, его границы: [-w/2, w/2] и [-h/2, h/2]
     const halfWidth = rect.width / 2;
-    const halfHeight = rect.length / 2;
+    const halfHeight = rect.height / 2;
 
     const closestX = Math.max(-halfWidth, Math.min(halfWidth, localX));
     const closestY = Math.max(-halfHeight, Math.min(halfHeight, localY));

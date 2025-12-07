@@ -7,8 +7,6 @@ export class Player {
     public pageX:number;
     public pageY:number;
     public rotation:number;
-    public width:number;
-    public length:number;
     public radius:number;
 
     public health = PLAYER_CONFIG.defaultHealth;
@@ -23,8 +21,6 @@ export class Player {
         this.pageX = startX;
         this.pageY = startY;
         this.rotation = 0;
-        this.width = PLAYER_CONFIG.width;
-        this.length = PLAYER_CONFIG.length;
         this.radius = PLAYER_CONFIG.radius;
 
         this.weapon = new Weapon("Rifle");

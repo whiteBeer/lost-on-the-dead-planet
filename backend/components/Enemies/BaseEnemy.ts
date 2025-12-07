@@ -9,11 +9,14 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     moveInterval:NodeJS.Timeout|null = null;
 
     id:string;
+    type = "";
     color = "black";
     health = -1;
     maxHealth = -1;
-    length = -1;
+
     width = -1;
+    height = -1;
+
     rotation = 0;
     defaultSpeedInSecond = 0;
     speedInSecond = 0;
@@ -26,6 +29,8 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     public damageValue = 0;
     public attackInterval = 1000;
     private lastAttackTime = 0;
+
+    protected serverProps:any;
 
     constructor(scene:Scene, params:EnemyParams) {
         this.scene = scene;
@@ -58,7 +63,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     }
 
     toJSON() {
-        const { scene, moveInterval, ...json } = this;
+        const { scene, serverProps, moveInterval, ...json } = this;
         return json;
     }
 }

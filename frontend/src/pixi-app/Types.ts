@@ -22,8 +22,6 @@ export interface BackendWeaponState {
 export interface BackendPlayer {
     socketId:string;
     color:string;
-    length:number;
-    width:number;
     radius:number,
     health:number;
     maxHealth:number;
@@ -35,11 +33,14 @@ export interface BackendPlayer {
 
 export interface BackendEnemy {
     id:string,
+    type:string;
     color:string,
     health:number,
     maxHealth:number,
-    length:number,
+
     width:number,
+    height:number,
+
     speedInSecond:number,
     rotation:number,
     startX:number,

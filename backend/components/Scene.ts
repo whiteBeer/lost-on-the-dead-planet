@@ -180,7 +180,7 @@ export class Scene extends EventEmitter {
                 x: cachedEnemy.x,
                 y: cachedEnemy.y,
                 width: enemy.width,
-                length: enemy.length,
+                height: enemy.height,
                 rotation: enemy.rotation
             };
             for (const player of players) {

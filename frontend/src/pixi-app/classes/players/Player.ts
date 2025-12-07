@@ -11,11 +11,8 @@ export class Player {
     public weapon:Weapon;
 
     private app:App;
-    private pixiObj:PIXI.Container<PIXI.ContainerChild>;
-
+    private pixiObj:PIXI.Container;
     private speedInSecond = 150;
-    private length = 0;
-    private width = 0;
     private radius = 0;
     private rotation = 0;
 
@@ -43,8 +40,6 @@ export class Player {
         this.y = params.pageY;
         this.health = params.health;
         this.maxHealth = params.maxHealth;
-        this.length = params.length;
-        this.width = params.width;
         this.radius = params.radius;
         this.rotation = params.rotation;
         this.setHealth(this.health);
@@ -57,7 +52,9 @@ export class Player {
     }
 
     remove() {
-        this.pixiObj.parent.removeChild(this.pixiObj);
+        if (this.pixiObj.parent) {
+            this.pixiObj.parent.removeChild(this.pixiObj);
+        }
     }
 
     hide() {
@@ -111,49 +108,48 @@ export class Player {
             this.pixiObj.y = y;
             if (rotation !== null) {
                 this.rotation = rotation;
-                if (this.pixiObj) {
-                    this.pixiObj.rotation = rotation;
-                }
+                this.pixiObj.rotation = rotation;
             }
         }
     }
 
-    // Возвращает isRotationChanged
     refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
             const stageCoords = this.getStageCoords();
             const oldRotation = this.rotation;
             const diffX = mouseCoords.pageX - stageCoords.pageX;
             const diffY = mouseCoords.pageY - stageCoords.pageY;
-            const rotation = Math.PI + Math.atan2(diffY, diffX);
+            const rotation = Math.atan2(diffY, diffX);
             this.rotation = rotation;
             if (this.pixiObj) {
                 this.pixiObj.rotation = rotation;
             }
             return oldRotation !== rotation;
         } catch (e) {
-            console.log(e);
+            console.error(e);
+            return false;
         }
     }
 
     private initGraphics(params:BackendPlayer) {
         const container = new PIXI.Container();
-        const rectangle = new PIXI.Graphics();
-        rectangle
-            .rect(-this.length/2, -this.width/2, this.length, this.width)
-            .fill(params.color || "white");
-        const circle = new PIXI.Graphics();
-        circle.circle(-this.length/2, 0, 2).fill("white");
-        container.addChild(rectangle);
-        container.addChild(circle);
+        const sprite = PIXI.Sprite.from("playerTex");
+
+        // Устанавливаем точку вращения (Anchor) в центр спрайта
+        sprite.anchor.set(0.5);
+        sprite.width = this.radius * 2.5;
+        sprite.height = this.radius * 3;
+
+        sprite.rotation = -Math.PI / 2;
+
+        container.addChild(sprite);
 
         const hitCircle = new PIXI.Graphics();
-        hitCircle.circle(0, 0, this.radius).stroke("white");
+        hitCircle.circle(0, 0, this.radius).stroke({ width: 1, color: 0xFFFFFF, alpha: 0.5 });
         container.addChild(hitCircle);
 
         container.position.set(this.x, this.y);
-        container.pivot.x = 0;
-        container.pivot.y = 0;
+        container.rotation = this.rotation;
 
         return container;
     }

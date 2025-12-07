@@ -42,11 +42,11 @@ export class Missile {
 
         const dTimeSeconds = Math.max(0, (serverTime - createTime) / 1000);
 
-        this.x = startX + (-dirCos * this.speedInSecond * dTimeSeconds);
-        this.y = startY + (-dirSin * this.speedInSecond * dTimeSeconds);
+        this.x = startX + (dirCos * this.speedInSecond * dTimeSeconds);
+        this.y = startY + (dirSin * this.speedInSecond * dTimeSeconds);
 
-        this.dx = -dirCos * (this.speedInSecond / 60);
-        this.dy = -dirSin * (this.speedInSecond / 60);
+        this.dx = dirCos * (this.speedInSecond / 60);
+        this.dy = dirSin * (this.speedInSecond / 60);
 
         this.updateVisuals();
 

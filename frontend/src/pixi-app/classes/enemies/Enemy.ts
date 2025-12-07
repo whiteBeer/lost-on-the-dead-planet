@@ -3,8 +3,6 @@ import { App } from "../../App";
 import { BackendEnemy } from "../../Types";
 
 export class Enemy {
-
-    // ЛОГИЧЕСКИЕ координаты (в игровом мире)
     public x = 0;
     public y = 0;
 
@@ -58,11 +56,11 @@ export class Enemy {
         const updateTime = new Date(enemyJson.updatedAt).getTime();
         const dTimeSeconds = Math.max(0, (serverTime - updateTime) / 1000);
 
-        this.x = enemyJson.startX + (-dirCos * enemyJson.speedInSecond * dTimeSeconds);
-        this.y = enemyJson.startY + (-dirSin * enemyJson.speedInSecond * dTimeSeconds);
+        this.x = enemyJson.startX + (dirCos * enemyJson.speedInSecond * dTimeSeconds);
+        this.y = enemyJson.startY + (dirSin * enemyJson.speedInSecond * dTimeSeconds);
 
-        this.dx = -dirCos * (enemyJson.speedInSecond / 60);
-        this.dy = -dirSin * (enemyJson.speedInSecond / 60);
+        this.dx = dirCos * (enemyJson.speedInSecond / 60);
+        this.dy = dirSin * (enemyJson.speedInSecond / 60);
 
         this.updateVisuals();
     }
@@ -87,16 +85,27 @@ export class Enemy {
     private initGraphics(json:BackendEnemy):PIXI.Container {
         const container = new PIXI.Container();
 
+        const sprite = PIXI.Sprite.from("enemyZombieTex");
+
+        sprite.anchor.set(0.5);
+        sprite.width = json.height * 1.5;
+        sprite.height = json.width * 1.3;
+        sprite.rotation = -Math.PI / 2;
+
         const rectangle = new PIXI.Graphics();
         rectangle
-            .rect(-json.width / 2, -json.length / 2, json.width, json.length)
-            .fill(json.color || "black");
+            .rect(-json.width / 2, -json.height / 2, json.width, json.height)
+            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
 
-        const circle = new PIXI.Graphics();
-        circle.circle(json.width / 2, 0, 0).fill("white");
-
+        if (json.type === "zombie") {
+            container.addChild(sprite);
+        } else {
+            rectangle.fill(json.color);
+        }
         container.addChild(rectangle);
-        container.addChild(circle);
+
+        container.pivot.x = 0;
+        container.pivot.y = 0;
 
         return container;
     }
