@@ -179,8 +179,8 @@ export class Scene extends EventEmitter {
             const enemyRect = {
                 x: cachedEnemy.x,
                 y: cachedEnemy.y,
-                width: enemy.width,
-                height: enemy.height,
+                width: enemy.width * 0.6,
+                height: enemy.height * 0.6,
                 rotation: enemy.rotation
             };
             for (const player of players) {

@@ -49,6 +49,16 @@ export class PlayersCollection {
                 const player = this.findPlayer(params.socketId);
                 if (player) {
                     player.moveTo(params.pageX, params.pageY, params.rotation);
+
+                    // TODO: нужно чтобы при повороте не включалась анимация
+                    player.animationPlay();
+                    if (player.movementStopTimer) {
+                        clearTimeout(player.movementStopTimer);
+                    }
+                    player.movementStopTimer = setTimeout(() => {
+                        player.animationStop();
+                    }, 200);
+
                 } else {
                     this.addPlayer(params);
                 }

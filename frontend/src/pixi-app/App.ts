@@ -7,6 +7,7 @@ import { BackendWeaponsConfig } from "./Types";
 import { getRoomId } from "../utils/getRoomId";
 import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
+import { ResourcesLoader } from "./classes/ResourcesLoader";
 
 export class App {
 
@@ -40,9 +41,7 @@ export class App {
             antialias: true
         });
 
-        PIXI.Assets.add({ alias: "playerTex", src: "/img/player.png" });
-        PIXI.Assets.add({ alias: "enemyZombieTex", src: "/img/zombie.png" });
-        await PIXI.Assets.load(["playerTex", "enemyZombieTex"]);
+        await ResourcesLoader.loadAssets();
 
         this.socket = io(this.backendUrl, {
             extraHeaders: { "room-id": roomId }
@@ -123,6 +122,7 @@ export class App {
 
         // Нормализация диагонального движения
         if (dx !== 0 || dy !== 0) {
+            player.animationPlay();
             // Вычисляем длину вектора
             const length = Math.sqrt(dx * dx + dy * dy);
             dx /= length;
@@ -131,6 +131,8 @@ export class App {
             const moveY = dy * player.getSpeed() * deltaSec;
             player.moveTo(player.x + moveX, player.y + moveY);
             this.scene.centerScene();
+        } else {
+            player.animationStop();
         }
 
         // 2. ОБРАБОТКА МЫШИ (Поворот)

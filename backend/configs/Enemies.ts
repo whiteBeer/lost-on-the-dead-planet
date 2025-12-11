@@ -17,8 +17,8 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Zombie",
         health: 50,
         speed: 15,
-        width: 200,
-        height: 130,
+        width: 75,
+        height: 65,
         damage: 30,
         attackInterval: 500
     },

@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import { App } from "../../App";
 import { BackendEnemy } from "../../Types";
+import { ResourcesLoader } from "../ResourcesLoader";
 
 export class Enemy {
     public x = 0;
@@ -85,24 +86,34 @@ export class Enemy {
     private initGraphics(json:BackendEnemy):PIXI.Container {
         const container = new PIXI.Container();
 
-        const sprite = PIXI.Sprite.from("enemyZombieTex");
-
-        sprite.anchor.set(0.5);
-        sprite.width = json.height * 1.5;
-        sprite.height = json.width * 1.3;
-        sprite.rotation = -Math.PI / 2;
-
-        const rectangle = new PIXI.Graphics();
-        rectangle
-            .rect(-json.width / 2, -json.height / 2, json.width, json.height)
-            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
-
         if (json.type === "zombie") {
+            const zombieFrames = ResourcesLoader.getZombieTextures();
+            const sprite = new PIXI.AnimatedSprite(zombieFrames);
+            sprite.animationSpeed = json.speedInSecond/350;
+            sprite.play();
+            sprite.anchor.set(0.5);
+            sprite.width = json.width;
+            sprite.height = json.height;
             container.addChild(sprite);
         } else {
-            rectangle.fill(json.color);
+            const rectangle = new PIXI.Graphics();
+            rectangle
+                .rect(-json.width / 2, -json.height / 2, json.width, json.height)
+                .fill(json.color);
+            container.addChild(rectangle);
         }
-        container.addChild(rectangle);
+
+        const rectangleHit = new PIXI.Graphics();
+        rectangleHit
+            .rect(-json.width / 2, -json.height / 2, json.width, json.height)
+            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
+        container.addChild(rectangleHit);
+
+        const rectangleDamage = new PIXI.Graphics();
+        rectangleDamage
+            .rect(-json.width * 0.3, -json.height * 0.3, json.width * 0.6, json.height * 0.6)
+            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
+        container.addChild(rectangleDamage);
 
         container.pivot.x = 0;
         container.pivot.y = 0;

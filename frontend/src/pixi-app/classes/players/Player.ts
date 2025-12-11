@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import Weapon from "./Weapon";
 import { App } from "../../App";
 import { BackendPlayer, IMouseCoords } from "../../Types";
+import { ResourcesLoader } from "../ResourcesLoader";
 
 export class Player {
 
@@ -9,6 +10,7 @@ export class Player {
     public y = -1;
     public socketId = "";
     public weapon:Weapon;
+    public movementStopTimer:NodeJS.Timeout | null = null;
 
     private app:App;
     private pixiObj:PIXI.Container;
@@ -18,6 +20,9 @@ export class Player {
 
     private health = 0;
     private maxHealth = 0;
+
+    private bodySprite:PIXI.AnimatedSprite|null = null;
+    private legsSprite:PIXI.AnimatedSprite|null = null;
 
     constructor(app:App, params:BackendPlayer) {
         this.app = app;
@@ -33,6 +38,18 @@ export class Player {
         this.update(params);
 
         this.pixiObj = this.initGraphics(params);
+    }
+
+    public animationPlay():void {
+        if (this.bodySprite && !this.bodySprite.playing) {
+            this.bodySprite.play();
+        }
+    }
+
+    public animationStop():void {
+        if (this.bodySprite && this.bodySprite.playing) {
+            this.bodySprite.stop();
+        }
     }
 
     update(params:BackendPlayer) {
@@ -133,16 +150,16 @@ export class Player {
 
     private initGraphics(params:BackendPlayer) {
         const container = new PIXI.Container();
-        const sprite = PIXI.Sprite.from("playerTex");
+        const playerFrames = ResourcesLoader.getPlayerTextures();
+        this.bodySprite = new PIXI.AnimatedSprite(playerFrames);
+        this.bodySprite.animationSpeed = 0.5;
+        this.bodySprite.anchor.set(0.5);
+        this.bodySprite.width = this.radius * 2.5;
+        this.bodySprite.height = this.radius * 3;
 
-        // Устанавливаем точку вращения (Anchor) в центр спрайта
-        sprite.anchor.set(0.5);
-        sprite.width = this.radius * 2.5;
-        sprite.height = this.radius * 3;
+        this.bodySprite.rotation = -Math.PI / 2;
 
-        sprite.rotation = -Math.PI / 2;
-
-        container.addChild(sprite);
+        container.addChild(this.bodySprite);
 
         const hitCircle = new PIXI.Graphics();
         hitCircle.circle(0, 0, this.radius).stroke({ width: 1, color: 0xFFFFFF, alpha: 0.5 });
