@@ -85,7 +85,7 @@ export class Missile {
         const container = new PIXI.Container();
         const circle = new PIXI.Graphics();
 
-        circle.circle(0, 0, 4).fill("white");
+        circle.circle(0, 0, 3).fill("white");
 
         container.addChild(circle);
         return container;
