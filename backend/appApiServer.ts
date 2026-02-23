@@ -28,6 +28,9 @@ export class AppApiServer {
     }
 
     private setupRoutes():void {
+        this.app.get("/", (req:Request, res:Response) => {
+            res.json({ msg: "Lost on the dead planet." });
+        });
         this.app.put("/api/rooms/:roomId", this.createRoom.bind(this));
         this.app.get("/api/rooms/:roomId/scene", this.getScene.bind(this));
         this.app.put("/api/rooms/:roomId/new-game", this.newGame.bind(this));
