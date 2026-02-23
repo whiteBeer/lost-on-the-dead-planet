@@ -25,8 +25,8 @@ function Main() {
     return (
         <div className="flex flex-col items-center mt-10 text-xl font-bold">
             Lost on the Dead Planet
-            <Button className="mt-3" onClick={joinRoom}>Join Game</Button>
-            <Button className="mt-3" onClick={createRoom}>Create Game</Button>
+            <Button className="mt-3" onClick={joinRoom}>Join game</Button>
+            <Button className="mt-3" onClick={createRoom}>Create game</Button>
         </div>
     );
 }
