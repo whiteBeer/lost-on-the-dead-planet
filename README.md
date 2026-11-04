@@ -10,7 +10,7 @@ FRONTEND: создать `.env` с `NEXT_PUBLIC_BACKEND_URL=http://localhost:778
 На телефоне: левая половина экрана — бег, правая — прицел и стрельба.
 
 ## Сборка под подпуть
-`NEXT_PUBLIC_BASE_PATH` (например `/world`) и `NEXT_PUBLIC_SOCKET_PATH` (например `/world-api/socket.io`) задаются при `next build`. За обратным прокси на сервере: `APP_HOST=127.0.0.1`. Если клиент на другом домене: `CORS_ORIGIN=<адрес клиента>`.
+`NEXT_PUBLIC_BASE_PATH` (например `/world`) и `NEXT_PUBLIC_SOCKET_PATH` (например `/world-api/socket.io`) записать в `frontend/.env.production`: `next.config.js` читается и при сборке, и при запуске, значения должны совпадать. За обратным прокси на сервере: `APP_HOST=127.0.0.1`. Если клиент на другом домене: `CORS_ORIGIN=<адрес клиента>`.
 
 ## Проверки
 - `cd backend && npx tsc && node tests/world.test.js`: логика мира.
