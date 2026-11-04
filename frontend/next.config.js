@@ -1,14 +1,7 @@
-const path = require("node:path");
-
 const nextConfig = {
     reactStrictMode: false,
-    webpack(config) {
-        return config;
-    },
-    serverRuntimeConfig: {
-        buildDate: new Date().toISOString()
-    },
-    devIndicators: false
+    devIndicators: false,
+    basePath: process.env.NEXT_PUBLIC_BASE_PATH || ""
 };
 
 module.exports = nextConfig;

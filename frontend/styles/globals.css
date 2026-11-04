@@ -1,13 +1,11 @@
 @import "tailwindcss";
 
-.btn {
-  @apply font-bold py-2 px-4 rounded;
-}
-
-.btn-blue {
-  @apply bg-blue-500 text-white;
-}
-
-.btn-blue:hover {
-  @apply bg-blue-700;
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #10130f;
+  color: #f1f0e6;
+  font-family: Rubik, "Segoe UI", Roboto, system-ui, sans-serif;
+  user-select: none;
 }
