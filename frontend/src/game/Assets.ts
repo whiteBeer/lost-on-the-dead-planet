@@ -6,6 +6,10 @@ export const imgUrl = (name:string) => `${BASE}/img/${name}.png`;
 export const MONSTERS = ["runner", "brute", "spitter", "spider", "hound", "boss"];
 export const WEAPON_IDS = ["Pistol", "SMG", "Rifle", "Shotgun", "Crossbow", "Sniper", "Flamethrower", "Minigun", "Rocket", "Railgun"];
 const OBSTACLES = ["tree", "rock", "wreck", "crate"];
+const PERK_ICONS = [
+    "perk_assault_instinct", "perk_iron_heart", "perk_field_medic", "perk_light_boots",
+    "perk_eagle_eye", "perk_bottomless_mag", "perk_trophy_hunter", "perk_chain_thunder"
+];
 
 export class Assets {
     static playerFrames:PIXI.Texture[] = [];
@@ -13,10 +17,11 @@ export class Assets {
 
     static async load() {
         const names = [
-            "player_body_sprite", "zombie_sprite", "ground", "ground_dead", "medkit",
+            "player_body_sprite", "zombie_sprite", "ground", "ground_dead", "medkit", "chest",
             ...MONSTERS.map(el => `monster_${el}`),
             ...WEAPON_IDS.map(el => `weapon_${el}`),
-            ...OBSTACLES.map(el => `obstacle_${el}`)
+            ...OBSTACLES.map(el => `obstacle_${el}`),
+            ...PERK_ICONS
         ];
         await PIXI.Assets.load(names.map(name => ({ alias: name, src: imgUrl(name) })));
 

@@ -15,6 +15,10 @@ function WeaponIcon({ id, className }:{ id:string, className?:string }) {
     return id ? <img className={className} src={imgUrl(`weapon_${id}`)} alt="" draggable={false} /> : null;
 }
 
+function PerkIcon({ icon, className }:{ icon?:string, className?:string }) {
+    return icon ? <img className={className} src={imgUrl(icon)} alt="" draggable={false} /> : null;
+}
+
 function GameView({ name }:{ name:string }) {
     const hostRef = useRef<HTMLDivElement>(null);
     const appRef = useRef<App | null>(null);
@@ -67,6 +71,7 @@ function GameView({ name }:{ name:string }) {
             ctx.fill();
         };
         hud.roster?.bosses.forEach(([x, y]) => dot(x, y, "#ff7a1a", 6));
+        hud.roster?.chests.forEach(([x, y]) => dot(x, y, "#ffd34e", 5));
         hud.roster?.exposed.forEach(([id, x, y]) => {
             if (id !== hud.myId) {
                 dot(x, y, "#ff5a5a", 3.5);
@@ -202,6 +207,7 @@ function GameView({ name }:{ name:string }) {
                                     >
                                         <span className={styles.perkKey}>{index + 1}</span>
                                         <span className={styles.perkRarity}>{RARITY_TEXT[card.rarity]}</span>
+                                        <PerkIcon icon={card.icon} className={styles.perkIcon} />
                                         <span className={styles.perkName}>{card.name}</span>
                                         <span className={styles.perkText}>{card.description}</span>
                                     </button>
@@ -217,8 +223,11 @@ function GameView({ name }:{ name:string }) {
                             <ul className={styles.perkList}>
                                 {me.perks.map(id => (
                                     <li key={id}>
-                                        <b>{hud?.perkCatalog[id]?.name}</b>
-                                        <p>{hud?.perkCatalog[id]?.description}</p>
+                                        <PerkIcon icon={hud?.perkCatalog[id]?.icon} className={styles.perkListIcon} />
+                                        <div>
+                                            <b>{hud?.perkCatalog[id]?.name}</b>
+                                            <p>{hud?.perkCatalog[id]?.description}</p>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

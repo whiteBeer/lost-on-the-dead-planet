@@ -105,6 +105,8 @@ export interface Perk {
     rarity:PerkRarity;
     category:"attack" | "defense" | "mobility" | "weapon" | "fortune" | "strange";
     mods:Partial<PlayerStats>;
+    icon?:string;
+    positive?:boolean;
 }
 
 type Category = Perk["category"];
@@ -175,7 +177,8 @@ function generatePerks():Perk[] {
                 description: `${formatEffect(entry, value)}.`,
                 rarity: RARITY_BY_TIER[tier],
                 category: entry.category,
-                mods: { [entry.stat]: value }
+                mods: { [entry.stat]: value },
+                positive: true
             });
         });
     }
@@ -203,6 +206,53 @@ function generatePerks():Perk[] {
 
     return perks;
 }
+
+/**
+ * Чисто положительные составные перки. Их всегда хотя бы один среди трёх вариантов,
+ * а также именно они могут выпадать из сундуков.
+ */
+export const POSITIVE_PERKS:Perk[] = [
+    {
+        id: "assault_instinct", name: "Штурмовой инстинкт", rarity: "rare", category: "attack",
+        description: "Урон +15%, скорострельность +12%. Без штрафов.",
+        mods: { damage: 0.15, fireRate: 0.12 }, icon: "perk_assault_instinct", positive: true
+    },
+    {
+        id: "iron_heart", name: "Железное сердце", rarity: "rare", category: "defense",
+        description: "Макс. здоровье +35, снижение любого урона +8%. Без штрафов.",
+        mods: { maxHp: 35, armor: 0.08 }, icon: "perk_iron_heart", positive: true
+    },
+    {
+        id: "field_medic", name: "Полевой медик", rarity: "rare", category: "defense",
+        description: "Восстановление +1.5 здоровья в секунду, каждое убийство лечит на 6.",
+        mods: { regen: 1.5, onKillHeal: 6 }, icon: "perk_field_medic", positive: true
+    },
+    {
+        id: "light_boots", name: "Лёгкие берцы", rarity: "rare", category: "mobility",
+        description: "Скорость бега +12%, шанс уклониться +5%. Без штрафов.",
+        mods: { speed: 0.12, dodge: 0.05 }, icon: "perk_light_boots", positive: true
+    },
+    {
+        id: "eagle_eye", name: "Орлиный глаз", rarity: "rare", category: "weapon",
+        description: "Разброс −25%, дальность стрельбы +20%. Без штрафов.",
+        mods: { spread: -0.25, range: 0.2 }, icon: "perk_eagle_eye", positive: true
+    },
+    {
+        id: "bottomless_mag", name: "Бездонный магазин", rarity: "epic", category: "weapon",
+        description: "Магазин +40%, шанс не потратить патрон +12%. Без штрафов.",
+        mods: { clip: 0.4, ammoRefund: 0.12 }, icon: "perk_bottomless_mag", positive: true
+    },
+    {
+        id: "trophy_hunter", name: "Охотник за трофеями", rarity: "rare", category: "fortune",
+        description: "Получаемый опыт +18%, шанс выпадения оружия +40%. Без штрафов.",
+        mods: { exp: 0.18, drop: 0.4 }, icon: "perk_trophy_hunter", positive: true
+    },
+    {
+        id: "chain_thunder", name: "Цепной гром", rarity: "epic", category: "weapon",
+        description: "Пули пробивают +1 цель и один раз рикошетят к следующей.",
+        mods: { pierce: 1, ricochet: 1 }, icon: "perk_chain_thunder", positive: true
+    }
+];
 
 // Особые перки написаны вручную. Многие выглядят лучше, чем есть на самом деле.
 const SPECIAL_PERKS:Perk[] = [
@@ -270,7 +320,7 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "mercy", name: "Милосердие", rarity: "common", category: "strange", description: "Твой убийца получит на 75% меньше опыта. Твой урон по игрокам −20%.", mods: { killBounty: -0.75, playerDamage: -0.2 } }
 ];
 
-export const PERKS:Perk[] = [...SPECIAL_PERKS, ...generatePerks()];
+export const PERKS:Perk[] = [...POSITIVE_PERKS, ...SPECIAL_PERKS, ...generatePerks()];
 
 const perkById = new Map(PERKS.map(el => [el.id, el]));
 
@@ -286,30 +336,46 @@ const RARITY_WEIGHT:Record<PerkRarity, number> = { common: 60, rare: 30, epic: 1
  */
 export function rollPerkOffer(taken:Set<string>, level:number, count = 3):Perk[] {
     const epicBoost = Math.min(2.5, 1 + level / 15);
-    const specialIds = new Set(SPECIAL_PERKS.map(el => el.id));
+    const featured = [...POSITIVE_PERKS, ...SPECIAL_PERKS];
+    const featuredIds = new Set(featured.map(el => el.id));
     const offer:Perk[] = [];
     const usedStats = new Set<string>();
 
+    const tryAdd = (perk:Perk) => {
+        if (taken.has(perk.id) || offer.includes(perk)) {
+            return false;
+        }
+        const mainStat = Object.keys(perk.mods)[0];
+        if (usedStats.has(mainStat)) {
+            return false;
+        }
+        usedStats.add(mainStat);
+        offer.push(perk);
+        return true;
+    };
+
+    // Игрок всегда видит хотя бы один вариант без скрытого недостатка.
+    const positivePool = PERKS.filter(el => el.positive && !taken.has(el.id));
+    for (let attempt = 0; attempt < 100 && positivePool.length && offer.length < count; attempt++) {
+        const perk = positivePool[Math.floor(Math.random() * positivePool.length)];
+        const weight = RARITY_WEIGHT[perk.rarity] * (perk.rarity === "epic" ? epicBoost : 1);
+        if (Math.random() * 60 <= weight && tryAdd(perk)) {
+            break;
+        }
+    }
+
     for (let attempt = 0; attempt < 400 && offer.length < count; attempt++) {
-        const useSpecial = Math.random() < 0.45;
-        const pool = useSpecial ? SPECIAL_PERKS : PERKS;
+        const useFeatured = Math.random() < 0.5;
+        const pool = useFeatured ? featured : PERKS;
         const perk = pool[Math.floor(Math.random() * pool.length)];
-        if (!useSpecial && specialIds.has(perk.id)) {
+        if (!useFeatured && featuredIds.has(perk.id)) {
             continue;
         }
         const weight = RARITY_WEIGHT[perk.rarity] * (perk.rarity === "epic" ? epicBoost : 1);
         if (Math.random() * 60 > weight) {
             continue;
         }
-        if (taken.has(perk.id) || offer.includes(perk)) {
-            continue;
-        }
-        const mainStat = Object.keys(perk.mods)[0];
-        if (usedStats.has(mainStat)) {
-            continue;
-        }
-        usedStats.add(mainStat);
-        offer.push(perk);
+        tryAdd(perk);
     }
     return offer;
 }

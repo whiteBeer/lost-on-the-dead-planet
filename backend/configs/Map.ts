@@ -20,10 +20,11 @@ function mulberry32(seed:number) {
 }
 
 const KINDS:{ kind:string, r:[number, number], count:number }[] = [
-    { kind: "tree", r: [26, 44], count: 150 },
-    { kind: "rock", r: [24, 52], count: 80 },
-    { kind: "wreck", r: [40, 48], count: 26 },
-    { kind: "crate", r: [20, 26], count: 44 }
+    // Площадь мира выросла примерно в пять раз — сохраняем прежнюю плотность объектов
+    { kind: "tree", r: [26, 44], count: 750 },
+    { kind: "rock", r: [24, 52], count: 400 },
+    { kind: "wreck", r: [40, 48], count: 130 },
+    { kind: "crate", r: [20, 26], count: 220 }
 ];
 
 export function generateObstacles(seed:number):Obstacle[] {

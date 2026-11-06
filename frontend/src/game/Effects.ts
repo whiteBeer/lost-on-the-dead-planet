@@ -82,6 +82,14 @@ export class Effects {
                 case "pickup":
                     this.burst(x, y, 24, 0xfff3b0, 0.25);
                     break;
+                case "perk":
+                    this.text("Новый перк!", x, y - 24, 0xffd85a, 18);
+                    this.burst(x, y, 42, 0xffd85a, 0.45);
+                    break;
+                case "chest":
+                    this.text("Сундук открыт!", x, y - 34, 0xffb13d, 20);
+                    this.burst(x, y, 70, 0xff9a2e, 0.55);
+                    break;
                 case "spark":
                     this.burst(x, y, 6, 0xffe9a0, 0.14);
                     break;

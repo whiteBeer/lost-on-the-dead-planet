@@ -1,8 +1,9 @@
 // Запуск: npx tsc && node tests/world.test.js
 const assert = require("node:assert");
 const { World } = require("../dist/World.js");
-const { PERKS, computeStats } = require("../dist/configs/Perks.js");
+const { PERKS, POSITIVE_PERKS, computeStats, rollPerkOffer } = require("../dist/configs/Perks.js");
 const { WEAPONS } = require("../dist/configs/Weapons.js");
+const { WORLD } = require("../dist/configs/World.js");
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const tick = (world, n = 1) => { for (let i = 0; i < n; i++) world.tick(); };
@@ -45,6 +46,25 @@ const tests = {
             Object.keys(perk.mods).forEach(key => assert.ok(key in base, `${perk.id}: ${key}`));
             Object.values(computeStats([perk.id])).forEach(val => assert.ok(Number.isFinite(val), perk.id));
         });
+    },
+    "новые положительные перки имеют иконки и всегда представлены в выборе": () => {
+        assert.strictEqual(POSITIVE_PERKS.length, 8);
+        POSITIVE_PERKS.forEach(perk => {
+            assert.strictEqual(perk.positive, true);
+            assert.ok(perk.icon?.startsWith("perk_"), perk.id);
+            assert.ok(Object.values(perk.mods).every(value => value >= 0 || perk.id === "eagle_eye"), perk.id);
+        });
+        for (let i = 0; i < 100; i++) {
+            const offer = rollPerkOffer(new Set(), 2, 3);
+            assert.strictEqual(offer.length, 3);
+            assert.ok(offer.some(perk => perk.positive), offer.map(perk => perk.id).join(", "));
+        }
+    },
+    "карта увеличена примерно в пять раз по площади и сохраняет плотность объектов": () => {
+        const world = new World(3);
+        assert.strictEqual(WORLD.size, 9000);
+        assert.ok(WORLD.size * WORLD.size / (4000 * 4000) >= 5);
+        assert.strictEqual(world.obstacles.length, 1500);
     },
     "игроков больше пяти: лимита цветов из оригинала нет": () => {
         const world = arena();
@@ -156,6 +176,27 @@ const tests = {
         world.takePickup(a);
         assert.strictEqual(a.weaponId, weapons[0].weaponId);
         assert.strictEqual(a.ammo, WEAPONS[a.weaponId].clipSize);
+    },
+    "сундук показывает таймер, открывается и оставляет награду ровно на 3 минуты": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        const now = Date.now();
+        const chest = world.createChest(600, 500, now + 60000);
+        const before = world.buildSnapshot(a);
+        assert.strictEqual(before.c.length, 1);
+        assert.strictEqual(before.c[0][0], chest.id);
+        assert.ok(before.c[0][3] > 59000 && before.c[0][3] <= 60000);
+
+        chest.opensAt = now - 1;
+        world.updateChests(now);
+        assert.strictEqual(world.chests.size, 0);
+        assert.strictEqual(world.pickups.size, 1);
+        const reward = [...world.pickups.values()][0];
+        assert.ok(reward.expiresAt - now >= 179900 && reward.expiresAt - now <= 180100);
+        reward.expiresAt = now - 1;
+        world.updatePickups(now);
+        assert.strictEqual(world.pickups.size, 0);
     },
     "сервер не даёт телепортироваться и не верит NaN": async () => {
         const world = arena();

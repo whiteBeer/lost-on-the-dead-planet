@@ -2,7 +2,7 @@ import { EventEmitter } from "events";
 import { WORLD, expForLevel } from "./configs/World";
 import { ENEMIES, EnemyConfig } from "./configs/Enemies";
 import { WEAPONS, WeaponConfig, STARTING_WEAPON, rollWeapon } from "./configs/Weapons";
-import { PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
+import { PERKS, POSITIVE_PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
 import { generateObstacles, Obstacle } from "./configs/Map";
 import { Coords, SpatialGrid, clamp, distSq, segmentCircleHit } from "./utils/geometry";
 
@@ -94,11 +94,19 @@ interface Bullet {
 
 export interface Pickup {
     id:number;
-    kind:"weapon" | "medkit";
+    kind:"weapon" | "medkit" | "perk";
     weaponId?:string;
+    perkId?:string;
     x:number;
     y:number;
     expiresAt:number;
+}
+
+export interface Chest {
+    id:number;
+    x:number;
+    y:number;
+    opensAt:number;
 }
 
 type Fx = [string, number, number, number?, number?];
@@ -121,6 +129,7 @@ export class World extends EventEmitter {
     private enemies = new Map<number, Enemy>();
     private bullets:Bullet[] = [];
     private pickups = new Map<number, Pickup>();
+    private chests = new Map<number, Chest>();
     private teams = new Map<number, Team>();
 
     private tickCount = 0;
@@ -128,6 +137,7 @@ export class World extends EventEmitter {
     private timer:NodeJS.Timeout | null = null;
     private lastTick = Date.now();
     private nextBossAt = 0;
+    private nextChestAt = 0;
 
     private fxByCell = new SpatialGrid<{ x:number, y:number, fx:Fx }>(600);
     private newBullets = new SpatialGrid<{ x:number, y:number, data:any[] }>(600);
@@ -182,7 +192,9 @@ export class World extends EventEmitter {
             enemies: Object.fromEntries(Object.values(ENEMIES).map(el => [el.id, {
                 id: el.id, name: el.name, size: el.size, radius: el.radius
             }])),
-            perks: Object.fromEntries(PERKS.map(el => [el.id, { name: el.name, description: el.description }]))
+            perks: Object.fromEntries(PERKS.map(el => [el.id, {
+                name: el.name, description: el.description, icon: el.icon || ""
+            }]))
         };
     }
 
@@ -402,11 +414,18 @@ export class World extends EventEmitter {
             return;
         }
         const perk = offer[index];
+        this.applyPerk(player, perk);
+        player.offers.shift();
+    }
+
+    private applyPerk(player:Player, perk:Perk) {
+        if (player.perks.has(perk.id)) {
+            return false;
+        }
         const oldMaxHp = player.stats.maxHp;
         const oldClip = this.clipOf(player);
         player.perks.add(perk.id);
         player.stats = computeStats(player.perks);
-        player.offers.shift();
         // Здоровье меняется вместе с максимумом, но перк не может убить
         const hpDelta = player.stats.maxHp - oldMaxHp;
         player.hp = clamp(player.hp + Math.max(0, hpDelta), 1, player.stats.maxHp);
@@ -414,6 +433,7 @@ export class World extends EventEmitter {
         if (newClip !== oldClip) {
             player.ammo = Math.min(newClip, player.ammo + Math.max(0, newClip - oldClip));
         }
+        return true;
     }
 
     takePickup(player:Player) {
@@ -444,13 +464,22 @@ export class World extends EventEmitter {
         this.addFx(["pickup", player.x, player.y]);
     }
 
-    private dropWeapon(weaponId:string, x:number, y:number) {
+    private dropWeapon(weaponId:string, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs) {
         const angle = Math.random() * Math.PI * 2;
         const spot = this.resolveMove(x + Math.cos(angle) * 30, y + Math.sin(angle) * 30, 10);
         const id = this.nextId++;
         this.pickups.set(id, {
             id, kind: "weapon", weaponId, x: spot.x, y: spot.y,
-            expiresAt: Date.now() + WORLD.pickupLifetimeMs
+            expiresAt: Date.now() + lifetimeMs
+        });
+    }
+
+    private dropPerk(perkId:string, x:number, y:number, lifetimeMs:number) {
+        const spot = this.resolveMove(x, y, 10);
+        const id = this.nextId++;
+        this.pickups.set(id, {
+            id, kind: "perk", perkId, x: spot.x, y: spot.y,
+            expiresAt: Date.now() + lifetimeMs
         });
     }
 
@@ -546,6 +575,7 @@ export class World extends EventEmitter {
         this.updatePlayers(now, dt);
         this.updateEnemies(now, dt);
         this.updateBullets(dt);
+        this.updateChests(now);
         this.updatePickups(now);
         if (this.tickCount % 15 === 0) {
             this.spawnEnemies(now);
@@ -1263,6 +1293,86 @@ export class World extends EventEmitter {
         return enemy;
     }
 
+    private scheduleNextChest(now:number, first = false) {
+        const delay = first
+            ? WORLD.chestFirstDelayMs
+            : WORLD.chestMinIntervalMs + Math.random() * (WORLD.chestMaxIntervalMs - WORLD.chestMinIntervalMs);
+        this.nextChestAt = now + delay;
+    }
+
+    private findChestSpot():Coords | null {
+        const margin = 250;
+        for (let attempt = 0; attempt < 80; attempt++) {
+            const x = margin + Math.random() * (WORLD.size - margin * 2);
+            const y = margin + Math.random() * (WORLD.size - margin * 2);
+            if (this.isBlocked(x, y, 60)) {
+                continue;
+            }
+            let tooClose = false;
+            for (const chest of this.chests.values()) {
+                if (distSq(x, y, chest.x, chest.y) < 900 * 900) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) {
+                return { x, y };
+            }
+        }
+        return null;
+    }
+
+    createChest(x:number, y:number, opensAt = Date.now() + WORLD.chestCountdownMs) {
+        const id = this.nextId++;
+        const chest:Chest = { id, x, y, opensAt };
+        this.chests.set(id, chest);
+        return chest;
+    }
+
+    private updateChests(now:number) {
+        if (!this.nextChestAt) {
+            this.scheduleNextChest(now, true);
+        }
+        if (now >= this.nextChestAt && this.chests.size < WORLD.maxChests) {
+            const spot = this.findChestSpot();
+            if (spot) {
+                this.createChest(spot.x, spot.y, now + WORLD.chestCountdownMs);
+                this.emit("announce", "На карте появился сундук. Он откроется через 60 секунд.");
+            }
+            this.scheduleNextChest(now);
+        }
+
+        for (const chest of [...this.chests.values()]) {
+            if (now >= chest.opensAt) {
+                this.openChest(chest, now);
+            }
+        }
+    }
+
+    private openChest(chest:Chest, now:number) {
+        this.chests.delete(chest.id);
+        const roll = Math.random();
+        let rewardName:string;
+        if (roll < 0.65) {
+            const weaponId = rollWeapon(3);
+            this.dropWeapon(weaponId, chest.x, chest.y, WORLD.chestRewardLifetimeMs);
+            rewardName = WEAPONS[weaponId].name;
+        } else if (roll < 0.88) {
+            const perk = POSITIVE_PERKS[Math.floor(Math.random() * POSITIVE_PERKS.length)];
+            this.dropPerk(perk.id, chest.x, chest.y, WORLD.chestRewardLifetimeMs);
+            rewardName = perk.name;
+        } else {
+            const id = this.nextId++;
+            this.pickups.set(id, {
+                id, kind: "medkit", x: chest.x, y: chest.y,
+                expiresAt: now + WORLD.chestRewardLifetimeMs
+            });
+            rewardName = "большая аптечка";
+        }
+        this.addFx(["chest", chest.x, chest.y]);
+        this.emit("announce", `Сундук открылся: ${rewardName}. Награда исчезнет через 3 минуты.`);
+    }
+
     private updatePickups(now:number) {
         for (const item of this.pickups.values()) {
             if (now >= item.expiresAt) {
@@ -1276,6 +1386,22 @@ export class World extends EventEmitter {
                         player.hp = Math.min(player.stats.maxHp, player.hp + WORLD.medkitHeal);
                         this.pickups.delete(item.id);
                         this.addFx(["heal", player.x, player.y]);
+                        break;
+                    }
+                }
+            } else if (item.kind === "perk" && item.perkId) {
+                const perk = getPerk(item.perkId);
+                if (!perk) {
+                    this.pickups.delete(item.id);
+                    continue;
+                }
+                for (const player of this.players.values()) {
+                    if (!player.dead && !player.perks.has(perk.id)
+                        && distSq(item.x, item.y, player.x, player.y) < WORLD.pickupRadius * WORLD.pickupRadius) {
+                        this.applyPerk(player, perk);
+                        this.pickups.delete(item.id);
+                        this.addFx(["perk", player.x, player.y]);
+                        this.emit("announce", `${player.name} нашёл перк «${perk.name}» в сундуке.`);
                         break;
                     }
                 }
@@ -1320,7 +1446,20 @@ export class World extends EventEmitter {
         const pickups:any[] = [];
         for (const item of this.pickups.values()) {
             if (inView(item.x, item.y)) {
-                pickups.push([item.id, item.kind, item.weaponId || "", Math.round(item.x), Math.round(item.y)]);
+                pickups.push([
+                    item.id, item.kind, item.weaponId || item.perkId || "",
+                    Math.round(item.x), Math.round(item.y), Math.max(0, item.expiresAt - now)
+                ]);
+            }
+        }
+
+        const chests:any[] = [];
+        for (const chest of this.chests.values()) {
+            if (inView(chest.x, chest.y)) {
+                chests.push([
+                    chest.id, Math.round(chest.x), Math.round(chest.y),
+                    Math.max(0, chest.opensAt - now)
+                ]);
             }
         }
 
@@ -1362,13 +1501,15 @@ export class World extends EventEmitter {
                 prot: now < me.protectedUntil,
                 offersLeft: me.offers.length,
                 offer: offer ? offer.map(el => ({
-                    id: el.id, name: el.name, description: el.description, rarity: el.rarity, category: el.category
+                    id: el.id, name: el.name, description: el.description, rarity: el.rarity,
+                    category: el.category, icon: el.icon || ""
                 })) : null,
                 perks: [...me.perks]
             },
             p: players,
             e: enemies,
             k: pickups,
+            c: chests,
             b: bullets,
             fx
         };
@@ -1398,7 +1539,11 @@ export class World extends EventEmitter {
             .map(el => [el.id, Math.round(el.x), Math.round(el.y)]);
         const bosses = [...this.enemies.values()].filter(el => el.type === "boss")
             .map(el => [Math.round(el.x), Math.round(el.y)]);
-        return { rows, teams, exposed, bosses };
+        const now = Date.now();
+        const chests = [...this.chests.values()].map(el => [
+            Math.round(el.x), Math.round(el.y), Math.max(0, el.opensAt - now)
+        ]);
+        return { rows, teams, exposed, bosses, chests };
     }
 
     getTeammatePositions(player:Player) {

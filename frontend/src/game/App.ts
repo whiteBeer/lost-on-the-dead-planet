@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 import { io, Socket } from "socket.io-client";
 import { Assets } from "./Assets";
 import { Control } from "./Control";
-import { EnemyView, PickupView, PlayerView } from "./Views";
+import { ChestView, EnemyView, PickupView, PlayerView } from "./Views";
 import { Effects } from "./Effects";
 import { FeedEvent, HudState, Invite, MeState, Roster, Snapshot, WorldConfig } from "./Types";
 
@@ -28,6 +28,7 @@ export class App {
     private players = new Map<number, PlayerView>();
     private enemies = new Map<number, EnemyView>();
     private pickups = new Map<number, PickupView>();
+    private chests = new Map<number, ChestView>();
     private effects:Effects | null = null;
     private mine:PlayerView | null = null;
 
@@ -197,6 +198,7 @@ export class App {
         this.syncPlayers(snapshot);
         this.syncEnemies(snapshot);
         this.syncPickups(snapshot);
+        this.syncChests(snapshot);
         this.effects?.spawnBullets(snapshot.b);
         this.effects?.applyFx(snapshot.fx, this.config);
     }
@@ -264,10 +266,10 @@ export class App {
 
     private syncPickups(snapshot:Snapshot) {
         const seen = new Set<number>();
-        for (const [id, kind, weaponId, x, y] of snapshot.k) {
+        for (const [id, kind, itemId, x, y] of snapshot.k) {
             seen.add(id);
             if (!this.pickups.has(id)) {
-                const view = new PickupView(kind, weaponId, x, y, this.config!.weapons[weaponId]?.rarity);
+                const view = new PickupView(kind, itemId, x, y, this.config!.weapons[itemId]?.rarity);
                 this.pickups.set(id, view);
                 this.layerItems.addChild(view.root);
             }
@@ -276,6 +278,27 @@ export class App {
             if (!seen.has(id)) {
                 view.destroy();
                 this.pickups.delete(id);
+            }
+        }
+    }
+
+    private syncChests(snapshot:Snapshot) {
+        const seen = new Set<number>();
+        for (const [id, x, y, opensInMs] of snapshot.c || []) {
+            seen.add(id);
+            let view = this.chests.get(id);
+            if (!view) {
+                view = new ChestView(x, y, opensInMs);
+                this.chests.set(id, view);
+                this.layerItems.addChild(view.root);
+            } else {
+                view.setRemaining(opensInMs);
+            }
+        }
+        for (const [id, view] of this.chests) {
+            if (!seen.has(id)) {
+                view.destroy();
+                this.chests.delete(id);
             }
         }
     }
@@ -310,6 +333,7 @@ export class App {
         this.players.forEach(view => view.update(dt));
         this.enemies.forEach(view => view.update(dt));
         this.pickups.forEach(view => view.update(dt));
+        this.chests.forEach(view => view.update(dt));
         this.effects?.update(dt);
 
         this.updateCamera();

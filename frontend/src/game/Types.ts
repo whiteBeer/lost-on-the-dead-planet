@@ -8,7 +8,7 @@ export interface WorldConfig {
     obstacles:[string, number, number, number, number][];
     weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number }>;
     enemies:Record<string, { id:string, name:string, size:number, radius:number }>;
-    perks:Record<string, { name:string, description:string }>;
+    perks:Record<string, { name:string, description:string, icon:string }>;
 }
 
 export interface PerkCard {
@@ -17,6 +17,7 @@ export interface PerkCard {
     description:string;
     rarity:"common" | "rare" | "epic";
     category:string;
+    icon?:string;
 }
 
 export interface MeState {
@@ -49,8 +50,10 @@ export interface MeState {
 export type NetPlayer = [number, number, number, number, number, number, string, number];
 // [id, type, x, y, rotation, hp, maxHp, moving]
 export type NetEnemy = [number, string, number, number, number, number, number, number];
-// [id, kind, weaponId, x, y]
-export type NetPickup = [number, string, string, number, number];
+// [id, kind, itemId, x, y, lifetimeLeftMs]
+export type NetPickup = [number, string, string, number, number, number];
+// [id, x, y, opensInMs]
+export type NetChest = [number, number, number, number];
 // [id, kind, x, y, vx, vy, left, size, ownerId]
 export type NetBullet = [number, string, number, number, number, number, number, number, number];
 export type NetFx = [string, number, number, number?, number?];
@@ -61,6 +64,7 @@ export interface Snapshot {
     p:NetPlayer[];
     e:NetEnemy[];
     k:NetPickup[];
+    c:NetChest[];
     b:NetBullet[];
     fx:NetFx[];
 }
@@ -81,6 +85,7 @@ export interface Roster {
     teams:{ id:number, name:string, members:number[] }[];
     exposed:[number, number, number][];
     bosses:[number, number][];
+    chests:[number, number, number][];
     mates:[number, number, number][];
 }
 

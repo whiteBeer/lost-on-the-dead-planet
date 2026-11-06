@@ -48,6 +48,7 @@
 .rarity_epic { border-color: #c77dff; }
 .perkKey { position: absolute; top: 6px; right: 8px; width: 21px; height: 21px; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #14180f; background: #f1f0e6; border-radius: 4px; }
 .perkRarity { font-size: 11px; color: #a9ae9b; }
+.perkIcon { width: 48px; height: 48px; margin: 0 auto 2px; object-fit: contain; filter: drop-shadow(0 2px 3px #000); }
 .perkName { padding-right: 22px; font-size: 15px; font-weight: 700; line-height: 1.15; }
 .perkText { font-size: 13px; line-height: 1.3; color: #dcdccf; }
 
@@ -56,6 +57,8 @@
 .subhead { font-size: 13px; color: #a9ae9b; margin: 12px 0 4px; }
 .muted { font-size: 12px; color: #a9ae9b; margin-top: 6px; }
 .perkList { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.perkList li { display: flex; align-items: flex-start; gap: 8px; }
+.perkListIcon { flex: none; width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 3px #000); }
 .perkList p { color: #dcdccf; }
 .teamList { display: flex; flex-direction: column; gap: 3px; font-size: 14px; margin-bottom: 6px; }
 .teamRow { display: flex; align-items: center; gap: 8px; }
@@ -113,6 +116,7 @@
   .perkCard { min-height: 0; padding: 6px 7px; gap: 1px; }
   .perkKey { display: none; }
   .perkRarity { font-size: 10px; }
+  .perkIcon { width: 34px; height: 34px; margin: 0 auto; }
   .perkName { padding-right: 0; font-size: 13px; }
   .perkText { font-size: 11px; line-height: 1.2; }
 

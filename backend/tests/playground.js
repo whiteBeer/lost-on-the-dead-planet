@@ -15,6 +15,9 @@ World.prototype.addPlayer = function (socketId, name) {
     player.protectedUntil = Date.now() + 45000;
     player.exp = 1500;
     this.applyLevels(player);
+    if (!this.__testChest) {
+        this.__testChest = this.createChest(player.x + 110, player.y + 80);
+    }
     Object.keys(WEAPONS).forEach((id, index) => {
         const angle = index / 10 * Math.PI * 2;
         this.dropWeapon(id, player.x + Math.cos(angle) * 170, player.y + Math.sin(angle) * 170);

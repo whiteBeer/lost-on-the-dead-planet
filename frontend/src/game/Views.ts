@@ -223,16 +223,19 @@ export class PickupView {
 
     constructor(readonly kind:string, readonly weaponId:string, readonly x:number, readonly y:number, rarity?:string) {
         this.root.position.set(x, y);
-        const textureName = kind === "medkit" ? "medkit" : `weapon_${weaponId}`;
+        const textureName = kind === "medkit" ? "medkit"
+            : kind === "perk" ? `perk_${weaponId}`
+                : `weapon_${weaponId}`;
         this.icon = new PIXI.Sprite(Assets.tex(textureName));
         this.icon.anchor.set(0.5);
-        const target = kind === "medkit" ? 30 : 56;
+        const target = kind === "medkit" ? 30 : kind === "perk" ? 46 : 56;
         this.icon.scale.set(target / Math.max(this.icon.texture.width, this.icon.texture.height));
 
-        if (kind === "weapon") {
+        if (kind === "weapon" || kind === "perk") {
             const glow = new PIXI.Graphics();
-            glow.circle(0, 0, 30).fill({ color: RARITY_COLORS[rarity || "common"], alpha: 0.28 });
-            glow.circle(0, 0, 30).stroke({ width: 2, color: RARITY_COLORS[rarity || "common"], alpha: 0.9 });
+            const color = kind === "perk" ? 0xffd85a : RARITY_COLORS[rarity || "common"];
+            glow.circle(0, 0, 30).fill({ color, alpha: 0.28 });
+            glow.circle(0, 0, 30).stroke({ width: 2, color, alpha: 0.9 });
             this.root.addChild(glow);
         }
         this.root.addChild(this.icon);
@@ -241,6 +244,55 @@ export class PickupView {
     update(dt:number) {
         this.time += dt;
         this.icon.y = Math.sin(this.time * 3) * 3;
+    }
+
+    destroy() {
+        this.root.destroy({ children: true });
+    }
+}
+
+export class ChestView {
+    readonly root = new PIXI.Container();
+    private icon = new PIXI.Sprite(Assets.tex("chest"));
+    private timer:PIXI.Text;
+    private opensAt = performance.now();
+    private time = Math.random() * 6;
+
+    constructor(readonly x:number, readonly y:number, opensInMs:number) {
+        this.root.position.set(x, y);
+        const glow = new PIXI.Graphics();
+        glow.circle(0, 0, 48).fill({ color: 0xff9f2e, alpha: 0.2 });
+        glow.circle(0, 0, 47).stroke({ width: 3, color: 0xffb13d, alpha: 0.9 });
+        this.root.addChild(glow);
+
+        this.icon.anchor.set(0.5);
+        this.icon.scale.set(82 / Math.max(this.icon.texture.width, this.icon.texture.height));
+        this.root.addChild(this.icon);
+
+        this.timer = new PIXI.Text({
+            text: "",
+            style: {
+                fontFamily: "Rubik, Arial", fontSize: 18, fontWeight: "800", fill: 0xffe08a,
+                stroke: { color: 0x000000, width: 5 }
+            },
+            resolution: 2
+        });
+        this.timer.anchor.set(0.5, 0);
+        this.timer.position.set(0, 43);
+        this.root.addChild(this.timer);
+        this.setRemaining(opensInMs);
+    }
+
+    setRemaining(ms:number) {
+        this.opensAt = performance.now() + Math.max(0, ms);
+    }
+
+    update(dt:number) {
+        this.time += dt;
+        this.icon.y = Math.sin(this.time * 3) * 2;
+        const left = Math.max(0, Math.ceil((this.opensAt - performance.now()) / 1000));
+        this.timer.text = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+        this.root.alpha = 0.88 + Math.sin(this.time * 5) * 0.12;
     }
 
     destroy() {
