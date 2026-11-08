@@ -1,0 +1,27 @@
+[Unit]
+Description=LPT wave arena backend
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=lpt-wave-arena
+Group=lpt-wave-arena
+WorkingDirectory=/opt/lpt-wave-arena/backend
+EnvironmentFile=/opt/lpt-wave-arena/backend/.env
+ExecStart=/usr/bin/node dist/app.js
+Restart=always
+RestartSec=5
+MemoryMax=512M
+CPUQuota=100%
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

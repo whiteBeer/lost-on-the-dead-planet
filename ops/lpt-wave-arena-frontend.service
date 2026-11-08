@@ -1,0 +1,30 @@
+[Unit]
+Description=LPT wave arena frontend
+Wants=network-online.target
+After=network-online.target lpt-wave-arena-backend.service
+
+[Service]
+Type=simple
+User=lpt-wave-arena
+Group=lpt-wave-arena
+WorkingDirectory=/opt/lpt-wave-arena/frontend
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+EnvironmentFile=/opt/lpt-wave-arena/frontend/.env.production
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3044
+Restart=always
+RestartSec=5
+MemoryMax=512M
+CPUQuota=100%
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/lpt-wave-arena/frontend/.next
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
