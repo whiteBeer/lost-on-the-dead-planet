@@ -21,7 +21,9 @@ export class Control {
     private mouseDown = false;
     private handlers:[EventTarget, string, (e:any) => void][] = [];
 
-    constructor(private readonly canvas:HTMLElement, private readonly onKey:(code:string) => void) {
+    sprintToggle = false;    // кнопка «Бег» на телефоне
+
+    constructor(private readonly canvas:HTMLElement, private readonly onKey:(code:string, mod:boolean) => void) {
         // Стрельба начинается только по клику на canvas: клик по панелям интерфейса не стреляет
         this.on(canvas, "mousedown", (e:MouseEvent) => {
             if (e.button === 0) {
@@ -38,11 +40,13 @@ export class Control {
             this.mouseY = e.clientY;
         });
         this.on(window, "keydown", (e:KeyboardEvent) => {
+            const mod = e.ctrlKey || e.altKey || e.metaKey;
             if (!e.repeat) {
-                this.onKey(e.code);
+                this.onKey(e.code, mod);
             }
             this.keys.add(e.code);
-            if (e.code === "Tab" || e.code === "Space") {
+            // Ctrl/Alt + 1..3 — выбор перка, а не переключение вкладок браузера
+            if (e.code === "Tab" || e.code === "Space" || (mod && /^Digit[1-3]$/.test(e.code))) {
                 e.preventDefault();
             }
         });
@@ -152,6 +156,10 @@ export class Control {
             }
         }
         return list;
+    }
+
+    get sprinting() {
+        return this.sprintToggle || this.isKey("ShiftLeft") || this.isKey("ShiftRight");
     }
 
     isKey(code:string) {

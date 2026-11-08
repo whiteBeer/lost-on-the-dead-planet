@@ -36,13 +36,15 @@ export const ITEMS:Record<string, ItemConfig> = {
     fuel: { id: "fuel", name: "Топливо", kind: "res", stack: 270, description: "Для огнемёта." },
     rocket: { id: "rocket", name: "Ракета", kind: "res", stack: 8, description: "Для ракетомёта." },
     cell: { id: "cell", name: "Энергоячейка", kind: "res", stack: 12, description: "Для рельсотрона." },
+    coin: { id: "coin", name: "Монеты", kind: "res", stack: 9999, description: "Валюта лагерей: задания, охрана, продажа торговцам." },
+    pouch: { id: "pouch", name: "Подсумок", kind: "use", stack: 1, description: "+4 ячейки рюкзака (не больше 24). Пропадает после смерти." },
     canned: { id: "canned", name: "Консервы", kind: "use", stack: 6, food: 45, description: "Сытость +45." },
     meat: { id: "meat", name: "Мясо мутанта", kind: "use", stack: 8, food: 20, water: -5, description: "Сытость +20, но хочется пить: вода −5." },
     water: { id: "water", name: "Бутылка воды", kind: "use", stack: 6, water: 50, description: "Вода +50." },
     bandage: { id: "bandage", name: "Бинт", kind: "use", stack: 10, heal: 30, description: "Восстанавливает 30 здоровья." },
     medkit: { id: "medkit", name: "Аптечка", kind: "use", stack: 5, heal: 75, description: "Восстанавливает 75 здоровья." },
     grenade: { id: "grenade", name: "Граната", kind: "use", stack: 5, description: "Бросок туда, куда смотришь. Взрыв ранит всех вокруг, кроме союзников." },
-    mutagen: { id: "mutagen", name: "Мутаген", kind: "use", stack: 3, description: "Сразу даёт выбор из трёх перков." },
+    mutagen: { id: "mutagen", name: "Шприц мутагена", kind: "use", stack: 3, description: "Сразу даёт выбор из трёх перков. Продаётся у торговцев." },
     armor_wood: { id: "armor_wood", name: "Деревянная броня", kind: "armor", stack: 1, armor: 0.08, description: "Снижение урона 8%." },
     armor_bone: { id: "armor_bone", name: "Костяная броня", kind: "armor", stack: 1, armor: 0.15, description: "Снижение урона 15%." },
     armor_kevlar: { id: "armor_kevlar", name: "Бронежилет", kind: "armor", stack: 1, armor: 0.25, description: "Снижение урона 25%." },
@@ -72,7 +74,7 @@ export const RECIPES:Recipe[] = [
     { id: "shotgun", result: "w:Shotgun", count: 1, cost: { scrap: 10, powder: 5, wood: 3 } },
     { id: "grenade", result: "grenade", count: 1, cost: { scrap: 2, powder: 3 } },
     { id: "armor_kevlar", result: "armor_kevlar", count: 1, cost: { scrap: 8, cloth: 5, hide: 3 } },
-    { id: "mutagen", result: "mutagen", count: 1, cost: { slime: 6, bone: 4 } },
+    { id: "pouch", result: "pouch", count: 1, cost: { hide: 4, cloth: 4, rope: 2 } },
     { id: "arrow", result: "arrow", count: 6, cost: { wood: 2, stone: 1 } },
     { id: "ammo_9mm", result: "ammo_9mm", count: 12, cost: { scrap: 1, powder: 1 } },
     { id: "ammo_12g", result: "ammo_12g", count: 6, cost: { scrap: 1, powder: 2 } },
@@ -131,33 +133,77 @@ export interface Trade {
     get:[string, number];          // что получает
 }
 
-// Обмен у торговцев: чем опаснее место лагеря, тем ценнее товар
+// Обмен у торговцев: чем опаснее место лагеря, тем ценнее товар. Монеты — валюта лагерей.
+// hire — нанять наёмника (особая сделка, get не выдаётся предметом)
 export const TRADES:Trade[][] = [
     [
-        { id: "t0_water", give: { wood: 4 }, get: ["water", 1] },
-        { id: "t0_canned", give: { cloth: 3 }, get: ["canned", 1] },
-        { id: "t0_rope", give: { hide: 1, cloth: 1 }, get: ["rope", 1] },
-        { id: "t0_9mm", give: { bone: 5 }, get: ["ammo_9mm", 10] },
-        { id: "t0_arrow", give: { stone: 3 }, get: ["arrow", 6] },
-        { id: "t0_bandage", give: { meat: 2 }, get: ["bandage", 2] },
-        { id: "t0_axe", give: { scrap: 4, wood: 3 }, get: ["w:Axe", 1] },
-        { id: "t0_wrench", give: { stone: 8, cloth: 4 }, get: ["w:Wrench", 1] }
+        { id: "t0_sell_bone", give: { bone: 6 }, get: ["coin", 4] },
+        { id: "t0_sell_meat", give: { meat: 3 }, get: ["coin", 4] },
+        { id: "t0_sell_hide", give: { hide: 3 }, get: ["coin", 5] },
+        { id: "t0_water", give: { coin: 4 }, get: ["water", 1] },
+        { id: "t0_canned", give: { coin: 5 }, get: ["canned", 1] },
+        { id: "t0_rope", give: { coin: 3 }, get: ["rope", 1] },
+        { id: "t0_9mm", give: { coin: 6 }, get: ["ammo_9mm", 12] },
+        { id: "t0_arrow", give: { coin: 3 }, get: ["arrow", 8] },
+        { id: "t0_wrench", give: { coin: 12 }, get: ["w:Wrench", 1] },
+        { id: "t0_mutagen", give: { coin: 60, slime: 6 }, get: ["mutagen", 1] },
+        { id: "t0_hire", give: { coin: 40 }, get: ["hire", 1] }
     ],
     [
-        { id: "t1_556", give: { scrap: 4, powder: 2 }, get: ["ammo_556", 20] },
-        { id: "t1_12g", give: { scrap: 3, hide: 2 }, get: ["ammo_12g", 8] },
-        { id: "t1_medkit", give: { slime: 4, meat: 2 }, get: ["medkit", 1] },
-        { id: "t1_water", give: { meat: 2 }, get: ["water", 2] },
-        { id: "t1_gasmask", give: { scrap: 6, slime: 4 }, get: ["gasmask", 1] },
-        { id: "t1_smg", give: { scrap: 14, powder: 6, bone: 6 }, get: ["w:SMG", 1] },
-        { id: "t1_armor", give: { scrap: 10, hide: 6 }, get: ["armor_kevlar", 1] }
+        { id: "t1_sell_scrap", give: { scrap: 6 }, get: ["coin", 6] },
+        { id: "t1_sell_slime", give: { slime: 4 }, get: ["coin", 6] },
+        { id: "t1_556", give: { coin: 12 }, get: ["ammo_556", 20] },
+        { id: "t1_12g", give: { coin: 10 }, get: ["ammo_12g", 8] },
+        { id: "t1_medkit", give: { coin: 15 }, get: ["medkit", 1] },
+        { id: "t1_water", give: { coin: 5 }, get: ["water", 2] },
+        { id: "t1_gasmask", give: { coin: 30 }, get: ["gasmask", 1] },
+        { id: "t1_smg", give: { coin: 70 }, get: ["w:SMG", 1] },
+        { id: "t1_mutagen", give: { coin: 55, slime: 5 }, get: ["mutagen", 1] },
+        { id: "t1_hire", give: { coin: 60 }, get: ["hire", 1] }
     ],
     [
-        { id: "t2_762", give: { scrap: 6, powder: 4 }, get: ["ammo_762", 8] },
-        { id: "t2_fuel", give: { slime: 8 }, get: ["fuel", 60] },
-        { id: "t2_rocket", give: { scrap: 12, powder: 8 }, get: ["rocket", 1] },
-        { id: "t2_cell", give: { scrap: 10, slime: 10 }, get: ["cell", 2] },
-        { id: "t2_mutagen", give: { slime: 8, bone: 8 }, get: ["mutagen", 1] },
-        { id: "t2_rifle", give: { scrap: 20, powder: 10, hide: 6 }, get: ["w:Rifle", 1] }
+        { id: "t2_sell_powder", give: { powder: 4 }, get: ["coin", 8] },
+        { id: "t2_762", give: { coin: 16 }, get: ["ammo_762", 8] },
+        { id: "t2_fuel", give: { coin: 20 }, get: ["fuel", 60] },
+        { id: "t2_rocket", give: { coin: 35 }, get: ["rocket", 1] },
+        { id: "t2_cell", give: { coin: 40 }, get: ["cell", 2] },
+        { id: "t2_armor", give: { coin: 60 }, get: ["armor_kevlar", 1] },
+        { id: "t2_rifle", give: { coin: 110 }, get: ["w:Rifle", 1] },
+        { id: "t2_mutagen", give: { coin: 50, slime: 4 }, get: ["mutagen", 1] },
+        { id: "t2_hire", give: { coin: 80 }, get: ["hire", 1] }
+    ]
+];
+
+export interface QuestConfig {
+    id:string;
+    text:string;
+    kill?:string;                  // тип монстра; "any" — любой
+    bring?:[string, number];       // сдать предметы
+    need:number;
+    reward:[number, number];       // монеты, опыт
+}
+
+// Задания торговцев по уровню лагеря
+export const QUESTS:QuestConfig[][] = [
+    [
+        { id: "q_zombie", text: "Убей 15 зомби", kill: "zombie", need: 15, reward: [15, 120] },
+        { id: "q_runner", text: "Убей 8 бегунов", kill: "runner", need: 8, reward: [12, 100] },
+        { id: "q_crawler", text: "Убей 10 ползунов", kill: "crawler", need: 10, reward: [10, 80] },
+        { id: "q_bone", text: "Принеси 8 костей", bring: ["bone", 8], need: 8, reward: [10, 60] },
+        { id: "q_wood", text: "Принеси 10 дерева", bring: ["wood", 10], need: 10, reward: [12, 60] }
+    ],
+    [
+        { id: "q_hound", text: "Убей 8 гончих", kill: "hound", need: 8, reward: [25, 220] },
+        { id: "q_spitter", text: "Убей 6 плевальщиков", kill: "spitter", need: 6, reward: [25, 220] },
+        { id: "q_soldier", text: "Убей 4 солдат-зомби", kill: "soldier", need: 4, reward: [30, 260] },
+        { id: "q_hide", text: "Принеси 6 шкур", bring: ["hide", 6], need: 6, reward: [20, 120] },
+        { id: "q_any", text: "Убей 40 любых монстров", kill: "any", need: 40, reward: [35, 300] }
+    ],
+    [
+        { id: "q_brute", text: "Убей 3 громил", kill: "brute", need: 3, reward: [45, 450] },
+        { id: "q_stalker", text: "Убей 5 призраков", kill: "stalker", need: 5, reward: [45, 450] },
+        { id: "q_behemoth", text: "Убей бегемота", kill: "behemoth", need: 1, reward: [60, 600] },
+        { id: "q_boss", text: "Убей Владыку", kill: "boss", need: 1, reward: [150, 1500] },
+        { id: "q_scrap", text: "Принеси 15 металлолома", bring: ["scrap", 15], need: 15, reward: [35, 250] }
     ]
 ];

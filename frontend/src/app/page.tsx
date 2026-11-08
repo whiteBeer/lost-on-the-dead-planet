@@ -11,7 +11,9 @@ function enterFullscreen() {
     const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?:() => void };
     try {
         const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
-        Promise.resolve(result).catch(() => {});
+        // В полноэкранном режиме Chrome отдаёт игре Ctrl+1..3 (выбор перка), а не переключает вкладки
+        Promise.resolve(result).then(() => (navigator as Navigator & { keyboard?:{ lock?:(keys:string[]) => Promise<void> } })
+            .keyboard?.lock?.(["Digit1", "Digit2", "Digit3"])).catch(() => {});
     } catch {
         // iPhone не умеет: игра просто идёт в обычном окне
     }
@@ -72,8 +74,9 @@ function Main() {
                         <li><b>WASD</b> бежать, <b>мышь</b> целиться и стрелять</li>
                         <li><b>R</b> перезарядка, <b>E</b> подобрать, обыскать полку, вскрыть аирдроп</li>
                         <li><b>1</b> инструмент, <b>2</b> оружие, <b>Q</b> или <b>колесо</b> — быстро переключить</li>
+                        <li><b>Shift</b> бег, <b>Пробел</b> рывок, <b>F</b> съесть, <b>V</b> выпить</li>
                         <li><b>I</b> рюкзак и крафт, <b>H</b> лечение, <b>G</b> граната, <b>M</b> звук</li>
-                        <li><b>1 2 3</b> выбрать перк, когда он предложен, <b>T</b> команда, <b>P</b> мои перки</li>
+                        <li><b>Ctrl+1 2 3</b> выбрать перк, <b>T</b> команда, <b>P</b> мои перки</li>
                     </ul>
                 )}
                 <p className={styles.note}>Ты начинаешь с ножом в безопасной зоне. Ресурсов мало: руби деревья и камни, скручивай верёвку из ткани, машины разбирай гаечным ключом. Следи за едой и водой, патроны берегут: их ищут на полках в домах. В аирдропах — перки, за них стоит драться. Смерть обнуляет уровень, перки и рюкзак: вещи остаются в сумке на месте гибели.</p>

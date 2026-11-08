@@ -18,6 +18,7 @@ export interface WorldConfig {
         camps:{ name:string, x:number, y:number, size:number, tier:number }[];
     };
     trades:{ id:string, give:Record<string, number>, get:[string, number] }[][];
+    quests:{ id:string, text:string, kill?:string, bring?:[string, number], need:number, reward:[number, number] }[][];
     items:Record<string, { name:string, kind:string, description:string, food:number, water:number }>;
     recipes:{ id:string, result:string, count:number, cost:Record<string, number> }[];
     weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number, ammo?:string, melee:{ range:number, arc:number } | null }>;
@@ -52,6 +53,10 @@ export interface MeState {
     hint:string;
     food:number;
     water:number;
+    stamina:number;
+    wanted:number;                 // мс до снятия розыска, 0 — не разыскивается
+    got:[string, number][];        // подобранное с прошлого снимка
+    quests:[string, number][];     // взятые задания и прогресс
     reserve:number;               // патронов к оружию из слота 2 в рюкзаке
     levelBonus:[number, number, number];  // урон %, здоровье, защита % за уровень
     ammo:number;
@@ -141,6 +146,9 @@ export interface HudState {
     nearPickup:string;
     muted:boolean;
     trades:WorldConfig["trades"];
+    questCatalog:WorldConfig["quests"];
+    toasts:{ key:number, text:string, id:string }[];
+    nearTraderCamp:number;
     camps:WorldConfig["map"]["camps"];
     perkCatalog:WorldConfig["perks"];
     items:WorldConfig["items"];

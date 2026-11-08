@@ -411,7 +411,6 @@ export function generateWorld(seed:number, size:number):WorldMap {
         for (const sx of [-1, 1]) {
             addRect("wall", c.x + sx * half, c.y, 12, c.size + 12, "fence");
         }
-        addCircle("trader", c.x, c.y - 40, 18, "trader");
     }
 
     // ---------- Природа ----------

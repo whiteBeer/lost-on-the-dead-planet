@@ -24,7 +24,9 @@ export function enterFullscreen() {
     }
     try {
         const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
-        Promise.resolve(result).catch(() => {});
+        // В полноэкранном режиме Chrome отдаёт игре Ctrl+1..3 (выбор перка), а не переключает вкладки
+        Promise.resolve(result).then(() => (navigator as Navigator & { keyboard?:{ lock?:(keys:string[]) => Promise<void> } })
+            .keyboard?.lock?.(["Digit1", "Digit2", "Digit3"])).catch(() => {});
     } catch {
         // Браузер не умеет (iPhone): остаётся обычный режим
     }
@@ -47,6 +49,7 @@ function GameView({ name }:{ name:string }) {
     const [perksOpen, setPerksOpen] = useState(false);
     const [invOpen, setInvOpen] = useState(false);
     const [tradeOpen, setTradeOpen] = useState(false);
+    const [sprintOn, setSprintOn] = useState(false);
 
     const onUiKey = useCallback((code:string) => {
         if (code === "KeyT") {
@@ -245,6 +248,10 @@ function GameView({ name }:{ name:string }) {
                             <div className={styles.barHp} style={{ width: `${me.hp / me.maxHp * 100}%` }} />
                             <span className={styles.barText}>{me.hp} / {me.maxHp}</span>
                         </div>
+                        <div className={`${styles.barWrap} ${styles.barThin}`} title="Выносливость: бег (Shift) и рывок (Пробел)">
+                            <div className={styles.barStamina} style={{ width: `${me.stamina}%` }} />
+                            <span className={styles.barText}>Выносливость {me.stamina}</span>
+                        </div>
                         <div className={styles.needs}>
                             <div className={`${styles.barWrap} ${styles.barSmall}`} title="Сытость: ешь консервы или мясо из рюкзака">
                                 <div className={styles.barFood} style={{ width: `${me.food}%` }} />
@@ -269,6 +276,41 @@ function GameView({ name }:{ name:string }) {
                     </section>
 
                     {me.hint && <div className={styles.hint}>{me.hint}</div>}
+
+                    {me.wanted > 0 && (
+                        <div className={styles.wanted}>
+                            Тебя разыскивают лагеря: {Math.floor(me.wanted / 60000)}:{String(Math.floor(me.wanted / 1000) % 60).padStart(2, "0")}
+                            <small> охрана стреляет, ты на миникарте у всех</small>
+                        </div>
+                    )}
+
+                    <div className={styles.toasts}>
+                        {hud?.toasts.map(toast => (
+                            <div key={toast.key} className={styles.toast}>
+                                <img src={itemImage(toast.id)} alt="" />{toast.text}
+                            </div>
+                        ))}
+                    </div>
+
+                    {!me.dead && (() => {
+                        const count = (ids:string[]) => me.inv.reduce((sum, slot) => sum + (slot && ids.includes(slot.id) ? slot.n : 0), 0);
+                        const heal = count(["medkit", "bandage"]);
+                        const food = count(["canned", "meat"]);
+                        const water = count(["water"]);
+                        return (
+                            <div className={styles.quick}>
+                                <button disabled={!heal} onClick={() => app?.heal()} title="Лечиться (H)">
+                                    <img src={itemImage(count(["medkit"]) ? "medkit" : "bandage")} alt="" /><span>{heal}</span><b className={styles.desktopOnly}>H</b>
+                                </button>
+                                <button disabled={!food} onClick={() => app?.quickUse("food")} title="Съесть (F)">
+                                    <img src={itemImage("canned")} alt="" /><span>{food}</span><b className={styles.desktopOnly}>F</b>
+                                </button>
+                                <button disabled={!water} onClick={() => app?.quickUse("water")} title="Выпить (V)">
+                                    <img src={itemImage("water")} alt="" /><span>{water}</span><b className={styles.desktopOnly}>V</b>
+                                </button>
+                            </div>
+                        );
+                    })()}
 
                     {hud?.nearPickup && (
                         <button className={styles.pickupHint} onClick={() => hud.nearPickup === "trader" ? setTradeOpen(value => !value) : app?.pickup()}>
@@ -301,20 +343,46 @@ function GameView({ name }:{ name:string }) {
                     {invOpen && hud && <Inventory hud={hud} app={app} onClose={() => setInvOpen(false)} />}
 
                     {tradeOpen && hud?.nearPickup === "trader" && (() => {
-                        const camp = hud.camps.find(c => Math.abs((app?.getPosition().x || 0) - c.x) < c.size && Math.abs((app?.getPosition().y || 0) - c.y) < c.size);
+                        const camp = hud.camps[hud.nearTraderCamp];
                         const offers = camp ? hud.trades[camp.tier] || [] : [];
+                        const quests = camp ? hud.questCatalog[camp.tier] || [] : [];
+                        const taken = new Map(me.quests);
                         const have = (id:string) => me.inv.reduce((sum, slot) => sum + (slot && slot.id === id ? slot.n : 0), 0);
-                        const label = (id:string) => id.startsWith("w:") ? hud.weapons[id.slice(2)]?.name || id : hud.items[id]?.name || id;
+                        const label = (id:string) => id === "hire" ? "Нанять наёмника на 8 минут"
+                            : id.startsWith("w:") ? hud.weapons[id.slice(2)]?.name || id : hud.items[id]?.name || id;
                         return (
                             <section className={styles.trade}>
-                                <h3>{camp?.name || "Торговец"}</h3>
-                                <p className={styles.muted}>Здесь безопасно: монстры не заходят, игроки не ранят друг друга.</p>
+                                <h3>{camp?.name || "Торговец"} · монет: {have("coin")}</h3>
+                                <p className={styles.muted}>Монстры сюда не заходят. Кто начнёт стрелять в лагере, станет врагом охраны на 30 минут.</p>
+                                <h4 className={styles.subhead}>Задания</h4>
+                                <ul>
+                                    {quests.map(q => {
+                                        const progress = taken.get(q.id);
+                                        const done = progress !== undefined && (q.bring ? have(q.bring[0]) >= q.bring[1] : progress >= q.need);
+                                        return (
+                                            <li key={q.id}>
+                                                <div>
+                                                    <b>{q.text}</b>
+                                                    <span>
+                                                        награда: {q.reward[0]} монет, {q.reward[1]} опыта
+                                                        {progress !== undefined && !q.bring ? ` · ${Math.min(progress, q.need)}/${q.need}` : ""}
+                                                        {progress !== undefined && q.bring ? ` · есть ${have(q.bring[0])}/${q.bring[1]}` : ""}
+                                                    </span>
+                                                </div>
+                                                {progress === undefined
+                                                    ? <button className={styles.small} onClick={() => app?.quest(q.id, "take")}>Взять</button>
+                                                    : <button className={styles.small} disabled={!done} onClick={() => app?.quest(q.id, "claim")}>Сдать</button>}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <h4 className={styles.subhead}>Товары</h4>
                                 <ul>
                                     {offers.map(offer => {
                                         const can = Object.entries(offer.give).every(([id, n]) => have(id) >= n);
                                         return (
                                             <li key={offer.id}>
-                                                <img src={itemImage(offer.get[0])} alt="" />
+                                                <img src={offer.get[0] === "hire" ? imgUrl("weapon_Rifle") : itemImage(offer.get[0])} alt="" />
                                                 <div>
                                                     <b>{label(offer.get[0])}{offer.get[1] > 1 ? ` ×${offer.get[1]}` : ""}</b>
                                                     <span>за {Object.entries(offer.give).map(([id, n]) => `${label(id)} ${have(id)}/${n}`).join(", ")}</span>
@@ -328,6 +396,16 @@ function GameView({ name }:{ name:string }) {
                             </section>
                         );
                     })()}
+
+                    {!me.dead && (
+                        <>
+                            <button className={styles.dashButton} onClick={() => app?.dash()}>Рывок</button>
+                            <button className={`${styles.sprintButton} ${sprintOn ? styles.sprintOn : ""}`} onClick={() => {
+                                app?.setSprintToggle(!sprintOn);
+                                setSprintOn(!sprintOn);
+                            }}>Бег</button>
+                        </>
+                    )}
 
                     {!me.dead && (
                         <button className={styles.swapButton} onClick={() => app?.switchSlot("swap")}>
@@ -349,7 +427,7 @@ function GameView({ name }:{ name:string }) {
                         <section className={styles.perks}>
                             <h3 className={styles.perksTitle}>
                                 Выбери перк{me.offersLeft > 1 ? ` (ещё выборов: ${me.offersLeft - 1})` : ""}
-                                <small> читай внимательно, бой идёт</small>
+                                <small> Ctrl+цифра или клик · читай внимательно, бой идёт</small>
                             </h3>
                             <div className={styles.perkRow}>
                                 {me.offer.map((card, index) => (

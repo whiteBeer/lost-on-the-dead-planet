@@ -138,6 +138,14 @@ export class PlayerView {
     }
 }
 
+// Люди: охрана и торговец лагеря, охотники за головами, наёмник
+const PEOPLE:Record<string, { tint:number, label:string, color:number }> = {
+    guard: { tint: 0x9ec8ff, label: "Охрана", color: 0x9ec8ff },
+    trader: { tint: 0xb8f08a, label: "Торговец", color: 0xb8f08a },
+    hunter: { tint: 0xff8a7a, label: "Охотник", color: 0xff7a6a },
+    merc: { tint: 0xffe08a, label: "Наёмник", color: 0xffe08a }
+};
+
 export class EnemyView {
     readonly root = new PIXI.Container();
     private sprite:PIXI.Sprite;
@@ -151,8 +159,15 @@ export class EnemyView {
     private baseScaleX = 1;
     private baseScaleY = 1;
 
-    constructor(private readonly type:string, size:number) {
-        if (type === "zombie") {
+    constructor(readonly type:string, size:number) {
+        const person = PEOPLE[type];
+        if (person) {
+            const body = new PIXI.AnimatedSprite(Assets.playerFrames);
+            body.animationSpeed = 0.4;
+            body.play();
+            body.tint = person.tint;
+            this.sprite = body;
+        } else if (type === "zombie") {
             const animated = new PIXI.AnimatedSprite(Assets.zombieFrames);
             animated.animationSpeed = 0.2;
             animated.play();
@@ -166,6 +181,16 @@ export class EnemyView {
         this.baseScaleY = size / base;
         this.sprite.scale.set(this.baseScaleX, this.baseScaleY);
         this.root.addChild(this.sprite);
+        if (person) {
+            const label = new PIXI.Text({
+                text: person.label,
+                style: { fontFamily: "Rubik, Arial", fontSize: 13, fontWeight: "800", fill: person.color, stroke: { color: 0x000000, width: 4 } },
+                resolution: 2
+            });
+            label.anchor.set(0.5, 1);
+            label.position.set(0, -size / 2 - 12);
+            this.root.addChild(label);
+        }
 
         const barWidth = Math.max(36, size * 0.6);
         this.bar = new HealthBar(barWidth, type === "boss" ? 0xff7a1a : 0xc9d34a);
@@ -176,6 +201,14 @@ export class EnemyView {
 
     private hidden = false;
     private charging = false;
+
+    get x() {
+        return this.tx;
+    }
+
+    get y() {
+        return this.ty;
+    }
 
     setTarget(x:number, y:number, rotation:number, flags:number) {
         this.tx = x;

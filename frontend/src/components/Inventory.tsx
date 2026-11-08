@@ -14,6 +14,35 @@ interface Props {
 
 function Inventory({ hud, app, onClose }:Props) {
     const [selected, setSelected] = useState<number | null>(null);
+    const [dragFrom, setDragFrom] = useState<number | null>(null);
+    // Тап по предмету выделяет его, тап по другой ячейке перекладывает, тап по ячейке снаряжения — надевает
+    const tapSlot = (index:number) => {
+        const stack = me.inv[index];
+        if (selected !== null && selected !== index && me.inv[selected]) {
+            app?.moveSlot(selected, index);
+            setSelected(stack ? index : null);
+            return;
+        }
+        setSelected(stack ? index : null);
+    };
+    const equipSelected = (from:number | null) => {
+        if (from !== null && me.inv[from]) {
+            app?.useSlot(from);
+            setSelected(null);
+            return true;
+        }
+        return false;
+    };
+    const dropTarget = (onDrop:(from:number) => void) => ({
+        onDragOver: (e:React.DragEvent) => e.preventDefault(),
+        onDrop: (e:React.DragEvent) => {
+            e.preventDefault();
+            if (dragFrom !== null) {
+                onDrop(dragFrom);
+            }
+            setDragFrom(null);
+        }
+    });
     const me = hud.me!;
     const nameOf = (id:string) => id.startsWith("w:")
         ? hud.weapons[id.slice(2)]?.name || id
@@ -40,19 +69,27 @@ function Inventory({ hud, app, onClose }:Props) {
             <div className={styles.columns}>
                 <div className={styles.left}>
                     <div className={styles.equip}>
-                        <button className={styles.equipSlot} title="Убрать в рюкзак и взять нож" onClick={() => app?.unequip("tool")}>
+                        <button className={styles.equipSlot} title="Перетащи сюда инструмент или нажми, чтобы убрать в рюкзак"
+                            {...dropTarget(from => app?.useSlot(from))}
+                            onClick={() => equipSelected(selected) || app?.unequip("tool")}>
                             <img src={itemImage(`w:${me.tool}`)} alt="" />
                             <span>{hud.weapons[me.tool]?.name}</span>
                         </button>
-                        <button className={styles.equipSlot} title="Убрать в рюкзак" onClick={() => me.gun && app?.unequip("gun")}>
+                        <button className={styles.equipSlot} title="Перетащи сюда оружие или нажми, чтобы убрать в рюкзак"
+                            {...dropTarget(from => app?.useSlot(from))}
+                            onClick={() => equipSelected(selected) || (me.gun && app?.unequip("gun"))}>
                             {me.gun ? <img src={itemImage(`w:${me.gun}`)} alt="" /> : <i>оружие</i>}
                             <span>{me.gun ? hud.weapons[me.gun]?.name : "нет оружия"}</span>
                         </button>
-                        <button className={styles.equipSlot} title="Снять в рюкзак" onClick={() => me.armor && app?.unequip("armor")}>
+                        <button className={styles.equipSlot} title="Перетащи сюда броню или нажми, чтобы снять"
+                            {...dropTarget(from => app?.useSlot(from))}
+                            onClick={() => equipSelected(selected) || (me.armor && app?.unequip("armor"))}>
                             {me.armor ? <img src={itemImage(me.armor)} alt="" /> : <i>броня</i>}
                             <span>{me.armor ? nameOf(me.armor) : "нет брони"}</span>
                         </button>
-                        <button className={styles.equipSlot} title="Снять в рюкзак" onClick={() => me.mask && app?.unequip("mask")}>
+                        <button className={styles.equipSlot} title="Перетащи сюда противогаз или нажми, чтобы снять"
+                            {...dropTarget(from => app?.useSlot(from))}
+                            onClick={() => equipSelected(selected) || (me.mask && app?.unequip("mask"))}>
                             {me.mask ? <img src={itemImage(me.mask)} alt="" /> : <i>маска</i>}
                             <span>{me.mask ? nameOf(me.mask) : "нет маски"}</span>
                         </button>
@@ -63,7 +100,10 @@ function Inventory({ hud, app, onClose }:Props) {
                             <button
                                 key={index}
                                 className={`${styles.slot} ${selected === index ? styles.selected : ""}`}
-                                onClick={() => setSelected(stack ? index : null)}
+                                onClick={() => tapSlot(index)}
+                                draggable={!!stack}
+                                onDragStart={() => setDragFrom(index)}
+                                {...dropTarget(from => app?.moveSlot(from, index))}
                             >
                                 {stack && <img src={itemImage(stack.id)} alt="" draggable={false} />}
                                 {stack && stack.n > 1 && <span className={styles.count}>{stack.n}</span>}
@@ -84,7 +124,7 @@ function Inventory({ hud, app, onClose }:Props) {
                             </div>
                         </div>
                     ) : (
-                        <p className={styles.hint}>Нажми на предмет. Ресурсы добываются ударами по деревьям и камням, машины разбираются гаечным ключом. Ещё ресурсы падают с монстров и из ящиков.</p>
+                        <p className={styles.hint}>Перетаскивай предметы мышью. На телефоне: нажми на предмет, потом на ячейку, куда его положить, или на ячейку снаряжения, чтобы надеть. Ресурсы добываются ударами по деревьям и камням, машины разбираются гаечным ключом. Ещё ресурсы падают с монстров и из ящиков.</p>
                     )}
                 </div>
 

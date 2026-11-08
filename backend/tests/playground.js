@@ -48,7 +48,7 @@ World.prototype.addPlayer = function (socketId, name) {
         this.spawnEnemies = () => {};
         return player;
     }
-    Object.keys(ENEMIES).forEach((type, index) => {
+    Object.keys(ENEMIES).filter(type => !ENEMIES[type].faction).forEach((type, index) => {
         const angle = index / 7 * Math.PI * 2;
         this.createEnemy(type, player.x + Math.cos(angle) * 380, player.y + Math.sin(angle) * 300);
     });

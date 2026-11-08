@@ -28,6 +28,9 @@ export interface EnemyConfig {
     summon?:{ interval:number, count:number, type:string, cap:number };
     stealth?:number;    // Невидим, пока не подойдёт ближе этого расстояния
     charge?:{ interval:number, range:number, speedMul:number, duration:number };
+    // Люди, а не монстры: охрана и торговец лагеря, охотники за головой, наёмник игрока
+    faction?:"guard" | "trader" | "hunter" | "merc";
+    smash?:boolean;     // Крупный монстр проламывается сквозь деревья, камни, машины и ящики
 }
 
 export const ENEMIES:Record<string, EnemyConfig> = {
@@ -100,22 +103,49 @@ export const ENEMIES:Record<string, EnemyConfig> = {
     },
     "brute": {
         id: "brute", name: "Громила", tier: 3, health: 450, speed: 48, speedJitter: 15,
-        radius: 40, size: 118, damage: 34, attackInterval: 1200, aggro: 620,
+        radius: 40, size: 118, damage: 34, attackInterval: 1200, aggro: 620, smash: true,
         exp: 110, dropChance: 0.25, healChance: 0.25, zoneMin: 0.65, zoneMax: 1, weight: 7,
         loot: [["hide", 0.8, 2, 3], ["bone", 0.8, 2, 4], ["meat", 0.8, 1, 2]]
     },
     "behemoth": {
         id: "behemoth", name: "Бегемот", tier: 3, health: 1100, speed: 50, speedJitter: 10,
-        radius: 52, size: 172, damage: 40, attackInterval: 1100, aggro: 700,
+        radius: 52, size: 172, damage: 48, attackInterval: 1100, aggro: 700, smash: true,
         exp: 350, dropChance: 0.5, healChance: 0.5, zoneMin: 0.8, zoneMax: 1, weight: 3,
         charge: { interval: 5000, range: 520, speedMul: 4, duration: 700 },
         loot: [["hide", 1, 3, 5], ["bone", 1, 4, 6], ["slime", 0.5, 2, 3], ["meat", 1, 2, 3]]
     },
     "boss": {
         id: "boss", name: "Владыка", tier: 4, health: 4000, speed: 72, speedJitter: 0,
-        radius: 62, size: 190, damage: 45, attackInterval: 900, aggro: 950,
+        radius: 62, size: 190, damage: 55, attackInterval: 900, aggro: 950, smash: true,
         exp: 1200, dropChance: 1, healChance: 1, zoneMin: 2, zoneMax: 2, weight: 0,
         ranged: { range: 800, speed: 460, damage: 22, interval: 1100 },
         loot: [["hide", 1, 4, 6], ["bone", 1, 5, 8], ["slime", 1, 4, 6], ["powder", 1, 3, 5]]
+    },
+    "guard": {
+        id: "guard", name: "Охранник", tier: 2, health: 260, speed: 95, speedJitter: 10,
+        radius: 14, size: 54, damage: 0, attackInterval: 1000, aggro: 700,
+        exp: 80, dropChance: 0.12, healChance: 0.2, zoneMin: 2, zoneMax: 2, weight: 0, faction: "guard",
+        ranged: { range: 680, speed: 950, damage: 13, interval: 420, kind: "shot" },
+        loot: [["coin", 1, 4, 10], ["ammo_556", 0.6, 6, 14], ["water", 0.3, 1, 1]]
+    },
+    "trader": {
+        id: "trader", name: "Торговец", tier: 2, health: 380, speed: 0, speedJitter: 0,
+        radius: 16, size: 56, damage: 0, attackInterval: 1000, aggro: 0,
+        exp: 120, dropChance: 0, healChance: 0, zoneMin: 2, zoneMax: 2, weight: 0, faction: "trader",
+        loot: [["coin", 1, 25, 45], ["canned", 1, 1, 3], ["water", 1, 1, 3], ["ammo_9mm", 1, 10, 30]]
+    },
+    "hunter": {
+        id: "hunter", name: "Охотник за головами", tier: 3, health: 320, speed: 165, speedJitter: 15,
+        radius: 14, size: 54, damage: 0, attackInterval: 1000, aggro: 2400,
+        exp: 150, dropChance: 0.2, healChance: 0.3, zoneMin: 2, zoneMax: 2, weight: 0, faction: "hunter",
+        ranged: { range: 700, speed: 1000, damage: 16, interval: 380, kind: "shot" },
+        loot: [["coin", 1, 10, 20], ["ammo_556", 1, 10, 20], ["medkit", 0.3, 1, 1]]
+    },
+    "merc": {
+        id: "merc", name: "Наёмник", tier: 1, health: 250, speed: 175, speedJitter: 0,
+        radius: 14, size: 54, damage: 0, attackInterval: 1000, aggro: 520,
+        exp: 0, dropChance: 0, healChance: 0, zoneMin: 2, zoneMax: 2, weight: 0, faction: "merc",
+        ranged: { range: 560, speed: 950, damage: 14, interval: 450, kind: "shot" },
+        loot: []
     }
 };

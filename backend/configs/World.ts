@@ -32,6 +32,20 @@ export const WORLD = {
     shelfRespawnMs: 420000,
     shelfReach: 70,
     traderReach: 130,
+    wantedMs: 30 * 60 * 1000,       // сколько игрок «красный» для лагерей после нападения
+    campRespawnMs: 5 * 60 * 1000,   // через сколько в вырезанный лагерь приходят новые люди
+    campGuards: 4,
+    hunters: 4,                     // группа захвата после убийства торговца
+    wantedBounty: 40,               // монет за голову разыскиваемого
+    mercLifeMs: 8 * 60 * 1000,
+    maxInventory: 24,
+    sprintMul: 1.45,
+    sprintDrain: 22,                // выносливости в секунду при беге
+    staminaRegen: 16,
+    dashMul: 3.4,
+    dashMs: 220,
+    dashCost: 30,
+    dashCooldownMs: 1500,
     slotSwitchMs: 250,              // задержка выстрела после смены инструмента на оружие
     chestFirstDelayMs: 35000,
     chestMinIntervalMs: 150000,

@@ -448,36 +448,109 @@ const tests = {
         assert.ok(a.stats.maxHp >= base.maxHp + 40);
         assert.ok(a.stats.armor >= 0.14);
     },
-    "лагерь выживших: торговля, монстры не нападают, игроки не ранят": async () => {
+    "лагерь: торговля за монеты, задания, нападение делает разыскиваемым": async () => {
         const world = new World(20261104);
         const camp = world.map.camps[0];
-        assert.ok(world.map.camps.length === 3, "три лагеря");
+        assert.strictEqual(world.map.camps.length, 3);
+        const people = [...world.enemies.values()].filter(el => el.camp === 0);
+        assert.strictEqual(people.filter(el => el.type === "guard").length, 4);
+        const trader = people.find(el => el.type === "trader");
+        assert.ok(trader);
+        world.spawnEnemies = () => {};
         const a = world.addPlayer("a", "Покупатель");
         const b = world.addPlayer("b", "Задира");
-        world.enemies.clear();
-        world.spawnEnemies = () => {};
-        place(a, camp.x, camp.y);
-        place(b, camp.x + 60, camp.y);
-        // Обмен: без вещей нельзя, с вещами — получаем товар
-        assert.strictEqual(world.trade(a, "t0_water"), false);
-        world.addItem(a, "wood", 4);
+        place(a, trader.x + 30, trader.y);
+        place(b, trader.x + 60, trader.y + 20);
+        // Продажа и покупка
+        assert.strictEqual(world.trade(a, "t0_water"), false, "без монет");
+        world.addItem(a, "bone", 6);
+        assert.strictEqual(world.trade(a, "t0_sell_bone"), true);
+        assert.strictEqual(world.countItem(a, "coin"), 4);
         assert.strictEqual(world.trade(a, "t0_water"), true);
-        assert.strictEqual(world.countItem(a, "wood"), 0);
         assert.strictEqual(world.countItem(a, "water"), 1);
         assert.strictEqual(world.trade(a, "t2_rocket"), false, "товар чужого лагеря");
-        // Далеко от торговца — нельзя
-        place(a, camp.x + 3000, camp.y);
-        world.addItem(a, "wood", 4);
-        assert.strictEqual(world.trade(a, "t0_water"), false);
-        place(a, camp.x, camp.y);
-        // Монстр рядом не выбирает целью игрока в лагере
-        const zombie = world.createEnemy("zombie", camp.x + camp.size / 2 + 80, camp.y);
-        world.enemyThink(zombie, Date.now());
-        assert.strictEqual(zombie.targetId, 0);
-        // PvP в лагере не работает
-        const hp = a.hp;
-        world.damagePlayer(a, 50, b, "Pistol");
-        assert.strictEqual(a.hp, hp);
+        // Шприц мутагена не крафтится, только покупается за монеты и слизь
+        assert.ok(!require("../dist/configs/Items.js").RECIPES.some(el => el.result === "mutagen"));
+        world.addItem(a, "coin", 100);
+        world.addItem(a, "slime", 6);
+        assert.strictEqual(world.trade(a, "t0_mutagen"), true);
+        assert.strictEqual(world.countItem(a, "mutagen"), 1);
+        // Наёмник
+        assert.strictEqual(world.trade(a, "t0_hire"), true);
+        assert.ok([...world.enemies.values()].some(el => el.type === "merc" && el.ownerId === a.id));
+        assert.strictEqual(world.trade(a, "t0_hire"), false, "второго не нанять");
+        // Задание: взять, убить, сдать
+        assert.strictEqual(world.quest(a, "q_zombie", "take"), true);
+        for (let i = 0; i < 15; i++) {
+            const z = world.createEnemy("zombie", camp.x + 3000, camp.y);
+            world.damageEnemy(z, 9999, a, "Pistol");
+        }
+        const coins = world.countItem(a, "coin");
+        assert.strictEqual(world.quest(a, "q_zombie", "claim"), true);
+        assert.strictEqual(world.countItem(a, "coin"), coins + 15);
+        // Выстрел по игроку в лагере — разыскиваемый, охрана целится в него
+        world.damagePlayer(a, 10, b, "Pistol");
+        assert.ok(world.isWanted(b));
+        assert.ok(!world.isWanted(a));
+        const guard = people.find(el => el.type === "guard");
+        world.enemyThink(guard, Date.now());
+        assert.strictEqual(guard.targetId, b.id);
+        assert.strictEqual(world.trade(b, "t0_water"), false, "разыскиваемому не продают");
+        // Убийство торговца: группа захвата
+        world.damageEnemy(trader, 99999, b, "Pistol");
+        assert.ok([...world.enemies.values()].some(el => el.type === "hunter" && el.huntId === b.id));
+        // Награда за голову и снятие розыска после смерти
+        const before = world.countItem(a, "coin");
+        world.damagePlayer(b, 9999, a, "Pistol");
+        assert.ok(b.dead);
+        assert.strictEqual(world.countItem(a, "coin"), before + 40);
+        assert.ok(!world.isWanted(b));
+    },
+    "бег и рывок быстрее шага, тратят выносливость": async () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        const walk = world.speedOf(a);
+        a.sprinting = true;
+        assert.ok(world.speedOf(a) > walk * 1.3);
+        world.dash(a);
+        assert.ok(world.speedOf(a) > walk * 3);
+        assert.ok(a.stamina <= 70);
+        a.moving = true;
+        world.updatePlayers(Date.now(), 1);
+        assert.ok(a.stamina < 70);
+    },
+    "рюкзак: перекладывание, подсумок, быстрая еда": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        world.addItem(a, "wood", 5);
+        world.moveSlot(a, 0, 7);
+        assert.strictEqual(a.inventory[7].id, "wood");
+        assert.strictEqual(a.inventory[0], null);
+        world.addItem(a, "wood", 3);
+        world.moveSlot(a, 0, 7);
+        assert.strictEqual(a.inventory[7].n, 8, "одинаковые стопки складываются");
+        world.moveSlot(a, 7, 99);
+        world.moveSlot(a, "1", 2);
+        world.addItem(a, "pouch", 1);
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "pouch"));
+        assert.strictEqual(a.inventory.length, 16);
+        a.food = 10;
+        world.addItem(a, "canned", 1);
+        world.quickUse(a, "food");
+        assert.strictEqual(a.food, 55);
+    },
+    "крупный монстр ломает деревья на пути": () => {
+        const world = new World(3);
+        const tree = world.obstacles.find(el => el.kind === "tree");
+        const brute = world.createEnemy("behemoth", tree.x - 80, tree.y);
+        brute.moving = true;
+        brute.rotation = 0;
+        brute.thinkAt = Date.now() + 99999;
+        for (let i = 0; i < 30 && tree.alive; i++) {
+            world.updateEnemies(Date.now(), 1 / 30);
+        }
+        assert.strictEqual(tree.alive, false);
     },
     "в дом можно зайти через дверь, на полке есть добыча": () => {
         const world = new World(4);

@@ -63,13 +63,17 @@ class Server {
 
         socket.on("input", input => this.world.handleInput(player, input));
         socket.on("reload", () => this.world.reload(player));
-        socket.on("pickup", () => this.world.takePickup(player));
+        socket.on("pickup", want => this.world.takePickup(player, want));
         socket.on("perk", index => this.world.pickPerk(player, index));
         socket.on("useSlot", index => this.world.useSlot(player, index));
         socket.on("dropSlot", index => this.world.dropSlot(player, index));
         socket.on("unequip", what => this.world.unequip(player, what));
         socket.on("slot", which => this.world.switchSlot(player, which));
         socket.on("trade", tradeId => this.world.trade(player, tradeId));
+        socket.on("quest", (questId, action) => this.world.quest(player, questId, action));
+        socket.on("moveSlot", (from, to) => this.world.moveSlot(player, from, to));
+        socket.on("quickUse", what => this.world.quickUse(player, what));
+        socket.on("dash", () => this.world.dash(player));
         socket.on("craft", recipeId => this.world.craft(player, recipeId));
         socket.on("heal", () => this.world.quickHeal(player));
         socket.on("grenade", () => this.world.useGrenade(player));

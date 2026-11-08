@@ -4,7 +4,7 @@ import { ENEMIES, EnemyConfig } from "./configs/Enemies";
 import { WEAPONS, WeaponConfig, STARTING_WEAPON, isToolWeapon, rollWeapon } from "./configs/Weapons";
 import { PERKS, POSITIVE_PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
 import { Camp, generateWorld, Obstacle, WorldMap, ZONES, ZONE_NAMES, zoneLevel } from "./configs/Terrain";
-import { CRATE_LOOT, SHELF_LOOT, TRADES, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
+import { CRATE_LOOT, QUESTS, SHELF_LOOT, TRADES, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
 import {
     AreaGrid, Coords, SpatialGrid, clamp, distSq, pushCircleOutOfRect, segmentCircleHit, segmentRectHit
 } from "./utils/geometry";
@@ -55,6 +55,13 @@ export interface Player {
     hintUntil:number;
     food:number;          // сытость 0..100
     water:number;         // вода 0..100
+    stamina:number;       // выносливость для бега и рывков 0..100
+    sprinting:boolean;
+    dashUntil:number;
+    dashReadyAt:number;
+    wantedUntil:number;   // до какого времени лагеря считают игрока врагом
+    got:[string, number][];          // что подобрано с прошлого снимка, для подсказки на экране
+    quests:Map<string, number>;      // взятые задания и прогресс
     reloadEndsAt:number;
     nextShotAt:number;
     spreadNow:number;
@@ -98,6 +105,14 @@ export interface Enemy {
     chargeUntil:number;
     revealedUntil:number;  // для невидимых: когда снова скрыться
     summonedBy:number;
+    // Люди: дом (пост охраны), лагерь, хозяин наёмника, цель охотника, срок службы
+    homeX:number;
+    homeY:number;
+    camp:number;
+    ownerId:number;
+    huntId:number;
+    targetEnemyId:number;
+    expiresAt:number;
 }
 
 interface Bullet {
@@ -118,6 +133,8 @@ interface Bullet {
     kind:string;
     hit:Set<number>;     // Кого уже задела эта пуля
     crit:boolean;
+    onlyPlayer?:number;  // Пуля охраны: ранит только того, в кого стреляли
+    npc?:boolean;        // Пуля наёмника: игроков не ранит
 }
 
 export interface Pickup {
@@ -182,6 +199,7 @@ export class World extends EventEmitter {
     private enemyGrid = new SpatialGrid<Enemy>(120);
     private obstacleGrid = new AreaGrid<Obstacle>(200);
     private interiors = new Map<number, Obstacle[]>();   // дома с входом по поселениям
+    private campPeople:{ trader:number, guards:Set<number>, respawnAt:number }[] = [];
     private shelves:Obstacle[] = [];
     private killFeed:KillEvent[] = [];
 
@@ -202,6 +220,7 @@ export class World extends EventEmitter {
                 this.obstacleGrid.insert(el);
             }
         }
+        this.map.camps.forEach((_, index) => this.populateCamp(index));
         this.zoneBase64 = Buffer.from(this.map.zone).toString("base64");
     }
 
@@ -255,6 +274,7 @@ export class World extends EventEmitter {
             }])),
             recipes: RECIPES,
             trades: TRADES,
+            quests: QUESTS,
             weapons: Object.fromEntries(Object.values(WEAPONS).map(el => [el.id, {
                 id: el.id, name: el.name, rarity: el.rarity, fireRate: el.fireRate, clipSize: el.clipSize, ammo: el.ammo || "",
                 melee: el.melee ? { range: el.melee.range, arc: el.melee.arc } : null,
@@ -285,6 +305,7 @@ export class World extends EventEmitter {
             exp: 0, level: 1, kills: 0, bestExp: 0,
             perks: new Set(), stats: computeStats([]), offers: [],
             weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0, food: 100, water: 100,
+            stamina: 100, sprinting: false, dashUntil: 0, dashReadyAt: 0, wantedUntil: 0, got: [], quests: new Map(),
             ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
             invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
@@ -336,6 +357,10 @@ export class World extends EventEmitter {
         player.gunAmmo = 0;
         player.food = 100;
         player.water = 100;
+        player.stamina = 100;
+        player.wantedUntil = 0;
+        player.quests = new Map();
+        player.got = [];
         this.equip(player, STARTING_WEAPON);
     }
 
@@ -435,15 +460,241 @@ export class World extends EventEmitter {
         return this.map.camps.find(c => Math.abs(x - c.x) <= c.size / 2 + margin && Math.abs(y - c.y) <= c.size / 2 + margin);
     }
 
+    /** Живой торговец рядом с игроком и его лагерь. Разыскиваемому лагерь не продаёт. */
+    private traderNear(player:Player) {
+        const camp = this.campAt(player.x, player.y);
+        if (!camp) {
+            return null;
+        }
+        const index = this.map.camps.indexOf(camp);
+        const trader = this.enemies.get(this.campPeople[index]?.trader || -1);
+        if (!trader || Math.hypot(player.x - trader.x, player.y - trader.y) > WORLD.traderReach) {
+            this.hint(player, trader ? "Подойди к торговцу" : "Торговца нет: лагерь разорён");
+            return null;
+        }
+        if (this.isWanted(player)) {
+            this.hint(player, "Лагерь не торгует с тем, кто на него напал");
+            return null;
+        }
+        return { camp, index };
+    }
+
+    isWanted(player:Player) {
+        return Date.now() < player.wantedUntil;
+    }
+
+    /** Игрок напал на лагерь: охрана всех лагерей стреляет в него, остальные видят его на миникарте. */
+    private makeWanted(player:Player, campIndex:number, reason:string) {
+        const was = this.isWanted(player);
+        player.wantedUntil = Date.now() + WORLD.wantedMs;
+        if (!was) {
+            const camp = this.map.camps[campIndex];
+            this.emit("announce", `${player.name} ${reason}${camp ? ` в лагере ${camp.name}` : ""}. Охрана открыла огонь, за голову — ${WORLD.wantedBounty} монет. Он отмечен на миникарте.`);
+        }
+    }
+
+    /** Люди лагеря: торговец у костра и охрана у ворот. */
+    private populateCamp(index:number, fromEdge = false) {
+        const camp = this.map.camps[index];
+        const people = this.campPeople[index] = { trader: 0, guards: new Set<number>(), respawnAt: 0 };
+        const half = camp.size / 2;
+        const posts = [[0, -half + 30], [0, half - 30], [-half + 40, 0], [half - 40, 0]];
+        const spawnAt = (hx:number, hy:number) => {
+            if (!fromEdge) {
+                return { x: hx, y: hy };
+            }
+            // Новые люди приходят издалека, со стороны ближайшего края карты
+            const angle = Math.random() * Math.PI * 2;
+            return { x: clamp(hx + Math.cos(angle) * 1400, 80, WORLD.size - 80), y: clamp(hy + Math.sin(angle) * 1400, 80, WORLD.size - 80) };
+        };
+        const trader = this.createEnemy("trader", camp.x, camp.y - 40);
+        trader.camp = index;
+        people.trader = trader.id;
+        for (let i = 0; i < WORLD.campGuards; i++) {
+            const [dx, dy] = posts[i % posts.length];
+            const spot = spawnAt(camp.x + dx, camp.y + dy);
+            const guard = this.createEnemy("guard", spot.x, spot.y);
+            guard.homeX = camp.x + dx;
+            guard.homeY = camp.y + dy;
+            guard.camp = index;
+            people.guards.add(guard.id);
+        }
+    }
+
+    private updateCamps(now:number) {
+        this.campPeople.forEach((people, index) => {
+            if (people.respawnAt && now >= people.respawnAt) {
+                this.populateCamp(index, true);
+                this.emit("announce", `В лагерь ${this.map.camps[index].name} пришли новые выжившие.`);
+            }
+        });
+        // Наёмники служат ограниченное время, охотники уходят, когда цель погибла или прощена
+        for (const enemy of [...this.enemies.values()]) {
+            const faction = enemy.cfg.faction;
+            if (faction === "merc") {
+                const owner = this.players.get(enemy.ownerId);
+                if (!owner || owner.dead || now > enemy.expiresAt) {
+                    this.enemies.delete(enemy.id);
+                }
+            } else if (faction === "hunter") {
+                const prey = this.players.get(enemy.huntId);
+                if (!prey || prey.dead || !this.isWanted(prey)) {
+                    this.enemies.delete(enemy.id);
+                }
+            }
+        }
+    }
+
+    /** Поведение людей: охрана держит пост и стреляет в разыскиваемых, охотник преследует, наёмник защищает хозяина. */
+    private npcThink(enemy:Enemy, now:number) {
+        const faction = enemy.cfg.faction;
+        enemy.moving = false;
+        if (faction === "trader") {
+            enemy.targetId = 0;
+            return;
+        }
+        if (faction === "merc") {
+            const owner = this.players.get(enemy.ownerId);
+            if (!owner) {
+                return;
+            }
+            let target:Enemy | null = null;
+            let best = enemy.cfg.aggro * enemy.cfg.aggro;
+            this.enemyGrid.query(enemy.x, enemy.y, enemy.cfg.aggro, (other) => {
+                const d = distSq(enemy.x, enemy.y, other.x, other.y);
+                if (!other.cfg.faction && other.hp > 0 && d < best) {
+                    best = d;
+                    target = other;
+                }
+            });
+            enemy.targetEnemyId = target ? (target as Enemy).id : 0;
+            const toOwner = Math.hypot(owner.x - enemy.x, owner.y - enemy.y);
+            if (toOwner > 110) {
+                enemy.moving = true;
+                enemy.rotation = Math.atan2(owner.y - enemy.y, owner.x - enemy.x);
+            } else if (target) {
+                enemy.rotation = Math.atan2((target as Enemy).y - enemy.y, (target as Enemy).x - enemy.x);
+            }
+            return;
+        }
+        // Охрана и охотники: цель — разыскиваемый игрок
+        let target:Player | null = null;
+        let best = Infinity;
+        for (const player of this.players.values()) {
+            if (player.dead || !this.isWanted(player)) {
+                continue;
+            }
+            if (faction === "hunter" && player.id !== enemy.huntId) {
+                continue;
+            }
+            const d = distSq(enemy.x, enemy.y, player.x, player.y);
+            if (d < enemy.cfg.aggro * enemy.cfg.aggro && d < best) {
+                best = d;
+                target = player;
+            }
+        }
+        const leash = faction === "guard" ? Math.hypot(enemy.x - enemy.homeX, enemy.y - enemy.homeY) : 0;
+        if (target && leash < 900) {
+            const dist = Math.sqrt(best);
+            enemy.targetId = target.id;
+            enemy.rotation = Math.atan2(target.y - enemy.y, target.x - enemy.x);
+            if (dist > enemy.cfg.ranged!.range * 0.6) {
+                enemy.moving = true;
+                const door = this.doorGoal(enemy.x, enemy.y, target.x, target.y);
+                if (door) {
+                    enemy.rotation = Math.atan2(door.y - enemy.y, door.x - enemy.x);
+                }
+            }
+            return;
+        }
+        enemy.targetId = 0;
+        if (faction === "guard" && leash > 30) {
+            enemy.moving = true;
+            enemy.rotation = Math.atan2(enemy.homeY - enemy.y, enemy.homeX - enemy.x);
+        } else if (faction === "hunter") {
+            const prey = this.players.get(enemy.huntId);
+            if (prey) {
+                enemy.moving = true;
+                enemy.rotation = Math.atan2(prey.y - enemy.y, prey.x - enemy.x);
+            }
+        }
+    }
+
+    /** Человек лагеря погиб. Торговец — группа захвата; все погибли — через 5 минут придут новые. */
+    private onCampPersonKilled(enemy:Enemy, killer?:Player) {
+        const people = this.campPeople[enemy.camp];
+        if (!people) {
+            return;
+        }
+        people.guards.delete(enemy.id);
+        if (people.trader === enemy.id) {
+            people.trader = 0;
+            if (killer) {
+                this.makeWanted(killer, enemy.camp, "убил торговца");
+                this.emit("announce", `${killer.name} убил торговца лагеря ${this.map.camps[enemy.camp].name}. За ним вышла группа захвата.`);
+                for (let i = 0; i < WORLD.hunters; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const x = clamp(killer.x + Math.cos(angle) * 1300, 80, WORLD.size - 80);
+                    const y = clamp(killer.y + Math.sin(angle) * 1300, 80, WORLD.size - 80);
+                    const hunter = this.createEnemy("hunter", x, y);
+                    hunter.huntId = killer.id;
+                }
+            }
+        }
+        if (!people.trader && people.guards.size === 0 && !people.respawnAt) {
+            people.respawnAt = Date.now() + WORLD.campRespawnMs;
+            this.emit("announce", `Лагерь ${this.map.camps[enemy.camp].name} вырезан. Новые выжившие придут через 5 минут.`);
+        }
+    }
+
+    /** Взять задание торговца или сдать выполненное. */
+    quest(player:Player, questId:unknown, action:unknown) {
+        if (player.dead || typeof questId !== "string") {
+            return false;
+        }
+        const near = this.traderNear(player);
+        if (!near) {
+            return false;
+        }
+        const cfg = QUESTS[near.camp.tier]?.find(el => el.id === questId);
+        if (!cfg) {
+            return false;
+        }
+        if (action === "take") {
+            if (!player.quests.has(cfg.id) && player.quests.size < 5) {
+                player.quests.set(cfg.id, 0);
+            }
+            return player.quests.has(cfg.id);
+        }
+        if (action !== "claim" || !player.quests.has(cfg.id)) {
+            return false;
+        }
+        if (cfg.bring) {
+            if (this.countItem(player, cfg.bring[0]) < cfg.bring[1]) {
+                this.hint(player, "Не хватает вещей для задания");
+                return false;
+            }
+            this.removeItem(player, cfg.bring[0], cfg.bring[1]);
+        } else if ((player.quests.get(cfg.id) || 0) < cfg.need) {
+            return false;
+        }
+        player.quests.delete(cfg.id);
+        this.giveOrDrop(player, "coin", cfg.reward[0]);
+        this.addExp(player, cfg.reward[1]);
+        this.addFx(["level", player.x, player.y]);
+        return true;
+    }
+
     /** Обмен у торговца лагеря: только рядом с ним и если хватает вещей. */
     trade(player:Player, tradeId:unknown) {
         if (player.dead || typeof tradeId !== "string") {
             return false;
         }
-        const camp = this.campAt(player.x, player.y);
-        if (!camp || Math.hypot(player.x - camp.x, player.y - (camp.y - 40)) > WORLD.traderReach) {
+        const near = this.traderNear(player);
+        if (!near) {
             return false;
         }
+        const camp = near.camp;
         const offer = TRADES[camp.tier]?.find(el => el.id === tradeId);
         if (!offer) {
             return false;
@@ -454,10 +705,21 @@ export class World extends EventEmitter {
                 return false;
             }
         }
+        if (offer.get[0] === "hire" && [...this.enemies.values()].some(el => el.cfg.faction === "merc" && el.ownerId === player.id)) {
+            this.hint(player, "Наёмник уже с тобой");
+            return false;
+        }
         for (const [id, need] of Object.entries(offer.give)) {
             this.removeItem(player, id, need);
         }
         const [id, count] = offer.get;
+        if (id === "hire") {
+            const merc = this.createEnemy("merc", player.x + 40, player.y);
+            merc.ownerId = player.id;
+            merc.expiresAt = Date.now() + WORLD.mercLifeMs;
+            this.hint(player, "Наёмник с тобой на 8 минут");
+            return true;
+        }
         this.giveOrDrop(player, id, count);
         this.addFx(["loot", player.x, player.y, count]);
         return true;
@@ -572,6 +834,7 @@ export class World extends EventEmitter {
             player.rotation = input.r;
         }
         player.firing = input.f === true;
+        player.sprinting = input.s === true;
         if (player.dead || typeof input.x !== "number" || typeof input.y !== "number"
             || !Number.isFinite(input.x) || !Number.isFinite(input.y)) {
             return;
@@ -594,9 +857,29 @@ export class World extends EventEmitter {
         player.y = moved.y;
     }
 
-    private speedOf(player:Player) {
+    /** Обычная скорость без бега и рывка: её же показывает клиент. */
+    private baseSpeedOf(player:Player) {
         const boost = Date.now() < player.speedBoostUntil ? player.speedBoost : 0;
         return WORLD.playerSpeed * (player.stats.speed + boost);
+    }
+
+    private speedOf(player:Player) {
+        const now = Date.now();
+        const dash = now < player.dashUntil ? WORLD.dashMul : 1;
+        const sprint = player.sprinting && player.stamina > 0 ? WORLD.sprintMul : 1;
+        return this.baseSpeedOf(player) * Math.max(dash, sprint);
+    }
+
+    /** Рывок: короткое резкое ускорение за выносливость. */
+    dash(player:Player) {
+        const now = Date.now();
+        if (player.dead || now < player.dashReadyAt || player.stamina < WORLD.dashCost) {
+            return;
+        }
+        player.stamina -= WORLD.dashCost;
+        // С запасом на задержку сети: клиент успевает пробежать рывок до того, как сервер его увидит
+        player.dashUntil = now + WORLD.dashMs + 150;
+        player.dashReadyAt = now + WORLD.dashCooldownMs;
     }
 
     private resolveMove(x:number, y:number, radius:number):Coords {
@@ -690,7 +973,8 @@ export class World extends EventEmitter {
         return true;
     }
 
-    takePickup(player:Player) {
+    /** E: подобрать или открыть. want — что подсвечено у игрока на экране, сервер берёт именно это, если оно рядом. */
+    takePickup(player:Player, want?:unknown) {
         if (player.dead) {
             return;
         }
@@ -729,7 +1013,17 @@ export class World extends EventEmitter {
                 best = item;
             }
         }
-        // Как и подсказка на клиенте: E действует на то, что ближе — аирдроп или вещь
+        if (want === "weapon" || want === "bag") {
+            nearChest = null;
+            nearShelf = null;
+        } else if (want === "shelf" && nearShelf) {
+            nearChest = null;
+            best = null;
+        } else if (want === "chest" && nearChest) {
+            nearShelf = null;
+            best = null;
+        }
+        // Без подсказки — то, что ближе: аирдроп, полка или вещь
         if ((nearChest || nearShelf) && (!best || chestDist <= bestDist)) {
             if (nearChest) {
                 this.openChest(nearChest, player);
@@ -741,7 +1035,11 @@ export class World extends EventEmitter {
         if (best?.kind === "bag" && best.bag) {
             // Сумка погибшего: забираем всё, что влезет, остальное остаётся в ней
             best.bag = best.bag
-                .map(stack => ({ id: stack.id, n: this.addItem(player, stack.id, stack.n, stack.a), a: stack.a }))
+                .map(stack => {
+                    const left = this.addItem(player, stack.id, stack.n, stack.a);
+                    this.notifyGot(player, stack.id, stack.n - left);
+                    return { id: stack.id, n: left, a: stack.a };
+                })
                 .filter(stack => stack.n > 0);
             if (best.bag.length === 0) {
                 this.pickups.delete(best.id);
@@ -756,6 +1054,7 @@ export class World extends EventEmitter {
         this.holster(player);
         this.stashSlot(player, isToolWeapon(best.weaponId) ? "tool" : "gun");
         this.equip(player, best.weaponId, best.ammo);
+        this.notifyGot(player, `w:${best.weaponId}`, 1);
         this.addFx(["pickup", player.x, player.y]);
     }
 
@@ -850,8 +1149,16 @@ export class World extends EventEmitter {
         });
     }
 
+    /** Запоминает подобранное, чтобы показать игроку название. */
+    private notifyGot(player:Player, id:string, count:number) {
+        if (count > 0 && player.got.length < 12) {
+            player.got.push([id, count]);
+        }
+    }
+
     /** Отдаёт предметы игроку, а то, что не влезло, кладёт рядом на землю. */
     private giveOrDrop(player:Player, id:string, count:number) {
+        this.notifyGot(player, id, count);
         const left = this.addItem(player, id, count);
         if (left > 0) {
             this.dropStack(id, left, player.x, player.y);
@@ -895,7 +1202,14 @@ export class World extends EventEmitter {
         if (item.kind !== "use") {
             return;
         }
-        if (item.food || item.water) {
+        if (item.id === "pouch") {
+            if (player.inventory.length >= WORLD.maxInventory) {
+                this.hint(player, "Рюкзак уже максимального размера");
+                return;
+            }
+            player.inventory.push(...new Array(Math.min(4, WORLD.maxInventory - player.inventory.length)).fill(null));
+            this.addFx(["craft", player.x, player.y]);
+        } else if (item.food || item.water) {
             if ((!item.food || player.food >= 99) && (!item.water || item.water < 0 || player.water >= 99)) {
                 this.hint(player, "Ты не голоден и не хочешь пить");
                 return;
@@ -920,6 +1234,51 @@ export class World extends EventEmitter {
         slot.n--;
         if (slot.n <= 0) {
             player.inventory[slotIndex] = null;
+        }
+    }
+
+    /** Перекладывает предмет в другую ячейку: одинаковые стопки складываются, иначе меняются местами. */
+    moveSlot(player:Player, from:unknown, to:unknown) {
+        const inv = player.inventory;
+        if (player.dead || typeof from !== "number" || typeof to !== "number" || from === to
+            || !Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= inv.length || to >= inv.length) {
+            return;
+        }
+        const a = inv[from];
+        const b = inv[to];
+        if (!a) {
+            return;
+        }
+        if (b && b.id === a.id && !isWeaponItem(a.id)) {
+            const add = Math.min(stackOf(a.id) - b.n, a.n);
+            b.n += add;
+            a.n -= add;
+            inv[from] = a.n > 0 ? a : null;
+            return;
+        }
+        inv[from] = b;
+        inv[to] = a;
+    }
+
+    /** Ест или пьёт лучшее из рюкзака: что = "food" или "water". */
+    quickUse(player:Player, what:unknown) {
+        if (player.dead || (what !== "food" && what !== "water")) {
+            return;
+        }
+        let best = -1;
+        let bestGain = 0;
+        player.inventory.forEach((slot, index) => {
+            const item = slot ? ITEMS[slot.id] : undefined;
+            const gain = item ? (what === "food" ? item.food || 0 : item.water || 0) : 0;
+            if (gain > bestGain) {
+                bestGain = gain;
+                best = index;
+            }
+        });
+        if (best >= 0) {
+            this.useSlot(player, best);
+        } else {
+            this.hint(player, what === "food" ? "Нет еды в рюкзаке" : "Нет воды в рюкзаке");
         }
     }
 
@@ -1143,6 +1502,9 @@ export class World extends EventEmitter {
         this.updateChests(now);
         this.updatePickups(now);
         if (this.tickCount % 15 === 0) {
+            this.updateCamps(now);
+        }
+        if (this.tickCount % 15 === 0) {
             this.spawnEnemies(now);
         }
         if (this.tickCount % (WORLD.tickRate * 5) === 0) {
@@ -1166,6 +1528,13 @@ export class World extends EventEmitter {
             }
             if (player.reloadEndsAt && now >= player.reloadEndsAt) {
                 this.finishReload(player);
+            }
+
+            // Бег тратит выносливость, отдых её возвращает
+            if (player.sprinting && player.moving) {
+                player.stamina = Math.max(0, player.stamina - WORLD.sprintDrain * dt);
+            } else if (now > player.dashReadyAt - WORLD.dashCooldownMs + 600) {
+                player.stamina = Math.min(100, player.stamina + WORLD.staminaRegen * dt);
             }
 
             // Голод и жажда: на нуле медленно отнимают здоровье
@@ -1537,6 +1906,13 @@ export class World extends EventEmitter {
 
         if (!bullet.fromEnemy) {
             this.enemyGrid.query(midX, midY, reach, (enemy) => {
+                // Свой наёмник пулями хозяина и других наёмников не задевается
+                if (enemy.cfg.faction === "merc" && (enemy.ownerId === bullet.ownerId || bullet.npc)) {
+                    return;
+                }
+                if (bullet.npc && enemy.cfg.faction) {
+                    return;
+                }
                 if (enemy.hp > 0 && !bullet.hit.has(enemy.id)) {
                     const t = segmentCircleHit(from, to, enemy, enemy.cfg.radius);
                     if (t !== null) {
@@ -1548,7 +1924,8 @@ export class World extends EventEmitter {
 
         const owner = bullet.fromEnemy ? undefined : this.players.get(bullet.ownerId);
         for (const player of this.players.values()) {
-            if (player.dead || bullet.hit.has(player.id) || player.id === bullet.ownerId) {
+            if (player.dead || bullet.hit.has(player.id) || player.id === bullet.ownerId || bullet.npc
+                || (bullet.onlyPlayer && bullet.onlyPlayer !== player.id)) {
                 continue;
             }
             if (owner && this.isAlly(owner, player)) {
@@ -1686,6 +2063,13 @@ export class World extends EventEmitter {
         if (enemy.hp <= 0) {
             return;
         }
+        const faction = enemy.cfg.faction;
+        if (faction === "merc" && attacker && attacker.id === enemy.ownerId) {
+            return;
+        }
+        if (attacker && (faction === "guard" || faction === "trader")) {
+            this.makeWanted(attacker, enemy.camp, faction === "trader" ? "напал на торговца" : "напал на охрану");
+        }
         let damage = rawDamage * (1 - (enemy.cfg.armor || 0));
         enemy.revealedUntil = Date.now() + 2500;
         if (attacker) {
@@ -1711,6 +2095,18 @@ export class World extends EventEmitter {
 
     private killEnemy(enemy:Enemy, killer?:Player) {
         this.enemies.delete(enemy.id);
+        if (enemy.camp >= 0) {
+            this.onCampPersonKilled(enemy, killer);
+        }
+        // Задания на убийство: только монстры
+        if (killer && !enemy.cfg.faction) {
+            for (const [id, progress] of killer.quests) {
+                const cfg = QUESTS.flat().find(el => el.id === id);
+                if (cfg?.kill && (cfg.kill === "any" || cfg.kill === enemy.type) && progress < cfg.need) {
+                    killer.quests.set(id, progress + 1);
+                }
+            }
+        }
         this.addFx(["gore", enemy.x, enemy.y, enemy.cfg.size]);
         if (enemy.cfg.explode) {
             this.explode(enemy.x, enemy.y, enemy.cfg.explode.radius, enemy.cfg.explode.damage * 0.7, undefined, "bloater");
@@ -1805,10 +2201,12 @@ export class World extends EventEmitter {
         if (player.dead || Date.now() < player.protectedUntil) {
             return;
         }
-        // В лагере выживших игроки друг друга не ранят
-        if (attacker && attacker !== player && this.campAt(player.x, player.y)) {
-            this.addFx(["miss", player.x, player.y]);
-            return;
+        // Стрельба по людям в лагере: охрана встаёт на сторону жертвы. Разыскиваемого бить можно
+        if (attacker && attacker !== player && !this.isWanted(player)) {
+            const camp = this.campAt(player.x, player.y) || this.campAt(attacker.x, attacker.y);
+            if (camp) {
+                this.makeWanted(attacker, this.map.camps.indexOf(camp), "открыл стрельбу");
+            }
         }
         if (rawDamage <= 0) {
             this.addFx(["miss", player.x, player.y]);
@@ -1875,6 +2273,11 @@ export class World extends EventEmitter {
             this.explode(player.x, player.y, stats.explodeOnDeath, WORLD.explosionDamage * 1.6, player, "Rocket");
         }
 
+        if (attacker && attacker !== player && this.isWanted(player)) {
+            this.giveOrDrop(attacker, "coin", WORLD.wantedBounty);
+            this.emit("announce", `${attacker.name} получил награду за голову ${player.name}.`);
+        }
+        player.wantedUntil = 0;
         if (attacker && attacker !== player) {
             const reward = (WORLD.killBaseExp + player.exp * WORLD.killExpShare) * stats.killBounty;
             this.grantKillRewards(attacker, reward, false, player.x, player.y);
@@ -1914,6 +2317,9 @@ export class World extends EventEmitter {
                     }
                 });
 
+                if (enemy.cfg.smash) {
+                    this.smashAround(enemy, now);
+                }
                 const moved = this.resolveMove(enemy.x + vx * dt, enemy.y + vy * dt, enemy.cfg.radius * 0.7);
                 enemy.x = moved.x;
                 enemy.y = moved.y;
@@ -1923,7 +2329,27 @@ export class World extends EventEmitter {
         }
     }
 
+    /** Крупный монстр ломает деревья, камни, машины и ящики на своём пути. */
+    private smashAround(enemy:Enemy, now:number) {
+        const reach = enemy.cfg.radius * 0.7 + 12;
+        this.obstacleGrid.query(enemy.x, enemy.y, reach + 60, (el) => {
+            if (!el.alive || !["tree", "rock", "wreck", "crate"].includes(el.kind)) {
+                return;
+            }
+            if (distSq(enemy.x, enemy.y, el.x, el.y) < (reach + el.r) * (reach + el.r)) {
+                this.setObstacleAlive(el, false);
+                el.amount = 0;
+                el.respawnAt = now + WORLD.resourceRespawnMs;
+                this.addFx(["crate", el.x, el.y]);
+            }
+        });
+    }
+
     private enemyThink(enemy:Enemy, now:number) {
+        if (enemy.cfg.faction) {
+            this.npcThink(enemy, now);
+            return;
+        }
         let target:Player | null = null;
         let bestDist = Infinity;
         // Монстры обходят лагеря выживших стороной
@@ -2042,8 +2468,26 @@ export class World extends EventEmitter {
     }
 
     private enemyAttack(enemy:Enemy, now:number) {
-        const target = enemy.targetId ? this.players.get(enemy.targetId) : null;
         const ranged = enemy.cfg.ranged;
+        if (enemy.cfg.faction === "merc") {
+            const prey = this.enemies.get(enemy.targetEnemyId);
+            const owner = this.players.get(enemy.ownerId);
+            if (prey && owner && ranged && now >= enemy.nextShotAt && Math.hypot(prey.x - enemy.x, prey.y - enemy.y) < ranged.range) {
+                enemy.nextShotAt = now + ranged.interval;
+                const angle = Math.atan2(prey.y - enemy.y, prey.x - enemy.x) + (Math.random() - 0.5) * 0.06;
+                const bullet:Bullet = {
+                    id: this.nextId++, ownerId: owner.id, fromEnemy: false, npc: true,
+                    x: enemy.x, y: enemy.y,
+                    vx: Math.cos(angle) * ranged.speed, vy: Math.sin(angle) * ranged.speed,
+                    left: ranged.range * 1.1, speed: ranged.speed, damage: ranged.damage,
+                    pierceLeft: 0, ricochetLeft: 0, explosion: 0, size: 3, kind: "shot", hit: new Set(), crit: false
+                };
+                this.bullets.push(bullet);
+                this.announceBullet(bullet);
+            }
+            return;
+        }
+        const target = enemy.targetId ? this.players.get(enemy.targetId) : null;
         if (target && !target.dead && ranged && now >= enemy.nextShotAt) {
             const dist = Math.hypot(target.x - enemy.x, target.y - enemy.y);
             if (dist < ranged.range) {
@@ -2056,7 +2500,8 @@ export class World extends EventEmitter {
                     left: ranged.range * 1.2, speed: ranged.speed, damage: ranged.damage,
                     pierceLeft: 0, ricochetLeft: 0, explosion: 0,
                     size: ranged.kind === "shot" ? 3 : 7, kind: ranged.kind || "acid",
-                    hit: new Set(), crit: false
+                    hit: new Set(), crit: false,
+                    onlyPlayer: enemy.cfg.faction ? target.id : undefined
                 };
                 this.bullets.push(bullet);
                 this.announceBullet(bullet);
@@ -2106,7 +2551,7 @@ export class World extends EventEmitter {
             const want = WORLD.enemiesAround[zoneLevel(player.zone)];
             let around = 0;
             this.enemyGrid.query(player.x, player.y, WORLD.enemyAreaRadius, (enemy) => {
-                if (distSq(enemy.x, enemy.y, player.x, player.y) < WORLD.enemyAreaRadius ** 2) {
+                if (!enemy.cfg.faction && distSq(enemy.x, enemy.y, player.x, player.y) < WORLD.enemyAreaRadius ** 2) {
                     around++;
                 }
             });
@@ -2203,7 +2648,8 @@ export class World extends EventEmitter {
             wanderAt: 0, thinkAt: 0, targetId: 0,
             nextAttackAt: 0, nextShotAt: now + Math.random() * 1000,
             lastSeenPlayerAt: now, moving: false,
-            nextSummonAt: now + 2000, nextChargeAt: now + 1500, chargeUntil: 0, revealedUntil: 0, summonedBy: 0
+            nextSummonAt: now + 2000, nextChargeAt: now + 1500, chargeUntil: 0, revealedUntil: 0, summonedBy: 0,
+            homeX: x, homeY: y, camp: -1, ownerId: 0, huntId: 0, targetEnemyId: 0, expiresAt: 0
         };
         this.enemies.set(id, enemy);
         return enemy;
@@ -2285,6 +2731,7 @@ export class World extends EventEmitter {
                 for (const player of this.players.values()) {
                     if (!player.dead && distSq(item.x, item.y, player.x, player.y) < WORLD.pickupRadius * WORLD.pickupRadius) {
                         const left = this.addItem(player, item.itemId, item.count || 1);
+                        this.notifyGot(player, item.itemId, (item.count || 1) - left);
                         if (left < (item.count || 1)) {
                             this.addFx(["loot", player.x, player.y, (item.count || 1) - left]);
                         }
@@ -2426,7 +2873,11 @@ export class World extends EventEmitter {
                 clip: this.clipOf(me),
                 reloadLeft: me.reloadEndsAt ? Math.max(0, me.reloadEndsAt - now) : 0,
                 reloadTotal: weapon.reloadTime * 1000 / me.stats.reload,
-                speed: Math.round(this.speedOf(me) * 10) / 10,
+                speed: Math.round(this.baseSpeedOf(me) * 10) / 10,
+                stamina: Math.round(me.stamina),
+                wanted: Math.max(0, me.wantedUntil - now),
+                got: me.got.splice(0),
+                quests: [...me.quests.entries()],
                 fireInterval: weapon.fireRate / me.stats.fireRate,
                 spread: Number((me.spreadNow * me.stats.spread).toFixed(3)),
                 teamId: me.teamId,
@@ -2473,7 +2924,7 @@ export class World extends EventEmitter {
         const teams = [...this.teams.values()].map(el => ({
             id: el.id, name: el.name, members: [...el.members]
         }));
-        const exposed = all.filter(el => el.stats.exposed > 0 && !el.dead)
+        const exposed = all.filter(el => (el.stats.exposed > 0 || this.isWanted(el)) && !el.dead)
             .map(el => [el.id, Math.round(el.x), Math.round(el.y)]);
         const bosses = [...this.enemies.values()].filter(el => el.type === "boss")
             .map(el => [Math.round(el.x), Math.round(el.y)]);

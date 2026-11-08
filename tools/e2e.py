@@ -55,8 +55,8 @@ with sync_playwright() as p:
     print("FPS, программная графика, игра:", round(fps(a), 1), flush=True)
 
     # Перк клавишей и список перков с названиями
-    a.keyboard.press("Digit1")
-    a.keyboard.press("Digit2")
+    a.keyboard.press("Control+Digit1")
+    a.keyboard.press("Control+Digit2")
     time.sleep(0.4)
     a.keyboard.press("KeyP")
     time.sleep(0.4)
@@ -106,7 +106,7 @@ with sync_playwright() as p:
     before = int(re.search(r"Опыт (\d+)", hud(a)).group(1))
     a.mouse.move(800, 300)
     a.mouse.down()
-    a.keyboard.press("Digit1")
+    a.keyboard.press("Control+Digit1")
     for x, y in [(800, 200), (1100, 450), (800, 700), (500, 450)] * 4:
         a.mouse.move(x, y)
         time.sleep(0.5)

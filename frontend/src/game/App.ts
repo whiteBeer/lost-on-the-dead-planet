@@ -4,7 +4,6 @@ import { Assets } from "./Assets";
 import { Control } from "./Control";
 import { ChestView, EnemyView, PickupView, PlayerView } from "./Views";
 import { Sound } from "./Sound";
-import { TRADER_REACH } from "./WorldMap";
 import { Effects } from "./Effects";
 import { WorldMap } from "./WorldMap";
 import { FeedEvent, HudState, Invite, MeState, Roster, Snapshot, WorldConfig } from "./Types";
@@ -14,6 +13,10 @@ const SOCKET_PATH = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
 const PICKUP_REACH = 60;
 const CHEST_REACH = 90;
 const SHELF_REACH = 62;
+const TRADER_NEAR = 115;
+const SPRINT_MUL = 1.45;
+const DASH_MUL = 3.4;
+const DASH_MS = 220;
 
 export class App {
     private pixi = new PIXI.Application();
@@ -35,6 +38,10 @@ export class App {
     private pickups = new Map<number, PickupView>();
     private chests = new Map<number, ChestView>();
     readonly sound = new Sound();
+    private dashUntil = 0;
+    private dashReadyAt = 0;
+    private toasts:{ key:number, text:string, id:string, until:number }[] = [];
+    private toastKey = 0;
     private lastHint = "";
     private effects:Effects | null = null;
     private mine:PlayerView | null = null;
@@ -93,7 +100,7 @@ export class App {
         this.pixi.stage.addChild(this.world, this.crosshair);
         this.effects = new Effects(this.layerBullets, this.layerFx);
 
-        this.control = new Control(this.pixi.canvas, code => this.onKey(code));
+        this.control = new Control(this.pixi.canvas, (code, mod) => this.onKey(code, mod));
 
         this.socket = io(BACKEND, {
             path: SOCKET_PATH,
@@ -189,6 +196,13 @@ export class App {
             this.sound.play("empty", this.x, this.y, this.x, this.y);
         }
         this.lastHint = me.hint;
+        for (const [id, n] of me.got || []) {
+            const name = id.startsWith("w:") ? this.config?.weapons[id.slice(2)]?.name : this.config?.items[id]?.name;
+            this.toasts.push({ key: ++this.toastKey, id, text: `+${n > 1 ? n + " " : ""}${name || id}`, until: Date.now() + 3200 });
+        }
+        if (this.toasts.length > 5) {
+            this.toasts.splice(0, this.toasts.length - 5);
+        }
     }
 
     private syncMine(me:MeState) {
@@ -343,8 +357,12 @@ export class App {
         if (dx === 0 && dy === 0) {
             return;
         }
+        // Бег и рывок: те же множители, что на сервере
+        const dashing = performance.now() < this.dashUntil;
+        const sprint = this.control!.sprinting && me.stamina > 0;
+        const speed = me.speed * (dashing ? DASH_MUL : sprint ? SPRINT_MUL : 1);
         // Те же столкновения, что и на сервере, иначе персонаж дёргался бы у препятствий
-        const moved = this.map!.resolve(this.x + dx * me.speed * dt, this.y + dy * me.speed * dt, this.config!.playerRadius);
+        const moved = this.map!.resolve(this.x + dx * speed * dt, this.y + dy * speed * dt, this.config!.playerRadius);
         this.x = moved.x;
         this.y = moved.y;
     }
@@ -409,19 +427,24 @@ export class App {
             x: Math.round(this.x * 10) / 10,
             y: Math.round(this.y * 10) / 10,
             r: Number(this.rotation.toFixed(3)),
-            f: this.control.isFiring && !this.meState.dead
+            f: this.control.isFiring && !this.meState.dead,
+            s: this.control.sprinting
         });
     }
 
-    private onKey(code:string) {
+    private onKey(code:string, mod = false) {
         const me = this.meState;
+        if (mod && /^Digit[1-3]$/.test(code)) {
+            this.pickPerk(Number(code.slice(5)) - 1);
+            return;
+        }
         if (code === "KeyR") {
             this.socket?.emit("reload");
         } else if (code === "KeyE") {
             if (this.nearPickupName() === "trader") {
                 this.onUiKey("OpenTrade");
             } else {
-                this.socket?.emit("pickup");
+                this.pickup();
             }
         } else if (code === "KeyH") {
             this.socket?.emit("heal");
@@ -432,14 +455,17 @@ export class App {
             this.pushHud(true);
         } else if (code === "KeyQ") {
             this.switchSlot("swap");
-        } else if ((code === "Digit1" || code === "Digit2") && !me?.offer) {
-            // Пока не предлагают перки, 1 и 2 — быстрый выбор инструмента или оружия
+        } else if (code === "Digit1" || code === "Digit2") {
             this.switchSlot(code === "Digit1" ? "tool" : "gun");
-        } else if (code === "Digit1" || code === "Digit2" || code === "Digit3") {
-            this.pickPerk(Number(code.slice(5)) - 1);
+        } else if (code === "KeyF") {
+            this.quickUse("food");
+        } else if (code === "KeyV") {
+            this.quickUse("water");
         } else if (code === "Enter" || code === "Space") {
             if (me?.dead) {
                 this.respawn();
+            } else if (code === "Space") {
+                this.dash();
             }
         } else if (code === "KeyY" && this.invites.length) {
             this.acceptInvite(this.invites[0].fromId);
@@ -455,8 +481,8 @@ export class App {
         if (!me || me.dead) {
             return "";
         }
-        for (const trader of this.map?.traders || []) {
-            if (Math.hypot(trader.x - this.x, trader.y - this.y) < TRADER_REACH) {
+        for (const view of this.enemies.values()) {
+            if (view.type === "trader" && Math.hypot(view.x - this.x, view.y - this.y) < TRADER_NEAR) {
                 return "trader";
             }
         }
@@ -513,6 +539,12 @@ export class App {
             weapons: this.config?.weapons || {},
             nearPickup: this.nearPickupName(),
             muted: this.sound.muted,
+            toasts: this.toasts.filter(el => el.until > Date.now()),
+            questCatalog: this.config?.quests || [],
+            nearTraderCamp: (() => {
+                const camps = this.config?.map.camps || [];
+                return camps.findIndex(c => Math.abs(this.x - c.x) <= c.size / 2 && Math.abs(this.y - c.y) <= c.size / 2);
+            })(),
             trades: this.config?.trades || [],
             camps: this.config?.map.camps || [],
             perkCatalog: this.config?.perks || {},
@@ -530,7 +562,8 @@ export class App {
     }
 
     pickup() {
-        this.socket?.emit("pickup");
+        const near = this.nearPickupName();
+        this.socket?.emit("pickup", near === "chest" || near === "shelf" ? near : near.startsWith("bag:") ? "bag" : near ? "weapon" : "");
     }
 
     useSlot(index:number) {
@@ -543,6 +576,36 @@ export class App {
 
     unequip(what:"weapon" | "tool" | "gun" | "armor" | "mask") {
         this.socket?.emit("unequip", what);
+    }
+
+    dash() {
+        const me = this.meState;
+        const now = performance.now();
+        if (!me || me.dead || now < this.dashReadyAt || me.stamina < 30) {
+            return;
+        }
+        this.dashUntil = now + DASH_MS;
+        this.dashReadyAt = now + 1500;
+        this.socket?.emit("dash");
+        this.sound.play("swing", this.x, this.y, this.x, this.y, 0.6);
+    }
+
+    setSprintToggle(on:boolean) {
+        if (this.control) {
+            this.control.sprintToggle = on;
+        }
+    }
+
+    quickUse(what:"food" | "water") {
+        this.socket?.emit("quickUse", what);
+    }
+
+    moveSlot(from:number, to:number) {
+        this.socket?.emit("moveSlot", from, to);
+    }
+
+    quest(questId:string, action:"take" | "claim") {
+        this.socket?.emit("quest", questId, action);
     }
 
     trade(tradeId:string) {
