@@ -63,7 +63,7 @@ class Server {
 
         socket.on("input", input => this.world.handleInput(player, input));
         socket.on("reload", () => this.world.reload(player));
-        socket.on("pickup", want => this.world.takePickup(player, want));
+        socket.on("pickup", (want, id) => this.world.takePickup(player, want, id));
         socket.on("perk", index => this.world.pickPerk(player, index));
         socket.on("useSlot", index => this.world.useSlot(player, index));
         socket.on("dropSlot", index => this.world.dropSlot(player, index));

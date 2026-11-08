@@ -648,6 +648,54 @@ const tests = {
         }
         assert.ok(found > 0, "за 20 обысков что-то нашлось");
     },
+    "полку и аирдроп не открыть сквозь стену дома": () => {
+        const world = new World(4);
+        world.enemies.clear();
+        world.spawnEnemies = () => {};
+        const p = world.addPlayer("p", "Взломщик");
+        p.protectedUntil = Date.now() + 99999;
+        let checked = 0;
+        for (const shelf of world.obstacles.filter(el => el.kind === "shelf")) {
+            // Ближайшая к полке стена и точка сразу за ней снаружи
+            let wall = null;
+            let best = Infinity;
+            for (const el of world.obstacles) {
+                if (el.kind !== "wall" || el.style !== "wall") continue;
+                const nx = Math.max(el.x - el.w / 2, Math.min(el.x + el.w / 2, shelf.x));
+                const ny = Math.max(el.y - el.h / 2, Math.min(el.y + el.h / 2, shelf.y));
+                const d = Math.hypot(nx - shelf.x, ny - shelf.y);
+                if (d < best) { best = d; wall = { el, nx, ny }; }
+            }
+            if (!wall || best < 1 || best > 30) continue;
+            const ux = (wall.nx - shelf.x) / best;
+            const uy = (wall.ny - shelf.y) / best;
+            const thick = Math.min(wall.el.w, wall.el.h);
+            p.x = wall.nx + ux * (thick + 14);
+            p.y = wall.ny + uy * (thick + 14);
+            if (Math.hypot(p.x - shelf.x, p.y - shelf.y) >= WORLD.shelfReach || world.interiorAt(p.x, p.y)) continue;
+            shelf.alive = true;
+            assert.strictEqual(world.canReach(p.x, p.y, shelf.x, shelf.y), false);
+            world.takePickup(p, "shelf");
+            assert.strictEqual(shelf.alive, true, "полка за стеной не обыскана");
+            // Аирдроп в том же месте — тоже не открыть
+            world.chests.set(999, { id: 999, x: shelf.x, y: shelf.y, landsAt: 0 });
+            const opened = [];
+            const orig = world.openChest;
+            world.openChest = (chest) => opened.push(chest.id);
+            world.takePickup(p, "chest");
+            world.openChest = orig;
+            world.chests.delete(999);
+            assert.strictEqual(opened.length, 0, "аирдроп за стеной не открыт");
+            // Изнутри — обыскивается
+            p.x = shelf.x - ux * 22;
+            p.y = shelf.y - uy * 22;
+            assert.ok(world.canReach(p.x, p.y, shelf.x, shelf.y));
+            world.takePickup(p, "shelf");
+            assert.strictEqual(shelf.alive, false, "изнутри полка обыскивается");
+            if (++checked >= 5) break;
+        }
+        assert.ok(checked >= 3, `проверено полок у стены: ${checked}`);
+    },
     "слоты инструмента и оружия переключаются, патроны не восстанавливаются": () => {
         const world = arena();
         const a = world.addPlayer("a", "A");

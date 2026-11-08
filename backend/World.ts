@@ -986,8 +986,22 @@ export class World extends EventEmitter {
         return true;
     }
 
+    /** Не мешает ли стена или здание дотянуться от игрока до точки (сквозь стены не открываем и не подбираем). */
+    canReach(ax:number, ay:number, bx:number, by:number) {
+        const from = { x: ax, y: ay };
+        const to = { x: bx, y: by };
+        let clear = true;
+        this.obstacleGrid.query((ax + bx) / 2, (ay + by) / 2, Math.hypot(bx - ax, by - ay) / 2 + 40, (el) => {
+            if (clear && el.alive && el.shape === "r" && (el.kind === "wall" || el.kind === "building")
+                && segmentRectHit(from, to, el.x, el.y, el.w, el.h) !== null) {
+                clear = false;
+            }
+        });
+        return clear;
+    }
+
     /** E: подобрать или открыть. want — что подсвечено у игрока на экране, сервер берёт именно это, если оно рядом. */
-    takePickup(player:Player, want?:unknown) {
+    takePickup(player:Player, want?:unknown, wantId?:unknown) {
         if (player.dead) {
             return;
         }
@@ -996,7 +1010,7 @@ export class World extends EventEmitter {
         let chestDist = WORLD.chestReach * WORLD.chestReach;
         for (const chest of this.chests.values()) {
             const dist = distSq(player.x, player.y, chest.x, chest.y);
-            if (now >= chest.landsAt && dist < chestDist) {
+            if (now >= chest.landsAt && dist < chestDist && this.canReach(player.x, player.y, chest.x, chest.y)) {
                 nearChest = chest;
                 chestDist = dist;
             }
@@ -1005,7 +1019,7 @@ export class World extends EventEmitter {
         let shelfDist = WORLD.shelfReach * WORLD.shelfReach;
         for (const el of this.shelves) {
             const dist = distSq(player.x, player.y, el.x, el.y);
-            if (el.alive && dist < shelfDist) {
+            if (el.alive && dist < shelfDist && this.canReach(player.x, player.y, el.x, el.y)) {
                 nearShelf = el;
                 shelfDist = dist;
             }
@@ -1021,10 +1035,23 @@ export class World extends EventEmitter {
                 continue;
             }
             const dist = distSq(player.x, player.y, item.x, item.y);
-            if (dist < bestDist) {
+            if (dist < bestDist && this.canReach(player.x, player.y, item.x, item.y)) {
                 bestDist = dist;
                 best = item;
             }
+        }
+        // Подсвеченная у игрока вещь важнее ближайшей (с запасом на задержку сети)
+        const wanted = typeof wantId === "number" ? this.pickups.get(wantId) : undefined;
+        if (typeof wantId === "number" && wantId >= 0 && (want === "weapon" || want === "bag" || want === "item")) {
+            const dist = wanted ? distSq(player.x, player.y, wanted.x, wanted.y) : Infinity;
+            const reach = WORLD.weaponReach * 1.6;
+            if (!wanted || !(wanted.kind === "weapon" || wanted.kind === "bag" || (wanted.kind === "item" && wanted.manual))
+                || dist > reach * reach || !this.canReach(player.x, player.y, wanted.x, wanted.y)) {
+                // Подсвеченной вещи уже нет или она недоступна: ничего другого вместо неё не берём
+                return;
+            }
+            best = wanted;
+            bestDist = dist;
         }
         if (want === "weapon" || want === "bag" || want === "item") {
             nearChest = null;
@@ -1710,7 +1737,7 @@ export class World extends EventEmitter {
             }
             const radius = el.shape === "r" ? Math.max(el.w, el.h) / 2 : el.r;
             const dist = Math.hypot(el.x - player.x, el.y - player.y) - radius;
-            if (dist < best && reachTo(el.x, el.y, radius)) {
+            if (dist < best && reachTo(el.x, el.y, radius) && this.canReach(player.x, player.y, el.x, el.y)) {
                 best = dist;
                 target = el;
             }

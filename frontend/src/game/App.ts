@@ -36,6 +36,7 @@ export class App {
     private players = new Map<number, PlayerView>();
     private enemies = new Map<number, EnemyView>();
     private pickups = new Map<number, PickupView>();
+    private nearPickupId = -1;
     private chests = new Map<number, ChestView>();
     readonly sound = new Sound();
     private reticle = new PIXI.Graphics();
@@ -521,6 +522,11 @@ export class App {
         }
     }
 
+    /** Сквозь стены ничего не открываем и не подбираем. */
+    private reach(x:number, y:number) {
+        return !this.map || this.map.canReach(this.x, this.y, x, y);
+    }
+
     private nearPickupName() {
         const me = this.meState;
         if (!me || me.dead) {
@@ -538,28 +544,31 @@ export class App {
         let shelfNear = false;
         this.chests.forEach((view) => {
             const dist = Math.hypot(view.x - this.x, view.y - this.y);
-            if (view.landed && dist < chestDist) {
+            if (view.landed && dist < chestDist && this.reach(view.x, view.y)) {
                 chest = true;
                 chestDist = dist;
             }
         });
         for (const shelf of this.map?.shelves || []) {
             const dist = Math.hypot(shelf.x - this.x, shelf.y - this.y);
-            if (shelf.alive && dist < SHELF_REACH && dist < chestDist) {
+            if (shelf.alive && dist < SHELF_REACH && dist < chestDist && this.reach(shelf.x, shelf.y)) {
                 chest = true;
                 chestDist = dist;
                 shelfNear = true;
             }
         }
-        this.pickups.forEach((view) => {
+        let bestId = -1;
+        this.pickups.forEach((view, id) => {
             if (view.kind === "weapon" || view.kind === "bag" || view.kind === "drop") {
                 const dist = Math.hypot(view.x - this.x, view.y - this.y);
-                if (dist < bestDist) {
+                if (dist < bestDist && this.reach(view.x, view.y)) {
                     bestDist = dist;
+                    bestId = id;
                     best = view.kind === "bag" ? `bag:${view.weaponId}` : view.kind === "drop" ? `item:${view.weaponId}` : view.weaponId;
                 }
             }
         });
+        this.nearPickupId = bestId;
         return chest && (!best || chestDist <= bestDist) ? (shelfNear ? "shelf" : "chest") : best;
     }
 
@@ -608,8 +617,10 @@ export class App {
 
     pickup() {
         const near = this.nearPickupName();
-        this.socket?.emit("pickup", near === "chest" || near === "shelf" ? near : near.startsWith("bag:") ? "bag"
-            : near.startsWith("item:") ? "item" : near ? "weapon" : "");
+        const kind = near === "chest" || near === "shelf" ? near : near.startsWith("bag:") ? "bag"
+            : near.startsWith("item:") ? "item" : near ? "weapon" : "";
+        // Сервер берёт именно ту вещь, что подсвечена в подсказке, а не просто ближайшую
+        this.socket?.emit("pickup", kind, kind === "chest" || kind === "shelf" ? -1 : this.nearPickupId);
     }
 
     useSlot(index:number) {

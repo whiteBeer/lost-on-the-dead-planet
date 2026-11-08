@@ -27,6 +27,8 @@ interface Roof {
 // Пол и полки не сталкиваются: по ним ходят
 const PASSABLE = new Set(["interior", "shelf"]);
 export const TRADER_REACH = 120;
+// Крыши полупрозрачные: видно, что внутри и кто за домом
+const ROOF_ALPHA = 0.55;
 
 const CHUNK = 1000;
 const COLLISION_CELL = 200;
@@ -355,6 +357,7 @@ export class WorldMap {
         });
         roof.scale.set(scale);
         roof.position.set(x - w / 2, y - h / 2);
+        roof.alpha = ROOF_ALPHA;
         return roof;
     }
 
@@ -381,7 +384,7 @@ export class WorldMap {
         const k = Math.min(1, dt * 8);
         for (const roof of this.roofs) {
             const inside = Math.abs(px - roof.x) <= roof.w / 2 + 2 && Math.abs(py - roof.y) <= roof.h / 2 + 2;
-            const target = inside ? 0.06 : 1;
+            const target = inside ? 0 : ROOF_ALPHA;
             if (roof.sprite.alpha !== target) {
                 roof.sprite.alpha += (target - roof.sprite.alpha) * k;
                 if (Math.abs(roof.sprite.alpha - target) < 0.01) {
@@ -405,6 +408,45 @@ export class WorldMap {
                 container.visible = visible;
             }
         }
+    }
+
+    /** Как на сервере: нет ли стены или здания между двумя точками. */
+    canReach(ax:number, ay:number, bx:number, by:number) {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const seen = new Set<MapObstacle>();
+        const minX = Math.floor(Math.min(ax, bx) / COLLISION_CELL);
+        const maxX = Math.floor(Math.max(ax, bx) / COLLISION_CELL);
+        const minY = Math.floor(Math.min(ay, by) / COLLISION_CELL);
+        const maxY = Math.floor(Math.max(ay, by) / COLLISION_CELL);
+        for (let cx = minX; cx <= maxX; cx++) {
+            for (let cy = minY; cy <= maxY; cy++) {
+                for (const el of this.collision.get(cx * 100000 + cy) || []) {
+                    if (seen.has(el) || !el.alive || el.shape !== "r" || (el.kind !== "wall" && el.kind !== "building")) {
+                        continue;
+                    }
+                    seen.add(el);
+                    // Отрезок против прямоугольника (метод Лианга — Барски)
+                    let t0 = 0;
+                    let t1 = 1;
+                    let hit = true;
+                    const checks:[number, number][] = [[-dx, ax - (el.x - el.w / 2)], [dx, el.x + el.w / 2 - ax], [-dy, ay - (el.y - el.h / 2)], [dy, el.y + el.h / 2 - ay]];
+                    for (const [p, q] of checks) {
+                        if (p === 0) {
+                            if (q < 0) { hit = false; break; }
+                        } else {
+                            const r = q / p;
+                            if (p < 0) { if (r > t1) { hit = false; break; } if (r > t0) t0 = r; }
+                            else { if (r < t0) { hit = false; break; } if (r < t1) t1 = r; }
+                        }
+                    }
+                    if (hit) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     /** Те же столкновения, что и на сервере. */
