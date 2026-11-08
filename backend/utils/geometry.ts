@@ -107,6 +107,29 @@ export function getRectangleVertices(
 }
 
 /**
+ * Проверка столкновения отрезка с кругом (пуля → игрок).
+ */
+export function checkLineCircleCollision(
+    lineStart:Coords,
+    lineEnd:Coords,
+    circle:{ x:number; y:number; radius:number }
+):boolean {
+    const dx = lineEnd.x - lineStart.x;
+    const dy = lineEnd.y - lineStart.y;
+    const fx = lineStart.x - circle.x;
+    const fy = lineStart.y - circle.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) {
+        return fx * fx + fy * fy <= circle.radius * circle.radius;
+    }
+    let t = -(fx * dx + fy * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const px = lineStart.x + t * dx - circle.x;
+    const py = lineStart.y + t * dy - circle.y;
+    return px * px + py * py <= circle.radius * circle.radius;
+}
+
+/**
  * Проверяет пересечение Круга и Повернутого Прямоугольника
  */
 export function checkCircleRotatedRectangleCollision(

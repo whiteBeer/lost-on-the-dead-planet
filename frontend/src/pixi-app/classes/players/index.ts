@@ -77,7 +77,6 @@ export class PlayersCollection {
             if (player) {
                 player.hide();
                 if (params.socketId === this.app.socket?.id) {
-                    alert("You died.");
                     this.app.meDied();
                 }
             }
@@ -103,6 +102,13 @@ export class PlayersCollection {
             if (player && player.socketId === this.app.socket?.id) {
                 player.weapon.ammo = params.newAmmo;
                 player.weapon.isReloading = false;
+            }
+        });
+
+        this.app.socket?.on("playerStats", (params:{ player:BackendPlayer }) => {
+            const player = this.findPlayer(params.player.socketId);
+            if (player) {
+                player.update(params.player);
             }
         });
     }

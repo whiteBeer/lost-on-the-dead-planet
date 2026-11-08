@@ -8,23 +8,23 @@ export class Weapon {
     player:Player;
     config:BackendWeaponConfig;
 
-    // Client-side fire rate limiting
     lastFire = 0;
 
-    // State from backend
     id = "";
     ammo = 0;
     clipSize = 0;
     isReloading = false;
 
-    // Spread logic
     currentSpread = 0;
-    lastShotTime = 0; // Will be 0 until the first shot
+    lastShotTime = 0;
 
     constructor(app:App, player:Player, config:BackendWeaponConfig) {
         this.app = app;
         this.player = player;
         this.config = config;
+        this.id = config.id || "";
+        this.clipSize = config.clipSize || 0;
+        this.ammo = this.clipSize;
         this.currentSpread = config.spreadBase;
     }
 
@@ -35,31 +35,48 @@ export class Weapon {
         this.isReloading = state.isReloading;
     }
 
-    // Called on every frame from App ticker
+    switchConfig(weaponId:string, config:BackendWeaponConfig) {
+        this.id = weaponId;
+        this.config = config;
+        this.clipSize = config.clipSize || this.clipSize;
+        this.ammo = this.clipSize;
+        this.isReloading = false;
+        this.currentSpread = config.spreadBase;
+        this.lastFire = 0;
+        this.lastShotTime = 0;
+    }
+
+    /** Затухание разброса каждый кадр — как на сервере в applySpread. */
     update(deltaMS:number) {
-        // Only start recovering spread *after* the first shot has been fired.
-        if (this.lastShotTime > 0) {
-            const recoveryPerSecond = this.config.spreadRecovery;
-            const recoveryThisFrame = recoveryPerSecond * (deltaMS / 1000);
-            this.currentSpread = Math.max(this.config.spreadBase, this.currentSpread - recoveryThisFrame);
+        if (this.lastShotTime <= 0) {
+            return;
+        }
+        const recoveryThisFrame = this.config.spreadRecovery * (deltaMS / 1000);
+        this.currentSpread = Math.max(
+            this.config.spreadBase,
+            this.currentSpread - recoveryThisFrame
+        );
+        if (this.currentSpread <= this.config.spreadBase + 0.0001) {
+            this.currentSpread = this.config.spreadBase;
+            this.lastShotTime = 0;
         }
     }
 
     fire() {
         const now = Date.now();
-        const fireRateDelay = this.config.fireRate;
+        const fireRateDelay = Math.max(15, this.config.fireRate);
 
-        if (this.isReloading || now - this.lastFire < fireRateDelay) {
+        if (this.isReloading || this.ammo <= 0 || now - this.lastFire < fireRateDelay) {
+            if (this.ammo <= 0 && !this.isReloading) {
+                this.reload();
+            }
             return;
         }
 
         if (this.app.scene && this.app?.socket?.id) {
             this.lastFire = now;
 
-            // Increase spread. Recovery is handled in update().
-            this.currentSpread = Math.min(this.config.spreadMax, this.currentSpread + this.config.spreadIncrement);
-            this.lastShotTime = now;
-
+            // Затухание уже крутится в update() каждый кадр — тут только bloom
             const playerCoords = this.player.getCoords();
             this.app.socket.emit("missileCreate", {
                 weaponType: this.id,
@@ -67,7 +84,16 @@ export class Weapon {
                 startY: playerCoords.pageY,
                 rotation: playerCoords.rotation
             });
-            this.ammo--;
+
+            this.currentSpread = Math.min(
+                this.config.spreadMax,
+                this.currentSpread + this.config.spreadIncrement
+            );
+            this.lastShotTime = now;
+            this.ammo = Math.max(0, this.ammo - 1);
+            if (this.ammo <= 0) {
+                this.reload();
+            }
         }
     }
 
@@ -77,6 +103,7 @@ export class Weapon {
         }
 
         if (this.app.socket?.id) {
+            this.isReloading = true;
             this.app.socket.emit("playerReload", { weaponId: this.id });
         }
     }

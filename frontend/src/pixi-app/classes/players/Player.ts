@@ -18,8 +18,10 @@ export class Player {
     private radius = 0;
     private rotation = 0;
 
-    private health = 0;
-    private maxHealth = 0;
+    public health = 0;
+    public maxHealth = 0;
+    public level = 1;
+    public exp = 0;
 
     private bodySprite:PIXI.AnimatedSprite|null = null;
     private legsSprite:PIXI.AnimatedSprite|null = null;
@@ -59,13 +61,26 @@ export class Player {
         this.maxHealth = params.maxHealth;
         this.radius = params.radius;
         this.rotation = params.rotation;
+        this.level = params.level || this.level;
+        this.exp = params.exp || 0;
+        if (params.speed) {
+            this.speedInSecond = params.speed;
+        }
         this.setHealth(this.health);
-        this.weapon.updateState(params.weapon);
+        if (params.weapon) {
+            if (params.weapon.id && params.weapon.id !== this.weapon.id) {
+                const cfg = this.app.weaponsConfig?.[params.weapon.id];
+                if (cfg) {
+                    this.weapon.switchConfig(params.weapon.id, cfg);
+                }
+            }
+            this.weapon.updateState(params.weapon);
+        }
     }
 
     setHealth(health:number) {
         this.health = health;
-        this.pixiObj.alpha = Math.max(0.2, this.health / this.maxHealth);
+        this.pixiObj.alpha = 1;
     }
 
     remove() {
@@ -119,10 +134,17 @@ export class Player {
 
     moveTo(x:number, y:number, rotation:number | null = null) {
         if (this.pixiObj && this.app.scene) {
-            this.x = x;
-            this.y = y;
-            this.pixiObj.x = x;
-            this.pixiObj.y = y;
+            const margin = this.radius || 13;
+            const edgePadX = this.app.scene.edgePadX || 0;
+            const edgePadY = this.app.scene.edgePadY || 0;
+            const minX = margin + edgePadX;
+            const maxX = Math.max(minX, this.app.scene.width - margin - edgePadX);
+            const minY = margin + edgePadY;
+            const maxY = Math.max(minY, this.app.scene.height - margin - edgePadY);
+            this.x = Math.min(maxX, Math.max(minX, x));
+            this.y = Math.min(maxY, Math.max(minY, y));
+            this.pixiObj.x = this.x;
+            this.pixiObj.y = this.y;
             if (rotation !== null) {
                 this.rotation = rotation;
                 this.pixiObj.rotation = rotation;
@@ -160,10 +182,6 @@ export class Player {
         this.bodySprite.rotation = -Math.PI / 2;
 
         container.addChild(this.bodySprite);
-
-        const hitCircle = new PIXI.Graphics();
-        hitCircle.circle(0, 0, this.radius).stroke({ width: 1, color: 0xFFFFFF, alpha: 0.5 });
-        container.addChild(hitCircle);
 
         container.position.set(this.x, this.y);
         container.rotation = this.rotation;

@@ -1,0 +1,115 @@
+.menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  background-color: #151a12;
+  background-size: cover;
+  background-position: center;
+  padding: 16px;
+}
+
+.card {
+  width: min(420px, 100%);
+  padding: 28px;
+  background: rgba(14, 17, 12, 0.88);
+  border: 2px solid #3d4a2c;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+}
+
+.title {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  color: #a8e05f;
+}
+
+.subtitle {
+  margin: 8px 0 20px;
+  color: #c9cdbb;
+}
+
+.label {
+  font-size: 13px;
+  color: #a9ae9b;
+  margin-bottom: 6px;
+}
+
+.input {
+  padding: 12px;
+  font-size: 18px;
+  color: #fff;
+  background: #1c2117;
+  border: 1px solid #4b573a;
+  border-radius: 8px;
+  outline: none;
+  user-select: text;
+}
+
+.input:focus {
+  border-color: #a8e05f;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.play {
+  flex: 1;
+  padding: 13px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #14180f;
+  background: #a8e05f;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.play:hover {
+  background: #bdf077;
+}
+
+.secondary {
+  flex: 1;
+  padding: 13px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f0e6;
+  background: #3a4230;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.secondary:hover {
+  background: #4a533c;
+}
+
+.help {
+  margin-top: 18px;
+  font-size: 14px;
+  color: #c9cdbb;
+  line-height: 1.8;
+}
+
+.help b {
+  color: #fff;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #e8b86a;
+}
+
+.error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #ff8a7a;
+}

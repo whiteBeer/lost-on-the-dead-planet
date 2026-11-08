@@ -9,11 +9,12 @@ export class Enemy {
 
     private app:App;
     private pixiObj:PIXI.Container;
+    private body:PIXI.AnimatedSprite | PIXI.Sprite | null = null;
     private id:string;
 
-    // Скорость движения за 1 тик (кадр)
     private dx = 0;
     private dy = 0;
+    private speedInSecond = 0;
 
     private health = 0;
     private maxHealth = 0;
@@ -49,6 +50,7 @@ export class Enemy {
             this.maxHealth = enemyJson.maxHealth;
         }
         this.pixiObj.rotation = enemyJson.rotation;
+        this.speedInSecond = enemyJson.speedInSecond;
 
         const dirCos = Math.cos(enemyJson.rotation);
         const dirSin = Math.sin(enemyJson.rotation);
@@ -63,6 +65,7 @@ export class Enemy {
         this.dx = dirCos * (enemyJson.speedInSecond / 60);
         this.dy = dirSin * (enemyJson.speedInSecond / 60);
 
+        this.syncAnimSpeed();
         this.updateVisuals();
     }
 
@@ -73,6 +76,7 @@ export class Enemy {
 
     moveEnemy(ticker:PIXI.Ticker) {
         if (!this.pixiObj || this.pixiObj.destroyed) return;
+        if (this.app.scene?.paused) return;
         this.x += this.dx * ticker.deltaTime;
         this.y += this.dy * ticker.deltaTime;
         this.updateVisuals();
@@ -80,45 +84,62 @@ export class Enemy {
 
     setHealth(health:number) {
         this.health = health;
-        this.pixiObj.alpha = Math.max(0.2, this.health / this.maxHealth);
+        this.pixiObj.alpha = 1;
     }
 
     private initGraphics(json:BackendEnemy):PIXI.Container {
         const container = new PIXI.Container();
+        const spriteKey = json.spriteKey || (json.type === "zombie" ? "zombie" : "");
+        const targetSize = Math.max(json.width, json.height);
+        const frames = spriteKey ? ResourcesLoader.getEnemyFrames(spriteKey) : null;
 
-        if (json.type === "zombie") {
-            const zombieFrames = ResourcesLoader.getZombieTextures();
-            const sprite = new PIXI.AnimatedSprite(zombieFrames);
-            sprite.animationSpeed = json.speedInSecond/350;
-            sprite.play();
+        if (frames && frames.length > 0) {
+            const sprite = new PIXI.AnimatedSprite(frames);
             sprite.anchor.set(0.5);
-            sprite.width = json.width;
-            sprite.height = json.height;
+            sprite.animationSpeed = Math.max(0.12, json.speedInSecond / 380);
+            sprite.play();
+            ResourcesLoader.fitSprite(sprite, targetSize);
+            if (json.tint) {
+                sprite.tint = json.tint;
+            }
+            this.body = sprite;
+            container.addChild(sprite);
+            return container;
+        }
+
+        const tex = spriteKey ? ResourcesLoader.getTexture(spriteKey) : null;
+        if (tex) {
+            const sprite = new PIXI.Sprite(tex);
+            sprite.anchor.set(0.5);
+            ResourcesLoader.fitSprite(sprite, targetSize);
+            if (json.tint) {
+                sprite.tint = json.tint;
+            }
+            this.body = sprite;
             container.addChild(sprite);
         } else {
             const rectangle = new PIXI.Graphics();
             rectangle
                 .rect(-json.width / 2, -json.height / 2, json.width, json.height)
-                .fill(json.color);
+                .fill(json.tint || json.color || 0x4caf50);
             container.addChild(rectangle);
         }
 
-        const rectangleHit = new PIXI.Graphics();
-        rectangleHit
-            .rect(-json.width / 2, -json.height / 2, json.width, json.height)
-            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
-        container.addChild(rectangleHit);
-
-        const rectangleDamage = new PIXI.Graphics();
-        rectangleDamage
-            .rect(-json.width * 0.3, -json.height * 0.3, json.width * 0.6, json.height * 0.6)
-            .stroke({ width: 1, color: 0xFFFFFF, alpha: 1 });
-        container.addChild(rectangleDamage);
-
-        container.pivot.x = 0;
-        container.pivot.y = 0;
-
         return container;
+    }
+
+    private syncAnimSpeed() {
+        if (!(this.body instanceof PIXI.AnimatedSprite)) {
+            return;
+        }
+        if (this.speedInSecond <= 1) {
+            this.body.animationSpeed = 0;
+            return;
+        }
+        this.body.animationSpeed = Math.max(0.12, this.speedInSecond / 380);
+        if (!this.body.playing) {
+            this.body.play();
+        }
     }
 
     private updateVisuals() {

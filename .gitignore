@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+out/
+.next/
+.swc/
+*.tsbuildinfo
+
+# Coverage / caches
+coverage/
+.cache/
+.turbo/
+*.log
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+!.idea/game.iml
+!.idea/modules.xml
+!.idea/vcs.xml
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/jsLinters/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Misc
+tmp/
+temp/
+.tmp/
+*.local

@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { RoomsManager } from "./classes/RoomsManager";
 import { PlayerJSON } from "./types";
 import { EmitManager } from "./classes/EmitManager";
+import { WEAPONS } from "./configs/Weapons";
 
 export class AppSocketServer {
     private io:SocketIOServer;
@@ -39,12 +40,21 @@ export class AppSocketServer {
         if (started) {
             this.emitToRoom(roomId, "playersReloadStarted", {
                 socketId: socketId,
-                duration: weapon.config.reloadTime
+                duration: weapon.getReloadTime()
             });
         }
     }
 
     private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
+        if (!roomScene.isJoinable()) {
+            socket.emit("joinRejected", {
+                reason: "gameInProgress",
+                message: "Игра уже идёт — войти нельзя"
+            });
+            socket.disconnect(true);
+            return;
+        }
+
         socket.join(roomId);
         const scenePlayers = roomScene.playersCollection;
         const newPlayer = scenePlayers.addPlayer(socket.id);
@@ -52,11 +62,29 @@ export class AppSocketServer {
         if (newPlayer) {
             console.log("Connected: " + socket.id, newPlayer.toJSON());
 
+            socket.on("playerReady", (params:{ ready?:boolean } = {}) => {
+                const ready = params?.ready !== false;
+                roomScene.setPlayerReady(socket.id, ready);
+            });
+
+            socket.on("startGame", () => {
+                roomScene.startGameByHost(socket.id);
+            });
+
+            socket.on("togglePause", () => {
+                if (!roomScene.isLobby()) {
+                    roomScene.togglePause();
+                }
+            });
+
             socket.on("playerMoved", (params:PlayerJSON) => {
-                this.handlePlayerMoved(socket, roomId, scenePlayers, params);
+                if (!roomScene.isLobby() && !roomScene.isPaused()) {
+                    this.handlePlayerMoved(socket, roomId, scenePlayers, params);
+                }
             });
 
             socket.on("playerReload", () => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
                 const player = roomScene.playersCollection.getPlayerById(socket.id);
                 if (player) {
                     this.triggerReload(player, roomId, socket.id);
@@ -64,7 +92,21 @@ export class AppSocketServer {
             });
 
             socket.on("missileCreate", (params:any) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
                 this.handleMissileCreate(roomScene, params, socket.id);
+            });
+
+            socket.on("pickup", () => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                roomScene.pickupsCollection.tryPickup(socket.id);
+            });
+
+            socket.on("pickPerk", (params:{ perkId?:string }) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                if (player && params?.perkId) {
+                    player.pickPerk(params.perkId);
+                }
             });
 
             socket.on("disconnect", () => {
@@ -72,6 +114,13 @@ export class AppSocketServer {
             });
 
             this.emitToRoom(roomId, "playersUpdated", scenePlayers.getPlayersJSON());
+            roomScene.emitLobbyState();
+        } else {
+            socket.emit("joinRejected", {
+                reason: "roomFull",
+                message: "Комната заполнена"
+            });
+            socket.disconnect(true);
         }
     }
 
@@ -84,7 +133,7 @@ export class AppSocketServer {
 
     private handleMissileCreate(roomScene:any, params:any, socketId:string):void {
         const player = roomScene.playersCollection.getPlayerById(socketId);
-        if (!player) {
+        if (!player || player.isDead) {
             return;
         }
 
@@ -97,14 +146,45 @@ export class AppSocketServer {
             return;
         }
 
-        const spreadRotation = player.weapon.applySpread(params.rotation);
+        if (player.stats.selfDamage > 0) {
+            player.takeDamage(player.stats.selfDamage);
+        }
 
-        roomScene.missilesCollection.createMissile({
-            ...params,
-            weaponType: player.weapon.id,
-            rotation: spreadRotation,
-            ownerId: socketId
+        const config = WEAPONS[player.weapon.id];
+        const pellets = config?.pellets || 1;
+        const cone = config?.pelletCone || 0;
+        const extra = player.weapon.getExtraBullets();
+        const totalBullets = pellets + extra;
+        const baseRotation = player.weapon.applySpread(params.rotation);
+
+        for (let i = 0; i < totalBullets; i++) {
+            let rotation = baseRotation;
+            if (pellets > 1) {
+                const t = totalBullets === 1 ? 0 : (i / (totalBullets - 1)) - 0.5;
+                rotation = baseRotation + t * cone;
+            } else if (extra > 0 && i > 0) {
+                rotation = baseRotation + (Math.random() - 0.5) * 0.15;
+            }
+
+            roomScene.missilesCollection.createMissile({
+                ...params,
+                weaponType: player.weapon.id,
+                rotation,
+                ownerId: socketId,
+                damage: player.weapon.getDamage(),
+                speedInSecond: player.weapon.getBulletSpeed(),
+                range: player.weapon.getRange(),
+                pierce: player.weapon.getPierce()
+            });
+        }
+
+        this.emitToRoom(roomScene.getRoomId(), "playerStats", {
+            player: player.toJSON()
         });
+
+        if (player.weapon.ammo <= 0 && !player.weapon.isReloading) {
+            this.triggerReload(player, roomScene.getRoomId(), socketId);
+        }
     }
 
     private handlePlayerDisconnect(socket:Socket, roomId:string, scenePlayers:any):void {

@@ -3,6 +3,7 @@ import { App } from "../App";
 import { IMouseCoords } from "../Types";
 import Player from "./players/Player";
 
+/** Только кольцо разброса у мыши — системный курсор остаётся. */
 export class Cursor {
     private app:App;
     private mePlayer:Player;
@@ -12,9 +13,10 @@ export class Cursor {
         this.app = app;
         this.mePlayer = mePlayer;
         this.pixiObj = new PIXI.Graphics();
+        this.pixiObj.eventMode = "none";
     }
 
-    getPixiObj(){
+    getPixiObj() {
         return this.pixiObj;
     }
 
@@ -24,24 +26,29 @@ export class Cursor {
             return;
         }
 
-        // Calculate distance between player and cursor
         const playerCoords = this.mePlayer.getStageCoords();
         const distance = Math.hypot(
-            mouseCoords.pageX - playerCoords.pageX, mouseCoords.pageY - playerCoords.pageY
+            mouseCoords.pageX - playerCoords.pageX,
+            mouseCoords.pageY - playerCoords.pageY
         );
 
-        // Get the current spread angle in radians
-        const spreadAngle = this.mePlayer.weapon.currentSpread;
+        const weapon = this.mePlayer.weapon;
+        const spreadAngle = weapon.currentSpread;
+        const baseSpread = weapon.config.spreadBase;
 
-        // Calculate the radius of the spread circle at that distance using trigonometry
-        const spreadRadiusInPixels = distance * Math.tan(spreadAngle);
-
-        // Draw the circle
         this.pixiObj.clear();
-        if (spreadRadiusInPixels > 10) { // Only draw if the circle is noticeable
-            this.pixiObj.position.set(mouseCoords.pageX, mouseCoords.pageY);
-            this.pixiObj.circle(0, 0, spreadRadiusInPixels);
-            this.pixiObj.stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+        this.pixiObj.position.set(mouseCoords.pageX, mouseCoords.pageY);
+
+        // Кольцо только пока разброс выше базы — иначе у пистолета/SMG
+        // при далёком курсоре tan(spreadBase) * distance > 4 и «залипает»
+        if (spreadAngle <= baseSpread + 0.0005) {
+            return;
+        }
+
+        const spreadRadiusInPixels = distance * Math.tan(spreadAngle);
+        if (spreadRadiusInPixels > 4) {
+            this.pixiObj.circle(0, 0, Math.max(4, spreadRadiusInPixels));
+            this.pixiObj.stroke({ color: 0xffffff, width: 1.5, alpha: 0.55 });
         }
     }
 

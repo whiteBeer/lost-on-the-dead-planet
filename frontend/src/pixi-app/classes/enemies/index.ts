@@ -12,7 +12,6 @@ export class EnemiesCollection {
 
     app:App;
     scene:Scene;
-    socket = null;
     enemies:Enemy[] = [];
 
     constructor(app:App, scene:Scene, backendScene:BackendScene) {
@@ -25,16 +24,17 @@ export class EnemiesCollection {
             const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
             if (existEnemy) {
                 existEnemy.update(beObj.enemy, beObj.serverCurrentDateTime);
+            } else {
+                this.addEnemy(beObj.enemy, beObj.serverCurrentDateTime);
             }
         });
 
+        this.app.socket?.on("enemiesAdded", (beObj:IBackendEnemyUpdatedSocket) => {
+            this.addEnemy(beObj.enemy, beObj.serverCurrentDateTime);
+        });
+
         this.app.socket?.on("enemiesRemoved", (beObj:IBackendEnemyUpdatedSocket) => {
-            const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
-            if (existEnemy) {
-                existEnemy.clear();
-                this.scene.removeFromScene(existEnemy.getPixiObj());
-                this.enemies = this.enemies.filter(el => el.getId() !== beObj.enemy.id);
-            }
+            this.removeEnemy(beObj.enemy.id);
         });
 
         this.app.socket?.on("enemiesDamaged", (beObj:IBackendEnemyUpdatedSocket) => {
@@ -45,6 +45,24 @@ export class EnemiesCollection {
         });
     }
 
+    addEnemy(enemyJson:BackendEnemy, serverCurrentDateTime:string) {
+        if (this.enemies.find(el => el.getId() === enemyJson.id)) {
+            return;
+        }
+        const enemy = new Enemy(this.app, enemyJson, serverCurrentDateTime);
+        this.enemies.push(enemy);
+        this.scene.addToScene(enemy.getPixiObj());
+    }
+
+    removeEnemy(id:string) {
+        const existEnemy = this.enemies.find(el => el.getId() === id);
+        if (existEnemy) {
+            existEnemy.clear();
+            this.scene.removeFromScene(existEnemy.getPixiObj());
+            this.enemies = this.enemies.filter(el => el.getId() !== id);
+        }
+    }
+
     enemiesFromBackendScene(backendScene:BackendScene) {
         this.enemies.forEach(el => {
             el.clear();
@@ -52,9 +70,7 @@ export class EnemiesCollection {
         });
         this.enemies = [];
         backendScene.enemies.forEach((el:BackendEnemy) => {
-            const enemy = new Enemy(this.app, el, backendScene.serverCurrentDateTime);
-            this.enemies.push(enemy);
-            this.scene.addToScene(enemy.getPixiObj());
+            this.addEnemy(el, backendScene.serverCurrentDateTime);
         });
     }
 

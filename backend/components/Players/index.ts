@@ -29,16 +29,29 @@ export class Players {
         return this.players.find(player => player.socketId === socketId);
     }
 
+    areAllReady() {
+        return this.players.length > 0 && this.players.every(p => p.isReady);
+    }
+
+    clearReady() {
+        this.players.forEach(p => p.setReady(false));
+    }
+
     addPlayer(socketId:string):Player | null {
+        if (!this.scene.isJoinable()) {
+            return null;
+        }
         const existingColors = this.players.map(el => el.color);
         const color = this.playerColors.find(el => !existingColors.includes(el));
 
         if (color) {
-            const startX = Math.round(Math.random() * this.scene.getWidth());
-            const startY = Math.round(Math.random() * this.scene.getHeight());
-            const newPlayer = new Player(socketId, color, startX, startY);
+            const startX = Math.round(this.scene.getWidth() / 2 + (Math.random() - 0.5) * 120);
+            const startY = Math.round(this.scene.getHeight() / 2 + (Math.random() - 0.5) * 120);
+            const newPlayer = new Player(socketId, color, startX, startY, this.scene);
             newPlayer.rotation = Math.random() * 6;
+            newPlayer.setReady(false);
             this.players.push(newPlayer);
+            this.scene.ensureHost(socketId);
             return newPlayer;
         } else {
             console.warn("Room full. Cannot find color for new player.");
@@ -50,8 +63,15 @@ export class Players {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             const player = this.players[index];
-            player.pageX = params.pageX;
-            player.pageY = params.pageY;
+            const margin = player.radius || 13;
+            const edgePadX = this.scene.getEdgePadX();
+            const edgePadY = this.scene.getEdgePadY();
+            const minX = margin + edgePadX;
+            const maxX = Math.max(minX, this.scene.getWidth() - margin - edgePadX);
+            const minY = margin + edgePadY;
+            const maxY = Math.max(minY, this.scene.getHeight() - margin - edgePadY);
+            player.pageX = Math.min(maxX, Math.max(minX, params.pageX));
+            player.pageY = Math.min(maxY, Math.max(minY, params.pageY));
             player.rotation = params.rotation;
             return index;
         }
@@ -61,7 +81,20 @@ export class Players {
     deletePlayer(socketId:string):void {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
+            this.players[index].destroy();
             this.players.splice(index, 1);
+            if (this.scene.isLobby()) {
+                this.scene.reassignHostIfNeeded();
+                this.scene.emitLobbyState();
+            } else {
+                this.scene.wipeIfNoSurvivors(
+                    this.players.length === 0 ? "empty" : "allDead"
+                );
+            }
         }
+    }
+
+    tick(deltaSec:number) {
+        this.players.forEach(p => p.tick(deltaSec));
     }
 }

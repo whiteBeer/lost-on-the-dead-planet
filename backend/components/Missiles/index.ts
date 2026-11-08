@@ -1,13 +1,9 @@
-import { MissileParams } from "../../types";
+import { EnemyMissileParams, MissileParams } from "../../types";
 import { Scene } from "../Scene";
-import { RifleMissile } from "./RifleMissile";
+import { WeaponMissile } from "./WeaponMissile";
+import { EnemyMissile } from "./EnemyMissile";
 import { BaseMissile } from "./BaseMissile";
-
-const MISSILE_MAP:Record<string, new (scene:Scene, params:MissileParams) => BaseMissile> = {
-    "Rifle": RifleMissile
-    // "Shotgun": ShotgunMissile,
-    // "Bazooka": BazookaMissile
-};
+import { WEAPONS } from "../../configs/Weapons";
 
 export class Missiles {
 
@@ -19,16 +15,28 @@ export class Missiles {
     }
 
     createMissile(params:MissileParams) {
-        const MissileClass = MISSILE_MAP[params.weaponType];
-
-        if (!MissileClass) {
+        if (!WEAPONS[params.weaponType]) {
             console.warn(`Unknown weapon type: ${params.weaponType}`);
             return;
         }
 
-        const newMissile = new MissileClass(this.scene, params);
-        this.items.push(newMissile);
-        this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
+        try {
+            const newMissile = new WeaponMissile(this.scene, params);
+            this.items.push(newMissile);
+            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
+        } catch (e) {
+            console.warn(e);
+        }
+    }
+
+    createEnemyMissile(params:EnemyMissileParams) {
+        try {
+            const newMissile = new EnemyMissile(this.scene, params);
+            this.items.push(newMissile);
+            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
+        } catch (e) {
+            console.warn(e);
+        }
     }
 
     getMissiles() {
@@ -47,5 +55,12 @@ export class Missiles {
             this.items.splice(index, 1);
             this.scene.emit("missilesRemoved", { missile: missile.toJSON() });
         }
+    }
+
+    removeAll() {
+        [...this.items].forEach(missile => {
+            missile.destroy();
+        });
+        this.items.length = 0;
     }
 }

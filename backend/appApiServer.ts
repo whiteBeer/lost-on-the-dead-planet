@@ -54,16 +54,31 @@ export class AppApiServer {
                 "enemiesUpdated",
                 "enemiesRemoved",
                 "enemiesDamaged",
+                "enemiesAdded",
+                "enemyDied",
                 "missilesAdded",
                 "missilesRemoved",
                 "playersDamaged",
-                "playersDied"
+                "playersDied",
+                "pickupAdded",
+                "pickupRemoved",
+                "waveStarted",
+                "waveCleared",
+                "hitFx",
+                "perkOffer",
+                "playerStats",
+                "sceneReset",
+                "gameOver",
+                "lobbyUpdated",
+                "gameStarted",
+                "gamePaused"
             ];
             sceneEvents.forEach((sceneEvent) => {
                 scene.on(sceneEvent, (data) => {
-                    this.emitManager.emit(roomId, sceneEvent, Object.assign(data, {
-                        serverCurrentDateTime: new Date().toISOString()
-                    }));
+                    this.emitManager.emit(roomId, sceneEvent, Object.assign(
+                        typeof data === "object" && data !== null ? data : { value: data },
+                        { serverCurrentDateTime: new Date().toISOString() }
+                    ));
                 });
             });
             res.json({ isCreated: true });

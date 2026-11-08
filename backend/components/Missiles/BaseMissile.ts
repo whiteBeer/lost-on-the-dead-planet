@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { MissileParams, MissileJSON } from "../../types";
+import { MissileParams, MissileJSON, MissileTeam } from "../../types";
 import { Scene } from "../Scene";
 
 export class BaseMissile implements MissileJSON {
@@ -10,12 +10,17 @@ export class BaseMissile implements MissileJSON {
 
     id:string;
     ownerId:string;
+    weaponType = "";
+    team:MissileTeam = "player";
+    bulletScale = 1;
     damage = -1;
     startX = -1;
     startY = -1;
     speedInSecond = -1;
     rotation = 0;
     range = 0;
+    pierceLeft = 0;
+    hitEnemyIds:string[] = [];
     createdAt:string;
     updatedAt:string;
 
@@ -24,11 +29,17 @@ export class BaseMissile implements MissileJSON {
         const createdAt = new Date().toISOString();
         this.id = randomUUID();
         this.ownerId = params.ownerId;
+        this.weaponType = params.weaponType;
+        this.team = params.team || "player";
         this.startX = params.startX;
         this.startY = params.startY;
         this.rotation = params.rotation;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
+    }
+
+    isEnemyShot() {
+        return this.team === "enemy";
     }
 
     handleEvents() {
@@ -47,7 +58,7 @@ export class BaseMissile implements MissileJSON {
     }
 
     toJSON() {
-        const { scene, previousPos, lifeTimeout, ...json } = this;
+        const { scene, previousPos, lifeTimeout, hitEnemyIds, ...json } = this;
         return json;
     }
 }

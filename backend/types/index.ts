@@ -19,12 +19,24 @@ export interface PlayerJSON {
     health:number,
     maxHealth:number,
     isDead:boolean,
+    isReady?:boolean,
+    exp?:number,
+    level?:number,
+    perks?:string[],
+    speed?:number,
     weapon:{
         id:string,
         ammo:number,
         clipSize:number,
         isReloading:boolean
-    }
+    },
+    perkOffer?:Array<{
+        id:string,
+        name:string,
+        description:string,
+        rarity:string,
+        icon:string
+    }>
 }
 
 export interface EnemyJSON {
@@ -35,12 +47,18 @@ export interface EnemyJSON {
     maxHealth:number,
     width:number,
     height:number,
+    bulletHit?:{ width:number, height:number },
+    playerTouch?:{ width:number, height:number },
     speedInSecond:number,
     rotation:number,
     startX:number,
     startY:number,
     createdAt:string,
-    updatedAt:string
+    updatedAt:string,
+    tier?:string,
+    tint?:number,
+    spriteKey?:string,
+    exp?:number
 }
 
 export interface EnemyParams {
@@ -49,15 +67,22 @@ export interface EnemyParams {
     startY:number
 }
 
+export type MissileTeam = "player" | "enemy";
+
 export interface MissileJSON {
     id:string,
     ownerId:string,
+    weaponType?:string,
+    team?:MissileTeam,
+    /** Множитель визуала/хитбокса относительно обычной пули (босс = 3) */
+    bulletScale?:number,
     damage:number,
     startX:number,
     startY:number,
     speedInSecond:number,
     rotation:number,
     range:number,
+    pierceLeft?:number,
     createdAt:string
 }
 
@@ -65,6 +90,31 @@ export interface MissileParams {
     weaponType:string,
     rotation:number,
     startX:number,
-    startY:number
-    ownerId:string
+    startY:number,
+    ownerId:string,
+    team?:MissileTeam,
+    damage?:number,
+    speedInSecond?:number,
+    range?:number,
+    pierce?:number
+}
+
+export interface EnemyMissileParams {
+    rotation:number,
+    startX:number,
+    startY:number,
+    ownerId:string,
+    damage:number,
+    speedInSecond:number,
+    range:number,
+    bulletScale?:number
+}
+
+export interface PickupJSON {
+    id:string,
+    kind:string,
+    x:number,
+    y:number,
+    weaponId?:string,
+    expiresAt?:number
 }
