@@ -15,6 +15,21 @@ const WEAPON_RARITY_TEXT:Record<string, string> = {
     common: "обычное", uncommon: "необычное", rare: "редкое", epic: "эпическое", legendary: "легендарное"
 };
 
+/** Полноэкранный режим без адресной строки. Работает только по жесту игрока (нажатие, касание). */
+export function enterFullscreen() {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?:() => void };
+    const doc = document as Document & { webkitFullscreenElement?:Element };
+    if (document.fullscreenElement || doc.webkitFullscreenElement) {
+        return;
+    }
+    try {
+        const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
+        Promise.resolve(result).catch(() => {});
+    } catch {
+        // Браузер не умеет (iPhone): остаётся обычный режим
+    }
+}
+
 function WeaponIcon({ id, className }:{ id:string, className?:string }) {
     return id ? <img className={className} src={imgUrl(`weapon_${id}`)} alt="" draggable={false} /> : null;
 }
@@ -44,6 +59,30 @@ function GameView({ name }:{ name:string }) {
             setTeamOpen(false);
             setPerksOpen(false);
         }
+    }, []);
+
+    // Телефон: если вышли из полноэкранного режима, следующее касание снова прячет адресную строку
+    useEffect(() => {
+        if (!window.matchMedia("(pointer: coarse)").matches) {
+            return;
+        }
+        const again = () => enterFullscreen();
+        window.addEventListener("touchend", again);
+        return () => window.removeEventListener("touchend", again);
+    }, []);
+
+    // Колесо мыши — смена инструмента и оружия
+    useEffect(() => {
+        let last = 0;
+        const onWheel = (event:WheelEvent) => {
+            if ((event.target as HTMLElement)?.tagName !== "CANVAS" || Date.now() - last < 200) {
+                return;
+            }
+            last = Date.now();
+            appRef.current?.switchSlot("swap");
+        };
+        window.addEventListener("wheel", onWheel, { passive: true });
+        return () => window.removeEventListener("wheel", onWheel);
     }, []);
 
     useEffect(() => {
@@ -81,7 +120,8 @@ function GameView({ name }:{ name:string }) {
             ctx.fill();
         };
         hud.roster?.bosses.forEach(([x, y]) => dot(x, y, "#ff7a1a", 6));
-        hud.roster?.chests.forEach(([x, y]) => dot(x, y, "#ffd34e", 5));
+        // Аирдроп: в полёте мигает жёлтым, на земле — красный
+        hud.roster?.chests.forEach(([x, y, left]) => dot(x, y, left > 0 ? (Date.now() % 1000 < 500 ? "#ffd34e" : "#ff9a2e") : "#ff4a2e", 5));
         hud.roster?.exposed.forEach(([id, x, y]) => {
             if (id !== hud.myId) {
                 dot(x, y, "#ff5a5a", 3.5);
@@ -98,7 +138,6 @@ function GameView({ name }:{ name:string }) {
     const myTeam = hud?.roster?.teams.find(team => team.id === me?.teamId);
     const nameOf = (id:number) => rows.find(row => row.id === id)?.name || "...";
     const weaponName = (id:string) => hud?.weapons[id]?.name || id;
-    const currentWeapon = me ? hud?.weapons[me.weapon] : undefined;
 
     return (
         <div className={styles.root}>
@@ -144,14 +183,31 @@ function GameView({ name }:{ name:string }) {
                                 <span className={styles.boardExp}>{rows[myRank].exp}</span>
                             </div>
                         )}
-                        <div className={styles.myWeapon}>
-                            <WeaponIcon id={me.weapon} className={styles.myWeaponIcon} />
-                            <div>
-                                <div className={styles.myWeaponName}>{currentWeapon?.name}</div>
-                                <div className={styles.myWeaponAmmo}>
-                                    {hud?.weapons[me.weapon]?.melee ? "ближний бой" : me.reloadLeft > 0 ? "Перезарядка..." : `${me.ammo} / ${me.clip}`}
-                                </div>
-                            </div>
+                        <div className={styles.slots}>
+                            {(["tool", "gun"] as const).map((slot, index) => {
+                                const id = slot === "tool" ? me.tool : me.gun;
+                                const active = !!id && me.weapon === id;
+                                return (
+                                    <button
+                                        key={slot}
+                                        className={`${styles.myWeapon} ${active ? styles.slotActive : ""}`}
+                                        title={slot === "tool" ? "Инструмент (1)" : "Оружие (2)"}
+                                        onClick={() => app?.switchSlot(slot)}
+                                    >
+                                        <span className={styles.slotKey}>{index + 1}</span>
+                                        {id ? <WeaponIcon id={id} className={styles.myWeaponIcon} /> : <span className={styles.myWeaponIcon} />}
+                                        <div>
+                                            <div className={styles.myWeaponName}>{id ? weaponName(id) : "нет оружия"}</div>
+                                            <div className={styles.myWeaponAmmo}>
+                                                {slot === "tool" ? "инструмент"
+                                                    : !id ? "—"
+                                                        : active && me.reloadLeft > 0 ? "Перезарядка..."
+                                                            : `${active ? me.ammo : me.gunAmmo} / ${me.clip && active ? me.clip : hud?.weapons[id]?.clipSize}`}
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </section>
 
@@ -194,9 +250,16 @@ function GameView({ name }:{ name:string }) {
                         })()}
                     </section>
 
+                    {me.hint && <div className={styles.hint}>{me.hint}</div>}
+
                     {hud?.nearPickup && (
                         <button className={styles.pickupHint} onClick={() => app?.pickup()}>
-                            {hud.nearPickup.startsWith("bag:") ? (
+                            {hud.nearPickup === "chest" ? (
+                                <>
+                                    <img src={imgUrl("chest")} className={styles.pickupIcon} alt="" />
+                                    <span><b className={styles.desktopOnly}>E: </b>вскрыть аирдроп</span>
+                                </>
+                            ) : hud.nearPickup.startsWith("bag:") ? (
                                 <>
                                     <img src={itemImage("bag")} className={styles.pickupIcon} alt="" />
                                     <span><b className={styles.desktopOnly}>E: </b>обыскать сумку {hud.nearPickup.slice(4)}</span>
@@ -214,6 +277,12 @@ function GameView({ name }:{ name:string }) {
                     )}
 
                     {invOpen && hud && <Inventory hud={hud} app={app} onClose={() => setInvOpen(false)} />}
+
+                    {!me.dead && (
+                        <button className={styles.swapButton} onClick={() => app?.switchSlot("swap")}>
+                            ⇄<span>{me.gun && me.weapon === me.gun ? "Инструмент" : "Оружие"}</span>
+                        </button>
+                    )}
 
                     {!me.dead && (
                         <div className={styles.touchButtons}>

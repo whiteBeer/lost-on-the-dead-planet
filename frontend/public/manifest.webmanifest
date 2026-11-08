@@ -1,0 +1,11 @@
+{
+  "name": "Lost on the Dead Planet",
+  "short_name": "LPT Zombies",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0c0f0a",
+  "theme_color": "#0c0f0a",
+  "icons": [{ "src": "img/chest.png", "sizes": "256x256", "type": "image/png" }]
+}

@@ -6,6 +6,16 @@ import styles from "./page.module.css";
 
 // Pixi работает только в браузере
 const GameView = dynamic(() => import("../components/GameView"), { ssr: false });
+
+function enterFullscreen() {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?:() => void };
+    try {
+        const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
+        Promise.resolve(result).catch(() => {});
+    } catch {
+        // iPhone не умеет: игра просто идёт в обычном окне
+    }
+}
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const NAME_KEY = "lpt-zombies-name";
 
@@ -22,6 +32,11 @@ function Main() {
     const start = (event:React.FormEvent) => {
         event.preventDefault();
         localStorage.setItem(NAME_KEY, name.trim());
+        // Нажатие «Играть» — жест игрока, только по нему браузер разрешает убрать адресную строку
+        enterFullscreen();
+        if (isTouch) {
+            (screen.orientation as ScreenOrientation & { lock?:(o:string) => Promise<void> })?.lock?.("landscape")?.catch(() => {});
+        }
         setPlaying(true);
     };
 
@@ -56,11 +71,12 @@ function Main() {
                     <ul className={styles.help}>
                         <li><b>WASD</b> бежать, <b>мышь</b> целиться и стрелять</li>
                         <li><b>R</b> перезарядка, <b>E</b> подобрать оружие</li>
-                        <li><b>I</b> рюкзак и крафт, <b>H</b> лечение, <b>G</b> граната, <b>Q</b> нож</li>
-                        <li><b>1 2 3</b> выбрать перк, <b>T</b> команда, <b>P</b> мои перки</li>
+                        <li><b>1</b> инструмент, <b>2</b> оружие, <b>Q</b> или <b>колесо</b> — быстро переключить</li>
+                        <li><b>I</b> рюкзак и крафт, <b>H</b> лечение, <b>G</b> граната</li>
+                        <li><b>1 2 3</b> выбрать перк, когда он предложен, <b>T</b> команда, <b>P</b> мои перки</li>
                     </ul>
                 )}
-                <p className={styles.note}>Ты начинаешь с ножом в безопасной зоне. Руби деревья и камни, мастери оружие, иди в города за добычей. Смерть обнуляет уровень, перки и рюкзак: вещи остаются в сумке на месте гибели.</p>
+                <p className={styles.note}>Ты начинаешь с ножом в безопасной зоне. Ресурсов мало: руби деревья и камни, скручивай верёвку из ткани, машины разбирай гаечным ключом. Следи за аирдропами на миникарте. Смерть обнуляет уровень, перки и рюкзак: вещи остаются в сумке на месте гибели.</p>
             </form>
         </main>
     );

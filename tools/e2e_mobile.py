@@ -75,7 +75,7 @@ def run(p, label, width, height):
     text = page.inner_text("body")
     if "Выбери перк" in text:
         page.screenshot(path=f"{OUT}_{label}_perks.png")
-        box = page.locator("section button").first
+        box = page.locator("[class*=perkCard]").first
         name = box.locator("span").nth(2).inner_text()
         box.tap()
         time.sleep(0.6)

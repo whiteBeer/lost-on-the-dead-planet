@@ -19,8 +19,11 @@ export const WORLD = {
     // С запасом к подсказке на клиенте (60): сервер немного отстаёт от бегущего игрока
     weaponReach: 80,
     pickupLifetimeMs: 75000,
-    chestRewardLifetimeMs: 180000,
-    chestCountdownMs: 60000,
+    chestRewardLifetimeMs: 180000,  // сколько лежит приземлившийся аирдроп и выпавшее из него
+    chestFallMs: 45000,             // спуск аирдропа на парашюте
+    chestReach: 90,
+    chestPerkChance: 0.3,
+    slotSwitchMs: 250,              // задержка выстрела после смены инструмента на оружие
     chestFirstDelayMs: 35000,
     chestMinIntervalMs: 150000,
     chestMaxIntervalMs: 270000,
@@ -35,7 +38,8 @@ export const WORLD = {
     bossEveryMs: 240000,
     explosionDamage: 90,
     toxicDamage: 4,          // урон в секунду в ядовитом воздухе без противогаза
-    resourceRespawnMs: 240000,
+    resourceRespawnMs: 480000,
+    wreckRespawnMs: 900000,
     crateRespawnMs: 300000,
     bagLifetimeMs: 240000,
     maxLevel: 99

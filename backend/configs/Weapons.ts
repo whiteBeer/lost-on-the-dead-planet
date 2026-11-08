@@ -24,6 +24,7 @@ export interface WeaponConfig {
     explosion?:number; // Радиус взрыва
     bulletSize?:number;
     // Ближний бой: удар по дуге перед игроком вместо пули
+    // gather: сколько ресурса за удар; нет ключа — этим инструментом ресурс не добыть
     melee?:{ range:number, arc:number, gather?:Partial<Record<"wood" | "stone" | "scrap", number>> };
     craftOnly?:boolean;     // не выпадает с монстров и из сундуков
 }
@@ -36,28 +37,35 @@ export const WEAPONS:Record<string, WeaponConfig> = {
         damage: 17, speedInSecond: 0, range: 0, fireRate: 380,
         spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
         clipSize: 1, reloadTime: 0,
-        melee: { range: 58, arc: 1.7, gather: { wood: 1, stone: 1, scrap: 1 } }
+        melee: { range: 58, arc: 1.7, gather: { wood: 1, stone: 1 } }
     },
     "Spear": {
         id: "Spear", name: "Копьё", rarity: "common", craftOnly: true,
         damage: 34, speedInSecond: 0, range: 0, fireRate: 620,
         spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
         clipSize: 1, reloadTime: 0,
-        melee: { range: 92, arc: 0.9, gather: { wood: 1, stone: 1, scrap: 1 } }
+        melee: { range: 92, arc: 0.9, gather: { wood: 1, stone: 1 } }
     },
     "Axe": {
         id: "Axe", name: "Топор", rarity: "common", craftOnly: true,
         damage: 28, speedInSecond: 0, range: 0, fireRate: 640,
         spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
         clipSize: 1, reloadTime: 0,
-        melee: { range: 66, arc: 1.5, gather: { wood: 3, stone: 1, scrap: 1 } }
+        melee: { range: 66, arc: 1.5, gather: { wood: 2, stone: 1 } }
     },
     "Pickaxe": {
         id: "Pickaxe", name: "Кирка", rarity: "common", craftOnly: true,
         damage: 24, speedInSecond: 0, range: 0, fireRate: 700,
         spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
         clipSize: 1, reloadTime: 0,
-        melee: { range: 64, arc: 1.3, gather: { wood: 1, stone: 3, scrap: 2 } }
+        melee: { range: 64, arc: 1.3, gather: { wood: 1, stone: 2 } }
+    },
+    "Wrench": {
+        id: "Wrench", name: "Гаечный ключ", rarity: "common", craftOnly: true,
+        damage: 20, speedInSecond: 0, range: 0, fireRate: 560,
+        spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
+        clipSize: 1, reloadTime: 0,
+        melee: { range: 60, arc: 1.4, gather: { scrap: 1 } }
     },
     "Bow": {
         id: "Bow", name: "Лук", rarity: "common", craftOnly: true,
@@ -130,6 +138,7 @@ export const WEAPONS:Record<string, WeaponConfig> = {
 
 // Какие редкости падают с монстра какого уровня опасности: tier -> [редкость, вес]
 export const DROP_TABLE:Record<number, [WeaponRarity, number][]> = {
+    0: [["common", 45], ["uncommon", 55]],   // аирдропы: не выше зелёного
     1: [["common", 45], ["uncommon", 45], ["rare", 10]],
     2: [["uncommon", 50], ["rare", 40], ["epic", 10]],
     3: [["rare", 45], ["epic", 45], ["legendary", 10]],
@@ -137,7 +146,7 @@ export const DROP_TABLE:Record<number, [WeaponRarity, number][]> = {
 };
 
 export function rollWeapon(tier:number):string {
-    const table = DROP_TABLE[tier] || DROP_TABLE[1];
+    const table = DROP_TABLE[tier] ?? DROP_TABLE[1];
     const total = table.reduce((sum, [, weight]) => sum + weight, 0);
     let roll = Math.random() * total;
     let rarity:WeaponRarity = table[0][0];
@@ -150,4 +159,9 @@ export function rollWeapon(tier:number):string {
     }
     const pool = Object.values(WEAPONS).filter(el => el.rarity === rarity && !el.craftOnly);
     return pool[Math.floor(Math.random() * pool.length)].id;
+}
+
+/** Инструменты и холодное оружие занимают слот инструмента, всё стреляющее — слот оружия. */
+export function isToolWeapon(weaponId:string) {
+    return !!WEAPONS[weaponId]?.melee;
 }

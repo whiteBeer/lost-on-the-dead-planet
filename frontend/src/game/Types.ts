@@ -44,6 +44,10 @@ export interface MeState {
     levelProgress:number;
     kills:number;
     weapon:string;
+    tool:string;
+    gun:string;
+    gunAmmo:number;
+    hint:string;
     ammo:number;
     clip:number;
     reloadLeft:number;
@@ -70,7 +74,7 @@ export type NetPlayer = [number, number, number, number, number, number, string,
 export type NetEnemy = [number, string, number, number, number, number, number, number];
 // [id, kind, itemId, x, y, lifetimeLeftMs, count]
 export type NetPickup = [number, string, string, number, number, number, number];
-// [id, x, y, opensInMs]
+// [id, x, y, landsInMs] — аирдроп, 0 — уже на земле
 export type NetChest = [number, number, number, number];
 // [id, kind, x, y, vx, vy, left, size, ownerId]
 export type NetBullet = [number, string, number, number, number, number, number, number, number];

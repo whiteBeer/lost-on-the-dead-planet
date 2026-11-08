@@ -79,7 +79,14 @@ with sync_playwright() as p:
     a.keyboard.press("KeyE")
     time.sleep(0.5)
     panel = a.locator("section").first.inner_text()
-    check("оружие подобрано и сменилось в панели рейтинга", found and "Пистолет\n" not in panel.split("Опыт")[-1][-60:], panel[-40:].replace("\n", " | "))
+    check("оружие подобрано в слот 2, нож остался в слоте 1", found and "нет оружия" not in panel and "Нож" in panel.split("Опыт")[-1], panel[-40:].replace("\n", " | "))
+    a.keyboard.press("KeyQ")
+    time.sleep(0.4)
+    active = a.locator("[class*=slotActive]").inner_text()
+    check("Q переключает на инструмент", "Нож" in active, active.replace("\n", " | ") + " / " + hud(a)[-200:].replace("\n", " | "))
+    a.keyboard.press("KeyQ")
+    time.sleep(0.4)
+    check("Q возвращает оружие", "Нож" not in a.locator("[class*=slotActive]").inner_text())
     a.screenshot(path=f"{OUT}_2_weapon.png")
 
     # Команда: Алиса зовёт Бориса через панель, Борис принимает клавишей Y

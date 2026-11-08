@@ -10,6 +10,7 @@ import { FeedEvent, HudState, Invite, MeState, Roster, Snapshot, WorldConfig } f
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || undefined;
 const SOCKET_PATH = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
 const PICKUP_REACH = 60;
+const CHEST_REACH = 90;
 
 export class App {
     private pixi = new PIXI.Application();
@@ -273,7 +274,8 @@ export class App {
             if (!view) {
                 view = new ChestView(x, y, opensInMs);
                 this.chests.set(id, view);
-                this.layerItems.addChild(view.root);
+                // Парашют летит над крышами и деревьями
+                this.layerTop.addChild(view.root);
             } else {
                 view.setRemaining(opensInMs);
             }
@@ -410,7 +412,10 @@ export class App {
         } else if (code === "KeyG") {
             this.socket?.emit("grenade");
         } else if (code === "KeyQ") {
-            this.socket?.emit("unequip", "weapon");
+            this.switchSlot("swap");
+        } else if ((code === "Digit1" || code === "Digit2") && !me?.offer) {
+            // Пока не предлагают перки, 1 и 2 — быстрый выбор инструмента или оружия
+            this.switchSlot(code === "Digit1" ? "tool" : "gun");
         } else if (code === "Digit1" || code === "Digit2" || code === "Digit3") {
             this.pickPerk(Number(code.slice(5)) - 1);
         } else if (code === "Enter" || code === "Space") {
@@ -433,6 +438,15 @@ export class App {
         }
         let best = "";
         let bestDist = PICKUP_REACH;
+        let chestDist = CHEST_REACH;
+        let chest = false;
+        this.chests.forEach((view) => {
+            const dist = Math.hypot(view.x - this.x, view.y - this.y);
+            if (view.landed && dist < chestDist) {
+                chest = true;
+                chestDist = dist;
+            }
+        });
         this.pickups.forEach((view) => {
             if (view.kind === "weapon" || view.kind === "bag") {
                 const dist = Math.hypot(view.x - this.x, view.y - this.y);
@@ -442,7 +456,7 @@ export class App {
                 }
             }
         });
-        return best;
+        return chest && (!best || chestDist <= bestDist) ? "chest" : best;
     }
 
     private pushHud(force = false) {
@@ -491,8 +505,12 @@ export class App {
         this.socket?.emit("dropSlot", index);
     }
 
-    unequip(what:"weapon" | "armor" | "mask") {
+    unequip(what:"weapon" | "tool" | "gun" | "armor" | "mask") {
         this.socket?.emit("unequip", what);
+    }
+
+    switchSlot(which:"tool" | "gun" | "swap") {
+        this.socket?.emit("slot", which);
     }
 
     craft(recipeId:string) {

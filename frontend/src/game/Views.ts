@@ -271,23 +271,47 @@ export class PickupView {
     }
 }
 
+const FALL_HEIGHT = 320;
+
+/** Аирдроп: тень и метка на земле, ящик спускается на парашюте, после приземления — красный дым. */
 export class ChestView {
     readonly root = new PIXI.Container();
+    private marker = new PIXI.Graphics();
+    private shadow = new PIXI.Graphics();
+    private drop = new PIXI.Container();
+    private chute = new PIXI.Graphics();
     private icon = new PIXI.Sprite(Assets.tex("chest"));
+    private smoke = new PIXI.Container();
     private timer:PIXI.Text;
-    private opensAt = performance.now();
+    private landsAt = performance.now();
+    private fallTotal = 45000;
     private time = Math.random() * 6;
+    private puffAt = 0;
+    landed = false;
 
-    constructor(readonly x:number, readonly y:number, opensInMs:number) {
+    constructor(readonly x:number, readonly y:number, landsInMs:number) {
         this.root.position.set(x, y);
-        const glow = new PIXI.Graphics();
-        glow.circle(0, 0, 48).fill({ color: 0xff9f2e, alpha: 0.2 });
-        glow.circle(0, 0, 47).stroke({ width: 3, color: 0xffb13d, alpha: 0.9 });
-        this.root.addChild(glow);
+        this.marker.circle(0, 0, 60).stroke({ width: 3, color: 0xff5a3a, alpha: 0.85 });
+        this.marker.moveTo(-14, 0).lineTo(14, 0).moveTo(0, -14).lineTo(0, 14).stroke({ width: 3, color: 0xff5a3a, alpha: 0.85 });
+        this.shadow.ellipse(0, 6, 34, 14).fill({ color: 0x000000, alpha: 0.4 });
+        this.root.addChild(this.marker, this.shadow, this.smoke);
 
+        // Купол парашюта: полосатый полукруг и стропы к ящику
+        const stripes = [0xf2f2ea, 0xff6a3d, 0xf2f2ea, 0xff6a3d, 0xf2f2ea];
+        const w = 116;
+        stripes.forEach((color, i) => {
+            const a0 = Math.PI + i / stripes.length * Math.PI;
+            const a1 = Math.PI + (i + 1) / stripes.length * Math.PI;
+            this.chute.moveTo(0, -70).arc(0, -70, w / 2, a0, a1).lineTo(0, -70).fill({ color });
+        });
+        this.chute.arc(0, -70, w / 2, Math.PI, Math.PI * 2).stroke({ width: 2, color: 0x6b2a18 });
+        for (const sx of [-w / 2, -w / 6, w / 6, w / 2]) {
+            this.chute.moveTo(sx, -70).lineTo(sx * 0.25, -22).stroke({ width: 1.5, color: 0x2a2a22, alpha: 0.8 });
+        }
         this.icon.anchor.set(0.5);
-        this.icon.scale.set(82 / Math.max(this.icon.texture.width, this.icon.texture.height));
-        this.root.addChild(this.icon);
+        this.icon.scale.set(70 / Math.max(this.icon.texture.width, this.icon.texture.height));
+        this.drop.addChild(this.chute, this.icon);
+        this.root.addChild(this.drop);
 
         this.timer = new PIXI.Text({
             text: "",
@@ -298,21 +322,56 @@ export class ChestView {
             resolution: 2
         });
         this.timer.anchor.set(0.5, 0);
-        this.timer.position.set(0, 43);
+        this.timer.position.set(0, 40);
         this.root.addChild(this.timer);
-        this.setRemaining(opensInMs);
+        this.fallTotal = Math.max(landsInMs, this.fallTotal);
+        this.setRemaining(landsInMs);
     }
 
     setRemaining(ms:number) {
-        this.opensAt = performance.now() + Math.max(0, ms);
+        this.landsAt = performance.now() + Math.max(0, ms);
     }
 
     update(dt:number) {
         this.time += dt;
-        this.icon.y = Math.sin(this.time * 3) * 2;
-        const left = Math.max(0, Math.ceil((this.opensAt - performance.now()) / 1000));
-        this.timer.text = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
-        this.root.alpha = 0.88 + Math.sin(this.time * 5) * 0.12;
+        const leftMs = Math.max(0, this.landsAt - performance.now());
+        const k = leftMs / this.fallTotal;          // 1 — только сбросили, 0 — на земле
+        this.landed = leftMs <= 0;
+        this.drop.y = -FALL_HEIGHT * k;
+        this.drop.rotation = this.landed ? 0 : Math.sin(this.time * 1.6) * 0.12 * Math.min(1, k * 4);
+        this.drop.scale.set(1 + k * 0.35);
+        this.chute.visible = !this.landed;
+        this.icon.y = this.landed ? 0 : -6;
+        this.shadow.scale.set(0.45 + (1 - k) * 0.55);
+        this.shadow.alpha = 0.35 + (1 - k) * 0.65;
+        this.marker.visible = !this.landed;
+        this.marker.alpha = 0.55 + Math.sin(this.time * 5) * 0.3;
+        this.marker.scale.set(1 + Math.sin(this.time * 2.5) * 0.06);
+
+        if (this.landed) {
+            this.timer.text = "АИРДРОП";
+            this.timer.style.fill = 0xff8a5a;
+            // Красный сигнальный дым, видно издалека
+            if (this.time > this.puffAt) {
+                this.puffAt = this.time + 0.12;
+                const puff = new PIXI.Graphics();
+                puff.circle(0, 0, 10 + Math.random() * 8).fill({ color: 0xd9412b, alpha: 0.55 });
+                puff.position.set(-14 + Math.random() * 10, -10);
+                this.smoke.addChild(puff);
+            }
+            for (const puff of [...this.smoke.children]) {
+                puff.y -= 38 * dt;
+                puff.x += (12 + Math.sin(this.time + puff.y * 0.05) * 10) * dt;
+                puff.scale.set(puff.scale.x + dt * 0.9);
+                puff.alpha -= dt * 0.28;
+                if (puff.alpha <= 0) {
+                    puff.destroy();
+                }
+            }
+        } else {
+            const left = Math.ceil(leftMs / 1000);
+            this.timer.text = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+        }
     }
 
     destroy() {

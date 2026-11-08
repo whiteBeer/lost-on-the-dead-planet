@@ -120,11 +120,16 @@ const tests = {
         const world = arena();
         const p = world.addPlayer("s", "Мастер");
         assert.strictEqual(world.craft(p, "spear"), false);
-        world.addItem(p, "wood", 5);
-        world.addItem(p, "stone", 2);
+        world.addItem(p, "wood", 6);
+        world.addItem(p, "stone", 3);
+        // Одних палок и камней мало: нужна верёвка из ткани
+        assert.strictEqual(world.craft(p, "spear"), false);
+        world.addItem(p, "cloth", 3);
+        assert.strictEqual(world.craft(p, "rope"), true);
         assert.strictEqual(world.craft(p, "spear"), true);
         assert.strictEqual(world.countItem(p, "wood"), 1);
         assert.strictEqual(world.countItem(p, "stone"), 0);
+        assert.strictEqual(world.countItem(p, "rope"), 0);
         assert.ok(p.inventory.some(el => el && el.id === "w:Spear"));
         const slot = p.inventory.findIndex(el => el && el.id === "w:Spear");
         world.useSlot(p, slot);
@@ -354,26 +359,103 @@ const tests = {
         assert.strictEqual(a.weaponId, weapons[0].weaponId);
         assert.strictEqual(a.ammo, WEAPONS[a.weaponId].clipSize);
     },
-    "сундук показывает таймер, открывается и оставляет награду ровно на 3 минуты": () => {
+    "аирдроп спускается, открывается по E и даёт оружие не выше зелёного": () => {
         const world = arena();
         const a = world.addPlayer("a", "A");
         place(a, 500, 500);
         const now = Date.now();
-        const chest = world.createChest(600, 500, now + 60000);
+        const chest = world.createChest(560, 500, now + 45000);
         const before = world.buildSnapshot(a);
         assert.strictEqual(before.c.length, 1);
         assert.strictEqual(before.c[0][0], chest.id);
-        assert.ok(before.c[0][3] > 59000 && before.c[0][3] <= 60000);
-
-        chest.opensAt = now - 1;
+        assert.ok(before.c[0][3] > 44000 && before.c[0][3] <= 45000);
+        // В воздухе открыть нельзя
+        world.takePickup(a);
+        assert.strictEqual(world.chests.size, 1);
+        chest.landsAt = now - 1;
         world.updateChests(now);
+        assert.strictEqual(world.chests.size, 1, "приземлился и ждёт игрока");
+        world.takePickup(a);
         assert.strictEqual(world.chests.size, 0);
-        assert.strictEqual(world.pickups.size, 1);
-        const reward = [...world.pickups.values()][0];
-        assert.ok(reward.expiresAt - now >= 179900 && reward.expiresAt - now <= 180100);
-        reward.expiresAt = now - 1;
+        const weapons = [...world.pickups.values()].filter(el => el.kind === "weapon");
+        assert.strictEqual(weapons.length, 1);
+        const reward = weapons[0];
+        assert.ok(reward.expiresAt - now >= 179900 && reward.expiresAt - now <= 180200);
+        for (const el of world.pickups.values()) {
+            el.expiresAt = now - 1;
+        }
         world.updatePickups(now);
         assert.strictEqual(world.pickups.size, 0);
+        // Никто не открыл за 3 минуты — исчезает
+        const lost = world.createChest(560, 500, now - 1);
+        lost.expiresAt = now - 1;
+        world.updateChests(now);
+        assert.strictEqual(world.chests.size, 0);
+        // Оружие из аирдропа всегда обычное или зелёное
+        for (let i = 0; i < 300; i++) {
+            world.openChest(world.createChest(9000, 9000, now - 1));
+        }
+        const rarities = new Set([...world.pickups.values()].filter(el => el.kind === "weapon").map(el => WEAPONS[el.weaponId].rarity));
+        assert.deepStrictEqual([...rarities].sort(), ["common", "uncommon"]);
+    },
+    "слоты инструмента и оружия переключаются, патроны не восстанавливаются": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        assert.strictEqual(a.toolId, "Knife");
+        assert.strictEqual(a.gunId, "");
+        world.switchSlot(a, "gun");
+        assert.strictEqual(a.weaponId, "Knife", "пустой слот оружия");
+        world.equip(a, "Pistol");
+        assert.strictEqual(a.gunId, "Pistol");
+        assert.strictEqual(a.toolId, "Knife");
+        a.ammo = 2;
+        world.switchSlot(a, "swap");
+        assert.strictEqual(a.weaponId, "Knife");
+        world.switchSlot(a, "swap");
+        assert.strictEqual(a.weaponId, "Pistol");
+        assert.strictEqual(a.ammo, 2);
+        // Подобранный инструмент встаёт в свой слот и не трогает пистолет
+        world.dropWeapon("Wrench", 500, 500);
+        world.takePickup(a);
+        assert.strictEqual(a.toolId, "Wrench");
+        assert.strictEqual(a.gunId, "Pistol");
+        assert.strictEqual(a.weaponId, "Wrench");
+        world.switchSlot(a, "gun");
+        assert.strictEqual(a.ammo, 2);
+        // Оружие из рюкзака меняется только со своим слотом
+        world.addItem(a, "w:SMG", 1);
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "w:SMG"));
+        assert.strictEqual(a.gunId, "SMG");
+        assert.strictEqual(a.toolId, "Wrench");
+        assert.ok(a.inventory.some(el => el && el.id === "w:Pistol"));
+        world.unequip(a, "gun");
+        assert.strictEqual(a.gunId, "");
+        assert.strictEqual(a.weaponId, "Wrench");
+        world.switchSlot(a, "nonsense");
+        world.switchSlot(a, 1);
+    },
+    "машину разбирает только гаечный ключ, и она исчезает до конца": () => {
+        const world = new World(5);
+        const p = world.addPlayer("w", "Механик");
+        const wreck = world.obstacles.find(el => el.kind === "wreck" && el.settlement === -1);
+        p.x = wreck.x - wreck.r - 20;
+        p.y = wreck.y;
+        p.rotation = 0;
+        p.protectedUntil = 0;
+        world.enemies.clear();
+        world.spawnEnemies = () => {};
+        const hit = () => { p.nextShotAt = 0; world.tryShoot(p, Date.now()); };
+        hit();
+        assert.strictEqual(world.countItem(p, "scrap"), 0, "нож не разбирает машины");
+        assert.ok(p.hint.includes("гаечн"));
+        world.equip(p, "Wrench");
+        const total = wreck.amount;
+        for (let i = 0; i < total + 2; i++) {
+            hit();
+        }
+        assert.strictEqual(world.countItem(p, "scrap"), total);
+        assert.strictEqual(wreck.alive, false);
     },
     "сервер не даёт телепортироваться и не верит NaN": async () => {
         const world = arena();

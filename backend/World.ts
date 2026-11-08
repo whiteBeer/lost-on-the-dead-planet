@@ -1,10 +1,10 @@
 import { EventEmitter } from "events";
 import { WORLD, expForLevel } from "./configs/World";
 import { ENEMIES, EnemyConfig } from "./configs/Enemies";
-import { WEAPONS, WeaponConfig, STARTING_WEAPON, rollWeapon } from "./configs/Weapons";
+import { WEAPONS, WeaponConfig, STARTING_WEAPON, isToolWeapon, rollWeapon } from "./configs/Weapons";
 import { PERKS, POSITIVE_PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
 import { generateWorld, Obstacle, WorldMap, ZONES, ZONE_NAMES, zoneLevel } from "./configs/Terrain";
-import { CRATE_LOOT, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
+import { AIRDROP_LOOT, CRATE_LOOT, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
 import {
     AreaGrid, Coords, SpatialGrid, clamp, distSq, pushCircleOutOfRect, segmentCircleHit, segmentRectHit
 } from "./utils/geometry";
@@ -45,8 +45,13 @@ export interface Player {
     stats:PlayerStats;
     offers:Perk[][];
 
-    weaponId:string;
+    weaponId:string;      // оружие в руках: toolId или gunId
+    toolId:string;        // слот инструмента (ближний бой), по умолчанию нож
+    gunId:string;         // слот оружия (стрельба), "" — пусто
+    gunAmmo:number;       // патроны убранного в сторону ружья
     ammo:number;
+    hint:string;          // короткая подсказка только для этого игрока
+    hintUntil:number;
     reloadEndsAt:number;
     nextShotAt:number;
     spreadNow:number;
@@ -126,11 +131,13 @@ export interface Pickup {
     expiresAt:number;
 }
 
+/** Аирдроп: спускается на парашюте, после приземления его открывают клавишей E. */
 export interface Chest {
     id:number;
     x:number;
     y:number;
-    opensAt:number;
+    landsAt:number;
+    expiresAt:number;   // если никто не открыл после приземления — исчезает
 }
 
 type Fx = [string, number, number, number?, number?];
@@ -258,7 +265,8 @@ export class World extends EventEmitter {
             hp: 100, dead: false, deadAt: 0, protectedUntil: 0,
             exp: 0, level: 1, kills: 0, bestExp: 0,
             perks: new Set(), stats: computeStats([]), offers: [],
-            weaponId: STARTING_WEAPON, ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
+            weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0,
+            ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
             invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
             inventory: new Array(INVENTORY_SLOTS).fill(null), armorId: "", maskId: "",
@@ -304,6 +312,9 @@ export class World extends EventEmitter {
         player.inventory = new Array(INVENTORY_SLOTS).fill(null);
         player.armorId = "";
         player.maskId = "";
+        player.toolId = STARTING_WEAPON;
+        player.gunId = "";
+        player.gunAmmo = 0;
         this.equip(player, STARTING_WEAPON);
     }
 
@@ -392,11 +403,53 @@ export class World extends EventEmitter {
         return this.map.settlements.find(s => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2);
     }
 
+    /** Кладёт оружие в его слот (инструмент или огнестрел) и берёт в руки с полным магазином. */
     private equip(player:Player, weaponId:string) {
+        if (isToolWeapon(weaponId)) {
+            player.toolId = weaponId;
+        } else {
+            player.gunId = weaponId;
+        }
         player.weaponId = weaponId;
         player.ammo = this.clipOf(player);
         player.reloadEndsAt = 0;
         player.spreadNow = WEAPONS[weaponId].spreadBase;
+    }
+
+    /** Быстрое переключение между инструментом и оружием: "tool", "gun" или "swap". */
+    switchSlot(player:Player, which:unknown) {
+        if (player.dead || (which !== "tool" && which !== "gun" && which !== "swap")) {
+            return;
+        }
+        const holdingGun = !!player.gunId && player.weaponId === player.gunId;
+        const target = which === "swap" ? (holdingGun ? "tool" : "gun") : which;
+        if (target === "gun" && (!player.gunId || holdingGun)) {
+            if (!player.gunId) {
+                this.hint(player, "Слот оружия пуст");
+            }
+            return;
+        }
+        if (target === "tool" && !holdingGun) {
+            return;
+        }
+        this.holster(player);
+        player.weaponId = target === "gun" ? player.gunId : player.toolId;
+        player.ammo = target === "gun" ? Math.min(player.gunAmmo, this.clipOf(player)) : this.clipOf(player);
+        player.reloadEndsAt = 0;
+        player.spreadNow = WEAPONS[player.weaponId].spreadBase;
+        player.nextShotAt = Math.max(player.nextShotAt, Date.now() + WORLD.slotSwitchMs);
+    }
+
+    /** Запоминает патроны огнестрела, который убирают из рук. */
+    private holster(player:Player) {
+        if (player.gunId && player.weaponId === player.gunId) {
+            player.gunAmmo = player.ammo;
+        }
+    }
+
+    private hint(player:Player, text:string) {
+        player.hint = text;
+        player.hintUntil = Date.now() + 2500;
     }
 
     private clipOf(player:Player) {
@@ -523,6 +576,16 @@ export class World extends EventEmitter {
         if (player.dead) {
             return;
         }
+        const now = Date.now();
+        let nearChest:Chest | null = null;
+        let chestDist = WORLD.chestReach * WORLD.chestReach;
+        for (const chest of this.chests.values()) {
+            const dist = distSq(player.x, player.y, chest.x, chest.y);
+            if (now >= chest.landsAt && dist < chestDist) {
+                nearChest = chest;
+                chestDist = dist;
+            }
+        }
         let best:Pickup | null = null;
         let bestDist = WORLD.weaponReach * WORLD.weaponReach;
         for (const item of this.pickups.values()) {
@@ -534,6 +597,11 @@ export class World extends EventEmitter {
                 bestDist = dist;
                 best = item;
             }
+        }
+        // Как и подсказка на клиенте: E действует на то, что ближе — аирдроп или вещь
+        if (nearChest && (!best || chestDist <= bestDist)) {
+            this.openChest(nearChest, player);
+            return;
         }
         if (best?.kind === "bag" && best.bag) {
             // Сумка погибшего: забираем всё, что влезет, остальное остаётся в ней
@@ -550,18 +618,20 @@ export class World extends EventEmitter {
             return;
         }
         this.pickups.delete(best.id);
-        this.stashCurrentWeapon(player);
+        this.holster(player);
+        this.stashSlot(player, isToolWeapon(best.weaponId) ? "tool" : "gun");
         this.equip(player, best.weaponId);
         this.addFx(["pickup", player.x, player.y]);
     }
 
-    /** Убирает текущее оружие в рюкзак, а если места нет — бросает на землю. Нож не убирается. */
-    private stashCurrentWeapon(player:Player) {
-        if (player.weaponId === STARTING_WEAPON) {
+    /** Убирает то, что лежит в слоте, в рюкзак, а если места нет — бросает на землю. Нож не убирается. */
+    private stashSlot(player:Player, slot:"tool" | "gun") {
+        const id = slot === "tool" ? player.toolId : player.gunId;
+        if (!id || id === STARTING_WEAPON) {
             return;
         }
-        if (this.addItem(player, `w:${player.weaponId}`, 1) > 0) {
-            this.dropWeapon(player.weaponId, player.x, player.y);
+        if (this.addItem(player, `w:${id}`, 1) > 0) {
+            this.dropWeapon(id, player.x, player.y);
         }
     }
 
@@ -646,7 +716,9 @@ export class World extends EventEmitter {
             if (!WEAPONS[weaponId]) {
                 return;
             }
-            player.inventory[slotIndex] = player.weaponId === STARTING_WEAPON ? null : { id: `w:${player.weaponId}`, n: 1 };
+            const old = isToolWeapon(weaponId) ? player.toolId : player.gunId;
+            this.holster(player);
+            player.inventory[slotIndex] = !old || old === STARTING_WEAPON ? null : { id: `w:${old}`, n: 1 };
             this.equip(player, weaponId);
             return;
         }
@@ -731,14 +803,34 @@ export class World extends EventEmitter {
         this.dropStack(slot.id, slot.n, player.x, player.y);
     }
 
-    /** Снимает броню или противогаз в рюкзак. */
+    /** Снимает в рюкзак броню, противогаз, инструмент ("tool") или оружие ("gun"; "weapon" — то, что в руках). */
     unequip(player:Player, what:unknown) {
-        if (player.dead || (what !== "armor" && what !== "mask" && what !== "weapon")) {
+        if (player.dead || !["armor", "mask", "weapon", "tool", "gun"].includes(what as string)) {
             return;
         }
         if (what === "weapon") {
-            if (player.weaponId !== STARTING_WEAPON && this.addItem(player, `w:${player.weaponId}`, 1) === 0) {
-                this.equip(player, STARTING_WEAPON);
+            what = player.gunId && player.weaponId === player.gunId ? "gun" : "tool";
+        }
+        if (what === "tool") {
+            if (player.toolId !== STARTING_WEAPON && this.addItem(player, `w:${player.toolId}`, 1) === 0) {
+                const inHands = player.weaponId === player.toolId;
+                player.toolId = STARTING_WEAPON;
+                if (inHands) {
+                    this.equip(player, STARTING_WEAPON);
+                }
+            }
+            return;
+        }
+        if (what === "gun") {
+            if (player.gunId && this.addItem(player, `w:${player.gunId}`, 1) === 0) {
+                const inHands = player.weaponId === player.gunId;
+                player.gunId = "";
+                player.gunAmmo = 0;
+                if (inHands) {
+                    player.weaponId = player.toolId;
+                    player.ammo = this.clipOf(player);
+                    player.reloadEndsAt = 0;
+                }
             }
             return;
         }
@@ -1053,16 +1145,23 @@ export class World extends EventEmitter {
             this.addFx(["spark", el.x, el.y]);
             return;
         }
-        const gain = Math.min(el.amount, weapon.melee?.gather?.[el.res] || 1);
+        const rate = weapon.melee?.gather?.[el.res] || 0;
+        if (rate <= 0) {
+            this.addFx(["spark", el.x, el.y]);
+            this.hint(player, el.kind === "wreck" ? "Машину разбирают гаечным ключом" : "Этим инструментом здесь ничего не добыть");
+            return;
+        }
+        const gain = Math.min(el.amount, rate);
         el.amount -= gain;
         this.giveOrDrop(player, el.res, gain);
         this.addExp(player, gain);
         this.addFx(["gather", el.x, el.y, gain, ["wood", "stone", "scrap"].indexOf(el.res)]);
         if (el.amount <= 0) {
-            el.respawnAt = Date.now() + WORLD.resourceRespawnMs;
-            // Дерево и камень исчезают, остов машины остаётся стоять
-            if (el.kind !== "wreck") {
-                this.setObstacleAlive(el, false);
+            el.respawnAt = Date.now() + (el.kind === "wreck" ? WORLD.wreckRespawnMs : WORLD.resourceRespawnMs);
+            // Разобранная до конца машина исчезает, как срубленное дерево
+            this.setObstacleAlive(el, false);
+            if (el.kind === "wreck") {
+                this.addFx(["crate", el.x, el.y]);
             }
         }
     }
@@ -1555,8 +1654,11 @@ export class World extends EventEmitter {
 
         // Всё, что было при себе, остаётся в сумке на месте гибели
         const bag:ItemStack[] = player.inventory.filter((slot):slot is ItemStack => !!slot).map(slot => ({ ...slot }));
-        if (player.weaponId !== STARTING_WEAPON) {
-            bag.push({ id: `w:${player.weaponId}`, n: 1 });
+        if (player.toolId !== STARTING_WEAPON) {
+            bag.push({ id: `w:${player.toolId}`, n: 1 });
+        }
+        if (player.gunId) {
+            bag.push({ id: `w:${player.gunId}`, n: 1 });
         }
         if (player.armorId) {
             bag.push({ id: player.armorId, n: 1 });
@@ -1932,9 +2034,9 @@ export class World extends EventEmitter {
         return null;
     }
 
-    createChest(x:number, y:number, opensAt = Date.now() + WORLD.chestCountdownMs) {
+    createChest(x:number, y:number, landsAt = Date.now() + WORLD.chestFallMs) {
         const id = this.nextId++;
-        const chest:Chest = { id, x, y, opensAt };
+        const chest:Chest = { id, x, y, landsAt, expiresAt: landsAt + WORLD.chestRewardLifetimeMs };
         this.chests.set(id, chest);
         return chest;
     }
@@ -1946,41 +2048,37 @@ export class World extends EventEmitter {
         if (now >= this.nextChestAt && this.chests.size < WORLD.maxChests) {
             const spot = this.findChestSpot();
             if (spot) {
-                this.createChest(spot.x, spot.y, now + WORLD.chestCountdownMs);
-                this.emit("announce", "На карте появился сундук. Он откроется через 60 секунд.");
+                this.createChest(spot.x, spot.y, now + WORLD.chestFallMs);
+                const place = this.settlementAt(spot.x, spot.y)?.name;
+                this.emit("announce", `Аирдроп! Груз спускается на парашюте${place ? ` над: ${place}` : ""}, приземлится через ${Math.round(WORLD.chestFallMs / 1000)} с. Метка на миникарте.`);
             }
             this.scheduleNextChest(now);
         }
 
         for (const chest of [...this.chests.values()]) {
-            if (now >= chest.opensAt) {
-                this.openChest(chest, now);
+            if (now >= chest.expiresAt) {
+                this.chests.delete(chest.id);
             }
         }
     }
 
-    private openChest(chest:Chest, now:number) {
+    /** Игрок открыл приземлившийся аирдроп: оружие не выше зелёного, припасы, иногда перк. */
+    openChest(chest:Chest, player?:Player) {
         this.chests.delete(chest.id);
-        const roll = Math.random();
-        let rewardName:string;
-        if (roll < 0.65) {
-            const weaponId = rollWeapon(3);
-            this.dropWeapon(weaponId, chest.x, chest.y, WORLD.chestRewardLifetimeMs);
-            rewardName = WEAPONS[weaponId].name;
-        } else if (roll < 0.88) {
+        const life = WORLD.chestRewardLifetimeMs;
+        const weaponId = rollWeapon(0);
+        this.dropWeapon(weaponId, chest.x, chest.y, life);
+        const names = [WEAPONS[weaponId].name];
+        for (const [id, count] of rollLoot(AIRDROP_LOOT)) {
+            this.dropStack(id, count, chest.x, chest.y, life);
+        }
+        if (Math.random() < WORLD.chestPerkChance) {
             const perk = POSITIVE_PERKS[Math.floor(Math.random() * POSITIVE_PERKS.length)];
-            this.dropPerk(perk.id, chest.x, chest.y, WORLD.chestRewardLifetimeMs);
-            rewardName = perk.name;
-        } else {
-            const id = this.nextId++;
-            this.pickups.set(id, {
-                id, kind: "medkit", x: chest.x, y: chest.y,
-                expiresAt: now + WORLD.chestRewardLifetimeMs
-            });
-            rewardName = "большая аптечка";
+            this.dropPerk(perk.id, chest.x, chest.y, life);
+            names.push(perk.name);
         }
         this.addFx(["chest", chest.x, chest.y]);
-        this.emit("announce", `Сундук открылся: ${rewardName}. Награда исчезнет через 3 минуты.`);
+        this.emit("announce", `${player ? player.name : "Кто-то"} вскрыл аирдроп: ${names.join(", ")} и припасы.`);
     }
 
     private updatePickups(now:number) {
@@ -2086,7 +2184,7 @@ export class World extends EventEmitter {
             if (inView(chest.x, chest.y)) {
                 chests.push([
                     chest.id, Math.round(chest.x), Math.round(chest.y),
-                    Math.max(0, chest.opensAt - now)
+                    Math.max(0, chest.landsAt - now)
                 ]);
             }
         }
@@ -2118,6 +2216,10 @@ export class World extends EventEmitter {
                 levelProgress: clamp((me.exp - curLevelExp) / (nextLevelExp - curLevelExp), 0, 1),
                 kills: me.kills,
                 weapon: me.weaponId,
+                tool: me.toolId,
+                gun: me.gunId,
+                gunAmmo: me.gunId && me.weaponId !== me.gunId ? me.gunAmmo : me.ammo,
+                hint: now < me.hintUntil ? me.hint : "",
                 ammo: me.ammo,
                 clip: this.clipOf(me),
                 reloadLeft: me.reloadEndsAt ? Math.max(0, me.reloadEndsAt - now) : 0,
@@ -2175,7 +2277,7 @@ export class World extends EventEmitter {
             .map(el => [Math.round(el.x), Math.round(el.y)]);
         const now = Date.now();
         const chests = [...this.chests.values()].map(el => [
-            Math.round(el.x), Math.round(el.y), Math.max(0, el.opensAt - now)
+            Math.round(el.x), Math.round(el.y), Math.max(0, el.landsAt - now)
         ]);
         return { rows, teams, exposed, bosses, chests };
     }

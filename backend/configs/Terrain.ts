@@ -273,7 +273,7 @@ export function generateWorld(seed:number, size:number):WorldMap {
                 const roll = random();
                 if (roll < 0.1) {
                     // Пустырь: немного деревьев и ящики
-                    addCircle("tree", bx + inner / 2, by + inner / 2, 34, "tree", { res: "wood", amount: 8, maxAmount: 8 });
+                    addCircle("tree", bx + inner / 2, by + inner / 2, 34, "tree", { res: "wood", amount: 4, maxAmount: 4 });
                     crate(bx + inner * 0.2, by + inner * 0.8);
                     continue;
                 }
@@ -352,8 +352,9 @@ export function generateWorld(seed:number, size:number):WorldMap {
 
     const area = (size / 9000) ** 2;
     // В мёртвых землях деревьев меньше, камней больше
-    scatter("tree", Math.round(900 * area), 26, 44, z => 1 - z * 0.75, r => ({ res: "wood", amount: Math.round(r / 4), maxAmount: Math.round(r / 4) }));
-    scatter("rock", Math.round(420 * area), 24, 52, z => 0.5 + z * 0.5, r => ({ res: "stone", amount: Math.round(r / 5), maxAmount: Math.round(r / 5) }));
+    // Ресурсов в одном дереве и камне мало: базовые материалы добываются долго
+    scatter("tree", Math.round(900 * area), 26, 44, z => 1 - z * 0.75, r => ({ res: "wood", amount: Math.round(r / 9), maxAmount: Math.round(r / 9) }));
+    scatter("rock", Math.round(420 * area), 24, 52, z => 0.5 + z * 0.5, r => ({ res: "stone", amount: Math.round(r / 12), maxAmount: Math.round(r / 12) }));
     scatter("wreck", Math.round(110 * area), 40, 48, () => 1, () => ({ res: "scrap", amount: 5, maxAmount: 5 }));
     scatter("crate", Math.round(170 * area), 20, 24, z => 0.3 + z * 0.7, () => ({ hp: 60, maxAmount: 60 }));
 

@@ -9,11 +9,11 @@ export const MONSTERS = [
 ];
 export const WEAPON_IDS = [
     "Pistol", "SMG", "Rifle", "Shotgun", "Crossbow", "Sniper", "Flamethrower", "Minigun", "Rocket", "Railgun",
-    "Knife", "Spear", "Axe", "Pickaxe", "Bow"
+    "Knife", "Spear", "Axe", "Pickaxe", "Bow", "Wrench"
 ];
 export const ITEM_IDS = [
     "wood", "stone", "scrap", "bone", "hide", "slime", "cloth", "powder",
-    "bandage", "medkit", "grenade", "mutagen", "armor_wood", "armor_bone", "armor_kevlar", "gasmask", "bag"
+    "bandage", "medkit", "grenade", "mutagen", "armor_wood", "armor_bone", "armor_kevlar", "gasmask", "bag", "rope"
 ];
 const OBSTACLES = ["tree", "rock", "wreck", "crate"];
 const ROOFS = ["house", "shop", "office", "tower"];

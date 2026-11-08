@@ -19,7 +19,9 @@ function Inventory({ hud, app, onClose }:Props) {
         ? hud.weapons[id.slice(2)]?.name || id
         : hud.items[id]?.name || id;
     const describe = (id:string) => id.startsWith("w:")
-        ? "Оружие. Нажми «Взять в руки», текущее уйдёт в рюкзак."
+        ? (hud.weapons[id.slice(2)]?.melee
+            ? "Инструмент или холодное оружие: встаёт в слот 1, прежний уйдёт в рюкзак."
+            : "Оружие: встаёт в слот 2, прежнее уйдёт в рюкзак.")
         : hud.items[id]?.description || "";
     const have = (id:string) => me.inv.reduce((sum, slot) => sum + (slot && slot.id === id ? slot.n : 0), 0);
     const slot = selected !== null ? me.inv[selected] : null;
@@ -36,9 +38,13 @@ function Inventory({ hud, app, onClose }:Props) {
             <div className={styles.columns}>
                 <div className={styles.left}>
                     <div className={styles.equip}>
-                        <button className={styles.equipSlot} title="Убрать в рюкзак и взять нож" onClick={() => app?.unequip("weapon")}>
-                            <img src={itemImage(`w:${me.weapon}`)} alt="" />
-                            <span>{hud.weapons[me.weapon]?.name}</span>
+                        <button className={styles.equipSlot} title="Убрать в рюкзак и взять нож" onClick={() => app?.unequip("tool")}>
+                            <img src={itemImage(`w:${me.tool}`)} alt="" />
+                            <span>{hud.weapons[me.tool]?.name}</span>
+                        </button>
+                        <button className={styles.equipSlot} title="Убрать в рюкзак" onClick={() => me.gun && app?.unequip("gun")}>
+                            {me.gun ? <img src={itemImage(`w:${me.gun}`)} alt="" /> : <i>оружие</i>}
+                            <span>{me.gun ? hud.weapons[me.gun]?.name : "нет оружия"}</span>
                         </button>
                         <button className={styles.equipSlot} title="Снять в рюкзак" onClick={() => me.armor && app?.unequip("armor")}>
                             {me.armor ? <img src={itemImage(me.armor)} alt="" /> : <i>броня</i>}
@@ -76,7 +82,7 @@ function Inventory({ hud, app, onClose }:Props) {
                             </div>
                         </div>
                     ) : (
-                        <p className={styles.hint}>Нажми на предмет. Ресурсы добываются ударами по деревьям, камням и машинам, падают с монстров и из ящиков.</p>
+                        <p className={styles.hint}>Нажми на предмет. Ресурсы добываются ударами по деревьям и камням, машины разбираются гаечным ключом. Ещё ресурсы падают с монстров и из ящиков.</p>
                     )}
                 </div>
 

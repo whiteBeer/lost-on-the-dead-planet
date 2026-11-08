@@ -89,7 +89,7 @@ export class Effects {
                     this.burst(x, y, 42, 0xffd85a, 0.45);
                     break;
                 case "chest":
-                    this.text("Сундук открыт!", x, y - 34, 0xffb13d, 20);
+                    this.text("Аирдроп вскрыт!", x, y - 34, 0xffb13d, 20);
                     this.burst(x, y, 70, 0xff9a2e, 0.55);
                     break;
                 case "spark":

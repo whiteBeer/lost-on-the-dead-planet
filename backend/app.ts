@@ -68,6 +68,7 @@ class Server {
         socket.on("useSlot", index => this.world.useSlot(player, index));
         socket.on("dropSlot", index => this.world.dropSlot(player, index));
         socket.on("unequip", what => this.world.unequip(player, what));
+        socket.on("slot", which => this.world.switchSlot(player, which));
         socket.on("craft", recipeId => this.world.craft(player, recipeId));
         socket.on("heal", () => this.world.quickHeal(player));
         socket.on("grenade", () => this.world.useGrenade(player));
