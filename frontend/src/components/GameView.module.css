@@ -32,6 +32,8 @@
 .barHp { height: 100%; background: #c9443c; transition: width 0.12s linear; }
 .barExp { height: 100%; background: #8a6ee0; transition: width 0.2s linear; }
 .barText { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+.zone { font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.toxic { color: #b6ff5a; }
 .protect { font-size: 12px; color: #8fd8ff; text-shadow: 0 1px 2px #000; }
 
 .pickupHint { position: absolute; left: 50%; bottom: 200px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 12px; color: #f1f0e6; background: rgba(0, 0, 0, 0.72); border-radius: 8px; cursor: pointer; }
@@ -103,11 +105,12 @@
   .barWrap { height: 16px; }
   .barText { font-size: 10px; }
   .protect { display: none; }
+  .zone { font-size: 11px; }
 
   .pickupHint { bottom: auto; top: 92px; padding: 7px 12px; font-size: 13px; border: 1px solid #a8e05f; z-index: 4; }
 
   .touchButtons { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; gap: 5px; z-index: 3; }
-  .touchButtons button { padding: 7px 9px; font-size: 12px; color: #f1f0e6; background: rgba(12, 15, 10, 0.72); border: 1px solid #39442b; border-radius: 7px; white-space: nowrap; }
+  .touchButtons button { padding: 7px 7px; font-size: 12px; color: #f1f0e6; background: rgba(12, 15, 10, 0.72); border: 1px solid #39442b; border-radius: 7px; white-space: nowrap; }
 
   .perks { left: 6px; right: 6px; top: 92px; bottom: auto; max-width: none; z-index: 4; }
   .perksTitle { font-size: 12px; margin-bottom: 3px; }

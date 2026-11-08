@@ -4,6 +4,7 @@ const { World } = require("../dist/World.js");
 const { PERKS, POSITIVE_PERKS, computeStats, rollPerkOffer } = require("../dist/configs/Perks.js");
 const { WEAPONS } = require("../dist/configs/Weapons.js");
 const { WORLD } = require("../dist/configs/World.js");
+const { ZONES } = require("../dist/configs/Terrain.js");
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const tick = (world, n = 1) => { for (let i = 0; i < n; i++) world.tick(); };
@@ -24,6 +25,9 @@ function place(player, x, y, rotation = 0) {
 }
 
 async function shootUntil(world, shooter, done, limitMs = 6000) {
+    if (WEAPONS[shooter.weaponId].melee) {
+        world.equip(shooter, "Pistol");
+    }
     const start = Date.now();
     shooter.firing = true;
     while (!done() && Date.now() - start < limitMs) {
@@ -60,11 +64,184 @@ const tests = {
             assert.ok(offer.some(perk => perk.positive), offer.map(perk => perk.id).join(", "));
         }
     },
-    "карта увеличена примерно в пять раз по площади и сохраняет плотность объектов": () => {
+    "карта 14000, есть мегаполис, города и деревни, доли зон заданы": () => {
         const world = new World(3);
-        assert.strictEqual(WORLD.size, 9000);
-        assert.ok(WORLD.size * WORLD.size / (4000 * 4000) >= 5);
-        assert.strictEqual(world.obstacles.length, 1500);
+        assert.strictEqual(WORLD.size, 14000);
+        const kinds = world.map.settlements.map(el => el.kind);
+        assert.strictEqual(kinds.filter(el => el === "city").length, 1);
+        assert.ok(kinds.filter(el => el === "town").length >= 3, kinds.join());
+        assert.ok(kinds.filter(el => el === "village").length >= 8, kinds.join());
+        assert.ok(world.obstacles.filter(el => el.kind === "building").length >= 150);
+        assert.ok(world.obstacles.length > 3000);
+        const safe = [...world.map.zone].filter(v => v / 255 < ZONES.safe).length / world.map.zone.length;
+        assert.ok(safe > 0.2 && safe < 0.25, `безопасных ${safe}`);
+    },
+    "игрок всегда появляется глубоко в безопасной зоне и только с ножом": () => {
+        const world = new World(4);
+        for (let i = 0; i < 60; i++) {
+            const p = world.addPlayer(`s${i}`, `p${i}`);
+            assert.ok(world.zoneAt(p.x, p.y) <= WORLD.spawnZoneMax, `зона ${world.zoneAt(p.x, p.y)}`);
+            assert.strictEqual(p.weaponId, "Knife");
+            assert.ok(p.inventory.every(el => el === null));
+        }
+    },
+    "нож рубит дерево: дерево в рюкзаке, дерево кончается и исчезает": () => {
+        const world = new World(5);
+        const tree = world.obstacles.find(el => el.kind === "tree" && el.settlement === -1);
+        const p = world.addPlayer("s", "Лесоруб");
+        p.x = tree.x - tree.r - 20;
+        p.y = tree.y;
+        p.rotation = 0;
+        p.protectedUntil = 0;
+        const total = tree.amount;
+        for (let i = 0; i < total + 2; i++) {
+            p.nextShotAt = 0;
+            world.tryShoot(p, Date.now());
+        }
+        assert.strictEqual(world.countItem(p, "wood"), total);
+        assert.strictEqual(tree.alive, false);
+        assert.deepStrictEqual(world.takeObstacleChanges().pop(), [tree.id, 0]);
+    },
+    "разбитый ящик выбрасывает добычу": () => {
+        const world = new World(6);
+        const crate = world.obstacles.find(el => el.kind === "crate" && el.settlement >= 0);
+        world.damageCrate(crate, 999);
+        assert.strictEqual(crate.alive, false);
+        const near = [...world.pickups.values()].filter(el => Math.hypot(el.x - crate.x, el.y - crate.y) < 80);
+        // Добыча случайна, поэтому повторяем на нескольких ящиках, пока что-то не выпадет
+        let dropped = near.length;
+        for (const other of world.obstacles.filter(el => el.kind === "crate" && el.settlement >= 0).slice(1, 20)) {
+            world.damageCrate(other, 999);
+        }
+        dropped += world.pickups.size;
+        assert.ok(dropped > 0);
+    },
+    "крафт тратит ресурсы, без ресурсов ничего не создаётся": () => {
+        const world = arena();
+        const p = world.addPlayer("s", "Мастер");
+        assert.strictEqual(world.craft(p, "spear"), false);
+        world.addItem(p, "wood", 5);
+        world.addItem(p, "stone", 2);
+        assert.strictEqual(world.craft(p, "spear"), true);
+        assert.strictEqual(world.countItem(p, "wood"), 1);
+        assert.strictEqual(world.countItem(p, "stone"), 0);
+        assert.ok(p.inventory.some(el => el && el.id === "w:Spear"));
+        const slot = p.inventory.findIndex(el => el && el.id === "w:Spear");
+        world.useSlot(p, slot);
+        assert.strictEqual(p.weaponId, "Spear");
+        world.useSlot(p, 99);
+        world.useSlot(p, "1");
+    },
+    "рюкзак: стопки, переполнение, броня снижает урон": () => {
+        const world = arena();
+        const p = world.addPlayer("s", "Носильщик");
+        assert.strictEqual(world.addItem(p, "wood", 99 * 12 + 5), 5);
+        const q = world.addPlayer("s2", "Броня");
+        world.addItem(q, "armor_kevlar", 1);
+        world.useSlot(q, 0);
+        assert.strictEqual(q.armorId, "armor_kevlar");
+        q.protectedUntil = 0;
+        q.stats.dodge = 0;
+        const hp = q.hp;
+        world.damagePlayer(q, 40, null, null);
+        assert.ok(Math.abs((hp - q.hp) - 30) < 0.01, `урон ${hp - q.hp}`);
+    },
+    "после смерти вещи остаются в сумке, её можно обыскать": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "Жертва");
+        const b = world.addPlayer("b", "Мародёр");
+        world.addItem(a, "scrap", 7);
+        world.equip(a, "Rifle");
+        a.protectedUntil = 0;
+        world.killPlayer(a, null, null);
+        const bag = [...world.pickups.values()].find(el => el.kind === "bag");
+        assert.ok(bag);
+        assert.ok(a.inventory.every(el => el === null));
+        b.x = bag.x;
+        b.y = bag.y;
+        world.takePickup(b);
+        assert.strictEqual(world.countItem(b, "scrap"), 7);
+        assert.ok(b.inventory.some(el => el && el.id === "w:Rifle"));
+        assert.ok(![...world.pickups.values()].some(el => el.kind === "bag"));
+    },
+    "раздутый взрывается рядом с игроком": () => {
+        const world = arena();
+        const p = world.addPlayer("s", "Цель");
+        place(p, 500, 500);
+        p.stats.dodge = 0;
+        const bloater = world.createEnemy("bloater", 540, 500);
+        world.enemyThink(bloater, Date.now());
+        assert.ok(!world.enemies.has(bloater.id));
+        assert.ok(p.hp < p.stats.maxHp);
+    },
+    "ядовитый воздух ранит без противогаза": () => {
+        const world = new World(7);
+        const p = world.addPlayer("s", "Сталкер");
+        let spot = null;
+        for (let y = 0; y < WORLD.size && !spot; y += 70) {
+            for (let x = 0; x < WORLD.size && !spot; x += 70) {
+                if (world.zoneAt(x, y) > ZONES.toxic + 0.01) spot = { x, y };
+            }
+        }
+        assert.ok(spot);
+        p.x = spot.x;
+        p.y = spot.y;
+        p.protectedUntil = 0;
+        world.updatePlayers(Date.now(), 1);
+        assert.ok(p.hp < p.stats.maxHp);
+        const hp = p.hp;
+        p.maskId = "gasmask";
+        world.updatePlayers(Date.now(), 1);
+        assert.strictEqual(p.hp, hp);
+    },
+    "в безопасной зоне монстров заметно меньше, чем в мёртвых землях": () => {
+        const world = new World(8);
+        const count = (zoneMin, zoneMax) => {
+            world.enemies.clear();
+            const p = world.addPlayer("probe", "Проба");
+            for (let i = 0; i < 4000 && (world.zoneAt(p.x, p.y) < zoneMin || world.zoneAt(p.x, p.y) > zoneMax); i++) {
+                p.x = 2000 + Math.random() * 10000;
+                p.y = 2000 + Math.random() * 10000;
+            }
+            for (let i = 0; i < 20; i++) {
+                world.enemyGrid.clear();
+                world.enemies.forEach(el => world.enemyGrid.insert(el));
+                world.updatePlayers(Date.now(), 0.01);
+                world.spawnEnemies(Date.now());
+            }
+            world.removePlayer("probe");
+            return world.enemies.size;
+        };
+        const safe = count(0, 0.15);
+        const deadly = count(0.85, 0.94);
+        assert.ok(safe <= 4 && deadly >= 18, `безопасная ${safe}, мёртвая ${deadly}`);
+    },
+    "здание останавливает пулю": async () => {
+        const world = new World(9);
+        const building = world.obstacles.find(el => el.kind === "building" && el.w > 100 && el.zone < 0.9);
+        const a = world.addPlayer("a", "Стрелок");
+        const b = world.addPlayer("b", "За стеной");
+        world.spawnEnemies = () => {};
+        world.enemies.clear();
+        place(a, building.x - building.w / 2 - 60, building.y, 0);
+        place(b, building.x + building.w / 2 + 40, building.y);
+        const hp = b.hp;
+        const start = Date.now();
+        world.equip(a, "Rifle");
+        a.firing = true;
+        while (Date.now() - start < 1500) { world.tick(); await sleep(15); }
+        assert.strictEqual(b.hp, hp);
+    },
+    "с монстров падают ресурсы": () => {
+        const world = arena();
+        const p = world.addPlayer("s", "Охотник");
+        place(p, 500, 500);
+        for (let i = 0; i < 10; i++) {
+            const hound = world.createEnemy("hound", 900, 900);
+            world.damageEnemy(hound, 9999, p, "Knife");
+        }
+        const items = [...world.pickups.values()].filter(el => el.kind === "item");
+        assert.ok(items.some(el => el.itemId === "hide" || el.itemId === "bone"));
     },
     "игроков больше пяти: лимита цветов из оригинала нет": () => {
         const world = arena();
@@ -97,7 +274,7 @@ const tests = {
         assert.strictEqual(b.dead, false);
         assert.strictEqual(b.level, 1);
         assert.strictEqual(b.exp, 0);
-        assert.strictEqual(b.weaponId, "Pistol");
+        assert.strictEqual(b.weaponId, "Knife");
     },
     "союзник не получает урона от пули": async () => {
         const world = arena();

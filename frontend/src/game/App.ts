@@ -4,6 +4,7 @@ import { Assets } from "./Assets";
 import { Control } from "./Control";
 import { ChestView, EnemyView, PickupView, PlayerView } from "./Views";
 import { Effects } from "./Effects";
+import { WorldMap } from "./WorldMap";
 import { FeedEvent, HudState, Invite, MeState, Roster, Snapshot, WorldConfig } from "./Types";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || undefined;
@@ -31,6 +32,7 @@ export class App {
     private chests = new Map<number, ChestView>();
     private effects:Effects | null = null;
     private mine:PlayerView | null = null;
+    private map:WorldMap | null = null;
 
     private myId = 0;
     private x = 0;
@@ -120,6 +122,9 @@ export class App {
             this.config = data.world;
             this.buildMap(data.world);
         });
+        socket.on("obs", (changes:[number, number][]) => {
+            changes.forEach(([id, alive]) => this.map?.setAlive(id, alive === 1));
+        });
         socket.on("s", (snapshot:Snapshot) => this.applySnapshot(snapshot));
         socket.on("roster", (roster:Roster) => {
             this.roster = roster;
@@ -148,35 +153,7 @@ export class App {
     }
 
     private buildMap(config:WorldConfig) {
-        const ground = new PIXI.TilingSprite({
-            texture: Assets.tex("ground"), width: config.size, height: config.size
-        });
-        this.layerGround.addChild(ground);
-
-        // Ближе к центру земля мертвее: там сильнее монстры и лучше добыча
-        const dead = new PIXI.TilingSprite({
-            texture: Assets.tex("ground_dead"), width: config.size, height: config.size
-        });
-        const mask = new PIXI.Graphics();
-        mask.circle(config.size / 2, config.size / 2, config.size * 0.2).fill(0xffffff);
-        dead.mask = mask;
-        this.layerGround.addChild(dead, mask);
-
-        const border = new PIXI.Graphics();
-        border.rect(0, 0, config.size, config.size).stroke({ width: 10, color: 0x000000, alpha: 0.7 });
-        this.layerGround.addChild(border);
-
-        for (const [kind, x, y, radius, rotation] of config.obstacles) {
-            const sprite = new PIXI.Sprite(Assets.tex(`obstacle_${kind}`));
-            sprite.anchor.set(0.5);
-            // Крона дерева шире ствола: за ней можно спрятаться
-            const visual = radius * (kind === "tree" ? 3.1 : 2.3);
-            const base = Math.max(sprite.texture.width, sprite.texture.height);
-            sprite.scale.set(visual / base);
-            sprite.position.set(x, y);
-            sprite.rotation = rotation;
-            (kind === "tree" ? this.layerTop : this.layerItems).addChild(sprite);
-        }
+        this.map = new WorldMap(config, this.layerGround, this.layerItems, this.layerTop);
     }
 
     private applySnapshot(snapshot:Snapshot) {
@@ -253,7 +230,7 @@ export class App {
                 this.enemies.set(id, view);
                 this.layerUnits.addChild(view.root);
             }
-            view.setTarget(x, y, rotation, moving === 1);
+            view.setTarget(x, y, rotation, moving);
             view.setHealth(hp, maxHp);
         }
         for (const [id, view] of this.enemies) {
@@ -266,10 +243,16 @@ export class App {
 
     private syncPickups(snapshot:Snapshot) {
         const seen = new Set<number>();
-        for (const [id, kind, itemId, x, y] of snapshot.k) {
+        for (const [id, kind, itemId, x, y, , count] of snapshot.k) {
             seen.add(id);
+            const old = this.pickups.get(id);
+            // Если часть предметов забрали, перерисовываем с новым количеством
+            if (old && old.count !== count) {
+                old.destroy();
+                this.pickups.delete(id);
+            }
             if (!this.pickups.has(id)) {
-                const view = new PickupView(kind, itemId, x, y, this.config!.weapons[itemId]?.rarity);
+                const view = new PickupView(kind, itemId, x, y, this.config!.weapons[itemId]?.rarity, count);
                 this.pickups.set(id, view);
                 this.layerItems.addChild(view.root);
             }
@@ -346,26 +329,10 @@ export class App {
         if (dx === 0 && dy === 0) {
             return;
         }
-        let x = this.x + dx * me.speed * dt;
-        let y = this.y + dy * me.speed * dt;
-
         // Те же столкновения, что и на сервере, иначе персонаж дёргался бы у препятствий
-        const radius = this.config!.playerRadius;
-        for (const [, ox, oy, oRadius] of this.config!.obstacles) {
-            const distX = x - ox;
-            const distY = y - oy;
-            const min = oRadius + radius;
-            if (Math.abs(distX) < min && Math.abs(distY) < min) {
-                const dist = Math.hypot(distX, distY);
-                if (dist < min && dist > 0.001) {
-                    x = ox + distX / dist * min;
-                    y = oy + distY / dist * min;
-                }
-            }
-        }
-        const size = this.config!.size;
-        this.x = Math.max(radius, Math.min(size - radius, x));
-        this.y = Math.max(radius, Math.min(size - radius, y));
+        const moved = this.map!.resolve(this.x + dx * me.speed * dt, this.y + dy * me.speed * dt, this.config!.playerRadius);
+        this.x = moved.x;
+        this.y = moved.y;
     }
 
     private updateCamera() {
@@ -379,6 +346,9 @@ export class App {
         const scale = Math.max(width / viewW, height / viewH);
         this.world.scale.set(scale);
         this.world.position.set(width / 2 - this.x * scale, height / 2 - this.y * scale);
+        const halfW = width / 2 / scale;
+        const halfH = height / 2 / scale;
+        this.map?.updateVisibility(this.x - halfW, this.y - halfH, this.x + halfW, this.y + halfH);
     }
 
     private drawCrosshair(mouse:{ x:number, y:number }, me:MeState | null) {
@@ -435,6 +405,12 @@ export class App {
             this.socket?.emit("reload");
         } else if (code === "KeyE") {
             this.socket?.emit("pickup");
+        } else if (code === "KeyH") {
+            this.socket?.emit("heal");
+        } else if (code === "KeyG") {
+            this.socket?.emit("grenade");
+        } else if (code === "KeyQ") {
+            this.socket?.emit("unequip", "weapon");
         } else if (code === "Digit1" || code === "Digit2" || code === "Digit3") {
             this.pickPerk(Number(code.slice(5)) - 1);
         } else if (code === "Enter" || code === "Space") {
@@ -458,11 +434,11 @@ export class App {
         let best = "";
         let bestDist = PICKUP_REACH;
         this.pickups.forEach((view) => {
-            if (view.kind === "weapon") {
+            if (view.kind === "weapon" || view.kind === "bag") {
                 const dist = Math.hypot(view.x - this.x, view.y - this.y);
                 if (dist < bestDist) {
                     bestDist = dist;
-                    best = view.weaponId;
+                    best = view.kind === "bag" ? `bag:${view.weaponId}` : view.weaponId;
                 }
             }
         });
@@ -489,7 +465,11 @@ export class App {
             announce: this.announce,
             weapons: this.config?.weapons || {},
             nearPickup: this.nearPickupName(),
-            perkCatalog: this.config?.perks || {}
+            perkCatalog: this.config?.perks || {},
+            items: this.config?.items || {},
+            recipes: this.config?.recipes || [],
+            zoneNames: this.config?.map.zoneNames || [],
+            zones: this.config?.map.zones || null
         });
     }
 
@@ -501,6 +481,34 @@ export class App {
 
     pickup() {
         this.socket?.emit("pickup");
+    }
+
+    useSlot(index:number) {
+        this.socket?.emit("useSlot", index);
+    }
+
+    dropSlot(index:number) {
+        this.socket?.emit("dropSlot", index);
+    }
+
+    unequip(what:"weapon" | "armor" | "mask") {
+        this.socket?.emit("unequip", what);
+    }
+
+    craft(recipeId:string) {
+        this.socket?.emit("craft", recipeId);
+    }
+
+    heal() {
+        this.socket?.emit("heal");
+    }
+
+    grenade() {
+        this.socket?.emit("grenade");
+    }
+
+    getMinimap() {
+        return this.map?.minimap || null;
     }
 
     pickPerk(index:number) {

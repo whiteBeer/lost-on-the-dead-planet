@@ -122,7 +122,7 @@ with sync_playwright() as p:
         b.keyboard.press("Enter")
         time.sleep(1)
         text = hud(b)
-        check("после возвращения уровень и оружие сброшены", "Ты погиб" not in text and "Пистолет" in text)
+        check("после возвращения уровень и оружие сброшены", "Ты погиб" not in text and "Нож" in text)
 
     check("в браузере нет ошибок JS", not a_errors and not b_errors, str((a_errors + b_errors)[:2]))
     browser.close()

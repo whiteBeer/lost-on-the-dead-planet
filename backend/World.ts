@@ -3,8 +3,16 @@ import { WORLD, expForLevel } from "./configs/World";
 import { ENEMIES, EnemyConfig } from "./configs/Enemies";
 import { WEAPONS, WeaponConfig, STARTING_WEAPON, rollWeapon } from "./configs/Weapons";
 import { PERKS, POSITIVE_PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
-import { generateObstacles, Obstacle } from "./configs/Map";
-import { Coords, SpatialGrid, clamp, distSq, segmentCircleHit } from "./utils/geometry";
+import { generateWorld, Obstacle, WorldMap, ZONES, ZONE_NAMES, zoneLevel } from "./configs/Terrain";
+import { CRATE_LOOT, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
+import {
+    AreaGrid, Coords, SpatialGrid, clamp, distSq, pushCircleOutOfRect, segmentCircleHit, segmentRectHit
+} from "./utils/geometry";
+
+export interface ItemStack {
+    id:string;
+    n:number;
+}
 
 export interface Team {
     id:number;
@@ -50,6 +58,13 @@ export interface Player {
     invitedBy:Map<number, number>; // id пригласившего -> когда истекает
     lastInviteAt:number;
     regenBuffer:number;
+
+    inventory:(ItemStack | null)[];
+    armorId:string;
+    maskId:string;
+    zone:number;          // опасность в точке, где стоит игрок
+    toxicDamage:number;   // урон от ядовитого воздуха в секунду, 0 — его нет
+    lastToxicFxAt:number;
 }
 
 export interface Enemy {
@@ -70,6 +85,11 @@ export interface Enemy {
     nextShotAt:number;
     lastSeenPlayerAt:number;
     moving:boolean;
+    nextSummonAt:number;
+    nextChargeAt:number;
+    chargeUntil:number;
+    revealedUntil:number;  // для невидимых: когда снова скрыться
+    summonedBy:number;
 }
 
 interface Bullet {
@@ -94,9 +114,13 @@ interface Bullet {
 
 export interface Pickup {
     id:number;
-    kind:"weapon" | "medkit" | "perk";
+    kind:"weapon" | "medkit" | "perk" | "item" | "bag";
     weaponId?:string;
     perkId?:string;
+    itemId?:string;
+    count?:number;
+    bag?:ItemStack[];
+    owner?:string;
     x:number;
     y:number;
     expiresAt:number;
@@ -123,6 +147,9 @@ const SPAWN_MIN_DIST = 1000;
 export class World extends EventEmitter {
     readonly seed:number;
     readonly obstacles:Obstacle[];
+    readonly map:WorldMap;
+    private obstacleChanges:[number, number][] = [];
+    private zoneBase64:string;
 
     private players = new Map<number, Player>();
     private bySocket = new Map<string, Player>();
@@ -142,14 +169,16 @@ export class World extends EventEmitter {
     private fxByCell = new SpatialGrid<{ x:number, y:number, fx:Fx }>(600);
     private newBullets = new SpatialGrid<{ x:number, y:number, data:any[] }>(600);
     private enemyGrid = new SpatialGrid<Enemy>(120);
-    private obstacleGrid = new SpatialGrid<Obstacle>(160);
+    private obstacleGrid = new AreaGrid<Obstacle>(200);
     private killFeed:KillEvent[] = [];
 
     constructor(seed = 20261104) {
         super();
         this.seed = seed;
-        this.obstacles = generateObstacles(seed);
+        this.map = generateWorld(seed, WORLD.size);
+        this.obstacles = this.map.obstacles;
         this.obstacles.forEach(el => this.obstacleGrid.insert(el));
+        this.zoneBase64 = Buffer.from(this.map.zone).toString("base64");
     }
 
     start() {
@@ -183,9 +212,26 @@ export class World extends EventEmitter {
             playerSpeed: WORLD.playerSpeed,
             viewWidth: 1300,
             viewHeight: 730,
-            obstacles: this.obstacles.map(el => [el.kind, el.x, el.y, el.r, Number(el.rot.toFixed(2))]),
+            // [id, вид, форма, x, y, радиус, ширина, высота, поворот, стиль, цел ли]
+            obstacles: this.obstacles.map(el => [
+                el.id, el.kind, el.shape, el.x, el.y, el.r, el.w, el.h, Number(el.rot.toFixed(2)), el.style, el.alive ? 1 : 0
+            ]),
+            map: {
+                gridSize: this.map.gridSize,
+                cell: this.map.cell,
+                zone: this.zoneBase64,
+                zones: ZONES,
+                zoneNames: ZONE_NAMES,
+                settlements: this.map.settlements,
+                roads: this.map.roads
+            },
+            items: Object.fromEntries(Object.values(ITEMS).map(el => [el.id, {
+                name: el.name, kind: el.kind, description: el.description
+            }])),
+            recipes: RECIPES,
             weapons: Object.fromEntries(Object.values(WEAPONS).map(el => [el.id, {
                 id: el.id, name: el.name, rarity: el.rarity, fireRate: el.fireRate, clipSize: el.clipSize,
+                melee: el.melee ? { range: el.melee.range, arc: el.melee.arc } : null,
                 spreadBase: el.spreadBase, spreadMax: el.spreadMax,
                 spreadIncrement: el.spreadIncrement, spreadRecovery: el.spreadRecovery
             }])),
@@ -214,7 +260,9 @@ export class World extends EventEmitter {
             perks: new Set(), stats: computeStats([]), offers: [],
             weaponId: STARTING_WEAPON, ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
-            invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0
+            invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
+            inventory: new Array(INVENTORY_SLOTS).fill(null), armorId: "", maskId: "",
+            zone: 0, toxicDamage: 0, lastToxicFxAt: 0
         };
         this.resetLife(player);
         this.players.set(id, player);
@@ -253,6 +301,9 @@ export class World extends EventEmitter {
         player.protectedUntil = Date.now() + WORLD.spawnProtectionMs;
         player.firing = false;
         player.speedBoostUntil = 0;
+        player.inventory = new Array(INVENTORY_SLOTS).fill(null);
+        player.armorId = "";
+        player.maskId = "";
         this.equip(player, STARTING_WEAPON);
     }
 
@@ -272,18 +323,17 @@ export class World extends EventEmitter {
                 }
             }
         }
-        // Иначе — на окраине, подальше от врагов
+        // Иначе — в случайном месте глубоко в безопасной зоне, подальше от врагов и других игроков
         let best:Coords = { x: WORLD.size / 2, y: 80 };
         let bestScore = -1;
-        for (let i = 0; i < 24; i++) {
-            const edge = Math.floor(Math.random() * 4);
-            const along = 100 + Math.random() * (WORLD.size - 200);
-            const inset = 100 + Math.random() * 400;
-            const x = edge === 0 ? inset : edge === 1 ? WORLD.size - inset : along;
-            const y = edge === 2 ? inset : edge === 3 ? WORLD.size - inset : along;
-            if (this.isBlocked(x, y, WORLD.playerRadius + 4)) {
+        let found = 0;
+        for (let i = 0; i < 400 && found < 24; i++) {
+            const x = 150 + Math.random() * (WORLD.size - 300);
+            const y = 150 + Math.random() * (WORLD.size - 300);
+            if (this.zoneAt(x, y) > WORLD.spawnZoneMax || this.isBlocked(x, y, WORLD.playerRadius + 4)) {
                 continue;
             }
+            found++;
             let score = 5000;
             for (const other of this.players.values()) {
                 if (other !== player && !other.dead) {
@@ -315,12 +365,31 @@ export class World extends EventEmitter {
 
     private isBlocked(x:number, y:number, radius:number) {
         let blocked = false;
-        this.obstacleGrid.query(x, y, radius + 60, (el) => {
-            if (distSq(x, y, el.x, el.y) < (el.r + radius) * (el.r + radius)) {
+        this.obstacleGrid.query(x, y, radius, (el) => {
+            if (!el.alive) {
+                return;
+            }
+            if (el.shape === "r") {
+                if (pushCircleOutOfRect(x, y, radius, el.x, el.y, el.w, el.h)) {
+                    blocked = true;
+                }
+            } else if (distSq(x, y, el.x, el.y) < (el.r + radius) * (el.r + radius)) {
                 blocked = true;
             }
         });
         return blocked;
+    }
+
+    /** Опасность в точке, 0..1. */
+    zoneAt(x:number, y:number) {
+        const { gridSize, cell, zone } = this.map;
+        const gx = clamp(Math.floor(x / cell), 0, gridSize - 1);
+        const gy = clamp(Math.floor(y / cell), 0, gridSize - 1);
+        return zone[gy * gridSize + gx] / 255;
+    }
+
+    private settlementAt(x:number, y:number) {
+        return this.map.settlements.find(s => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2);
     }
 
     private equip(player:Player, weaponId:string) {
@@ -331,6 +400,9 @@ export class World extends EventEmitter {
     }
 
     private clipOf(player:Player) {
+        if (WEAPONS[player.weaponId].melee) {
+            return 1;
+        }
         return Math.max(1, Math.round(WEAPONS[player.weaponId].clipSize * player.stats.clip));
     }
 
@@ -379,7 +451,18 @@ export class World extends EventEmitter {
     private resolveMove(x:number, y:number, radius:number):Coords {
         let px = clamp(x, radius, WORLD.size - radius);
         let py = clamp(y, radius, WORLD.size - radius);
-        this.obstacleGrid.query(px, py, radius + 60, (el) => {
+        this.obstacleGrid.query(px, py, radius, (el) => {
+            if (!el.alive) {
+                return;
+            }
+            if (el.shape === "r") {
+                const pushed = pushCircleOutOfRect(px, py, radius, el.x, el.y, el.w, el.h);
+                if (pushed) {
+                    px = pushed.x;
+                    py = pushed.y;
+                }
+                return;
+            }
             const dx = px - el.x;
             const dy = py - el.y;
             const min = el.r + radius;
@@ -393,7 +476,7 @@ export class World extends EventEmitter {
     }
 
     reload(player:Player) {
-        if (player.dead || player.reloadEndsAt || player.ammo >= this.clipOf(player)) {
+        if (player.dead || player.reloadEndsAt || this.weaponOf(player).melee || player.ammo >= this.clipOf(player)) {
             return;
         }
         player.reloadEndsAt = Date.now() + this.weaponOf(player).reloadTime * 1000 / player.stats.reload;
@@ -443,7 +526,7 @@ export class World extends EventEmitter {
         let best:Pickup | null = null;
         let bestDist = WORLD.weaponReach * WORLD.weaponReach;
         for (const item of this.pickups.values()) {
-            if (item.kind !== "weapon") {
+            if (item.kind !== "weapon" && item.kind !== "bag") {
                 continue;
             }
             const dist = distSq(player.x, player.y, item.x, item.y);
@@ -452,16 +535,236 @@ export class World extends EventEmitter {
                 best = item;
             }
         }
+        if (best?.kind === "bag" && best.bag) {
+            // Сумка погибшего: забираем всё, что влезет, остальное остаётся в ней
+            best.bag = best.bag
+                .map(stack => ({ id: stack.id, n: this.addItem(player, stack.id, stack.n) }))
+                .filter(stack => stack.n > 0);
+            if (best.bag.length === 0) {
+                this.pickups.delete(best.id);
+            }
+            this.addFx(["pickup", player.x, player.y]);
+            return;
+        }
         if (!best || !best.weaponId) {
             return;
         }
         this.pickups.delete(best.id);
-        // Старое оружие остаётся на земле: его может подобрать кто-то другой
-        if (player.weaponId !== STARTING_WEAPON) {
-            this.dropWeapon(player.weaponId, player.x, player.y);
-        }
+        this.stashCurrentWeapon(player);
         this.equip(player, best.weaponId);
         this.addFx(["pickup", player.x, player.y]);
+    }
+
+    /** Убирает текущее оружие в рюкзак, а если места нет — бросает на землю. Нож не убирается. */
+    private stashCurrentWeapon(player:Player) {
+        if (player.weaponId === STARTING_WEAPON) {
+            return;
+        }
+        if (this.addItem(player, `w:${player.weaponId}`, 1) > 0) {
+            this.dropWeapon(player.weaponId, player.x, player.y);
+        }
+    }
+
+    // ---------- Инвентарь ----------
+
+    /** Кладёт предметы в рюкзак. Возвращает, сколько не поместилось. */
+    addItem(player:Player, id:string, count:number):number {
+        const stack = stackOf(id);
+        let left = count;
+        for (const slot of player.inventory) {
+            if (left > 0 && slot && slot.id === id && slot.n < stack) {
+                const add = Math.min(stack - slot.n, left);
+                slot.n += add;
+                left -= add;
+            }
+        }
+        for (let i = 0; i < player.inventory.length && left > 0; i++) {
+            if (!player.inventory[i]) {
+                const add = Math.min(stack, left);
+                player.inventory[i] = { id, n: add };
+                left -= add;
+            }
+        }
+        return left;
+    }
+
+    countItem(player:Player, id:string) {
+        return player.inventory.reduce((sum, slot) => sum + (slot && slot.id === id ? slot.n : 0), 0);
+    }
+
+    private removeItem(player:Player, id:string, count:number) {
+        let left = count;
+        for (let i = player.inventory.length - 1; i >= 0 && left > 0; i--) {
+            const slot = player.inventory[i];
+            if (slot && slot.id === id) {
+                const take = Math.min(slot.n, left);
+                slot.n -= take;
+                left -= take;
+                if (slot.n <= 0) {
+                    player.inventory[i] = null;
+                }
+            }
+        }
+    }
+
+    /** Бросает предмет на землю: оружие — как оружие, остальное — как предмет. */
+    private dropStack(id:string, count:number, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs) {
+        if (isWeaponItem(id)) {
+            const weaponId = id.slice(2);
+            if (WEAPONS[weaponId]) {
+                this.dropWeapon(weaponId, x, y, lifetimeMs);
+            }
+            return;
+        }
+        const angle = Math.random() * Math.PI * 2;
+        const spot = this.resolveMove(x + Math.cos(angle) * 22, y + Math.sin(angle) * 22, 8);
+        const pickupId = this.nextId++;
+        this.pickups.set(pickupId, {
+            id: pickupId, kind: "item", itemId: id, count, x: spot.x, y: spot.y,
+            expiresAt: Date.now() + lifetimeMs
+        });
+    }
+
+    /** Отдаёт предметы игроку, а то, что не влезло, кладёт рядом на землю. */
+    private giveOrDrop(player:Player, id:string, count:number) {
+        const left = this.addItem(player, id, count);
+        if (left > 0) {
+            this.dropStack(id, left, player.x, player.y);
+        }
+    }
+
+    useSlot(player:Player, slotIndex:unknown) {
+        if (player.dead || typeof slotIndex !== "number") {
+            return;
+        }
+        const slot = player.inventory[slotIndex];
+        if (!slot) {
+            return;
+        }
+        if (isWeaponItem(slot.id)) {
+            const weaponId = slot.id.slice(2);
+            if (!WEAPONS[weaponId]) {
+                return;
+            }
+            player.inventory[slotIndex] = player.weaponId === STARTING_WEAPON ? null : { id: `w:${player.weaponId}`, n: 1 };
+            this.equip(player, weaponId);
+            return;
+        }
+        const item = ITEMS[slot.id];
+        if (!item) {
+            return;
+        }
+        if (item.kind === "armor" || item.kind === "mask") {
+            const field = item.kind === "armor" ? "armorId" : "maskId";
+            const old = player[field];
+            player[field] = item.id;
+            player.inventory[slotIndex] = old ? { id: old, n: 1 } : null;
+            return;
+        }
+        if (item.kind !== "use") {
+            return;
+        }
+        if (item.heal) {
+            if (player.hp >= player.stats.maxHp) {
+                return;
+            }
+            player.hp = Math.min(player.stats.maxHp, player.hp + item.heal);
+            this.addFx(["heal", player.x, player.y]);
+        } else if (item.id === "grenade") {
+            this.throwGrenade(player);
+        } else if (item.id === "mutagen") {
+            const offer = rollPerkOffer(this.takenWithOffers(player), player.level);
+            if (offer.length) {
+                player.offers.push(offer);
+            }
+        }
+        slot.n--;
+        if (slot.n <= 0) {
+            player.inventory[slotIndex] = null;
+        }
+    }
+
+    /** Лечится лучшим, что есть в рюкзаке: сначала бинтом, если его хватает, потом аптечкой. */
+    quickHeal(player:Player) {
+        const missing = player.stats.maxHp - player.hp;
+        if (player.dead || missing <= 0) {
+            return;
+        }
+        const order = missing > 45 ? ["medkit", "bandage"] : ["bandage", "medkit"];
+        for (const id of order) {
+            const index = player.inventory.findIndex(slot => slot?.id === id);
+            if (index !== -1) {
+                this.useSlot(player, index);
+                return;
+            }
+        }
+    }
+
+    private throwGrenade(player:Player) {
+        const distance = 260;
+        const target = this.resolveMove(
+            player.x + Math.cos(player.rotation) * distance,
+            player.y + Math.sin(player.rotation) * distance,
+            6
+        );
+        player.protectedUntil = 0;
+        this.addFx(["throw", player.x, player.y, target.x, target.y]);
+        setTimeout(() => this.explode(target.x, target.y, 130, 95, player, "grenade"), 650);
+    }
+
+    useGrenade(player:Player) {
+        const index = player.inventory.findIndex(slot => slot?.id === "grenade");
+        if (index !== -1) {
+            this.useSlot(player, index);
+        }
+    }
+
+    dropSlot(player:Player, slotIndex:unknown) {
+        if (player.dead || typeof slotIndex !== "number") {
+            return;
+        }
+        const slot = player.inventory[slotIndex];
+        if (!slot) {
+            return;
+        }
+        player.inventory[slotIndex] = null;
+        this.dropStack(slot.id, slot.n, player.x, player.y);
+    }
+
+    /** Снимает броню или противогаз в рюкзак. */
+    unequip(player:Player, what:unknown) {
+        if (player.dead || (what !== "armor" && what !== "mask" && what !== "weapon")) {
+            return;
+        }
+        if (what === "weapon") {
+            if (player.weaponId !== STARTING_WEAPON && this.addItem(player, `w:${player.weaponId}`, 1) === 0) {
+                this.equip(player, STARTING_WEAPON);
+            }
+            return;
+        }
+        const field = what === "armor" ? "armorId" : "maskId";
+        if (player[field] && this.addItem(player, player[field], 1) === 0) {
+            player[field] = "";
+        }
+    }
+
+    craft(player:Player, recipeId:unknown) {
+        const recipe = RECIPES.find(el => el.id === recipeId);
+        if (!recipe || player.dead) {
+            return false;
+        }
+        for (const [id, need] of Object.entries(recipe.cost)) {
+            if (this.countItem(player, id) < need) {
+                return false;
+            }
+        }
+        for (const [id, need] of Object.entries(recipe.cost)) {
+            this.removeItem(player, id, need);
+        }
+        this.giveOrDrop(player, recipe.result, recipe.count);
+        this.addExp(player, 4);
+        this.addFx(["craft", player.x, player.y]);
+        return true;
     }
 
     private dropWeapon(weaponId:string, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs) {
@@ -580,6 +883,9 @@ export class World extends EventEmitter {
         if (this.tickCount % 15 === 0) {
             this.spawnEnemies(now);
         }
+        if (this.tickCount % (WORLD.tickRate * 5) === 0) {
+            this.respawnObstacles(now);
+        }
 
         if (this.tickCount % WORLD.snapshotEvery === 0) {
             this.emit("snapshot");
@@ -615,6 +921,20 @@ export class World extends EventEmitter {
                 player.hp = clamp(player.hp + regen * dt, Math.min(1, player.hp), player.stats.maxHp);
             }
 
+            player.zone = this.zoneAt(player.x, player.y);
+            player.toxicDamage = player.zone >= ZONES.toxic && player.maskId !== "gasmask" ? WORLD.toxicDamage : 0;
+            if (player.toxicDamage > 0) {
+                player.hp -= player.toxicDamage * dt;
+                if (now - player.lastToxicFxAt > 1000) {
+                    player.lastToxicFxAt = now;
+                    this.addFx(["toxic", player.x, player.y]);
+                }
+                if (player.hp <= 0) {
+                    this.killPlayer(player, null, "toxic");
+                    continue;
+                }
+            }
+
             if (player.firing) {
                 this.tryShoot(player, now);
             }
@@ -627,6 +947,12 @@ export class World extends EventEmitter {
     private tryShoot(player:Player, now:number) {
         const weapon = this.weaponOf(player);
         if (player.reloadEndsAt || now < player.nextShotAt) {
+            return;
+        }
+        if (weapon.melee) {
+            player.nextShotAt = now + weapon.fireRate / player.stats.fireRate;
+            player.protectedUntil = 0;
+            this.meleeSwing(player, weapon);
             return;
         }
         if (player.ammo <= 0) {
@@ -662,6 +988,167 @@ export class World extends EventEmitter {
         if (player.ammo <= 0) {
             this.reload(player);
         }
+    }
+
+    /** Удар по дуге перед игроком: монстры, игроки, ресурсы и ящики. */
+    private meleeSwing(player:Player, weapon:WeaponConfig) {
+        const melee = weapon.melee!;
+        const { damage, crit } = this.rollDamage(player, weapon, false);
+        const reachTo = (x:number, y:number, radius:number) => {
+            const dist = Math.hypot(x - player.x, y - player.y);
+            if (dist > melee.range + radius) {
+                return false;
+            }
+            let diff = Math.atan2(y - player.y, x - player.x) - player.rotation;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            // Чем крупнее цель, тем шире угол, под которым её можно задеть
+            const slack = dist > 1 ? Math.atan(radius / dist) : Math.PI;
+            return Math.abs(diff) <= melee.arc / 2 + slack;
+        };
+        this.addFx(["swing", player.x, player.y, Math.round(player.rotation * 100), melee.range]);
+
+        let hitSomething = false;
+        this.enemyGrid.query(player.x, player.y, melee.range + 80, (enemy) => {
+            if (enemy.hp > 0 && this.enemies.has(enemy.id) && reachTo(enemy.x, enemy.y, enemy.cfg.radius)) {
+                this.damageEnemy(enemy, damage, player, weapon.id, crit);
+                hitSomething = true;
+            }
+        });
+        for (const other of [...this.players.values()]) {
+            if (other !== player && !other.dead && !this.isAlly(player, other) && reachTo(other.x, other.y, WORLD.playerRadius)) {
+                this.damagePlayer(other, damage * WORLD.pvpDamageMul * player.stats.playerDamage, player, weapon.id, crit);
+                hitSomething = true;
+            }
+        }
+        if (hitSomething) {
+            return;
+        }
+
+        // Если не задели живых — бьём ближайший ресурс или ящик
+        let target:Obstacle | null = null;
+        let best = Infinity;
+        this.obstacleGrid.query(player.x, player.y, melee.range + 20, (el) => {
+            if (!el.alive || (el.kind !== "crate" && !el.res)) {
+                return;
+            }
+            const radius = el.shape === "r" ? Math.max(el.w, el.h) / 2 : el.r;
+            const dist = Math.hypot(el.x - player.x, el.y - player.y) - radius;
+            if (dist < best && reachTo(el.x, el.y, radius)) {
+                best = dist;
+                target = el;
+            }
+        });
+        if (target) {
+            this.hitObstacle(player, target, weapon, damage);
+        }
+    }
+
+    private hitObstacle(player:Player, el:Obstacle, weapon:WeaponConfig, damage:number) {
+        if (el.kind === "crate") {
+            this.damageCrate(el, damage, player);
+            return;
+        }
+        if (!el.res || el.amount <= 0) {
+            this.addFx(["spark", el.x, el.y]);
+            return;
+        }
+        const gain = Math.min(el.amount, weapon.melee?.gather?.[el.res] || 1);
+        el.amount -= gain;
+        this.giveOrDrop(player, el.res, gain);
+        this.addExp(player, gain);
+        this.addFx(["gather", el.x, el.y, gain, ["wood", "stone", "scrap"].indexOf(el.res)]);
+        if (el.amount <= 0) {
+            el.respawnAt = Date.now() + WORLD.resourceRespawnMs;
+            // Дерево и камень исчезают, остов машины остаётся стоять
+            if (el.kind !== "wreck") {
+                this.setObstacleAlive(el, false);
+            }
+        }
+    }
+
+    private damageCrate(el:Obstacle, damage:number, player?:Player) {
+        if (!el.alive) {
+            return;
+        }
+        el.hp -= Math.max(1, damage);
+        this.addFx(["spark", el.x, el.y]);
+        if (el.hp > 0) {
+            return;
+        }
+        this.setObstacleAlive(el, false);
+        el.respawnAt = Date.now() + WORLD.crateRespawnMs;
+        const settlement = el.settlement >= 0 ? this.map.settlements[el.settlement] : undefined;
+        const table = settlement ? settlement.kind : "wild";
+        const luck = player ? player.stats.drop : 1;
+        for (const [id, count] of rollLoot(CRATE_LOOT[table], luck)) {
+            this.dropStack(id, count, el.x, el.y);
+        }
+        const [chance, tier] = CRATE_WEAPON[table];
+        if (Math.random() < chance * luck) {
+            this.dropWeapon(rollWeapon(tier), el.x, el.y);
+        }
+        this.addFx(["crate", el.x, el.y]);
+    }
+
+    private setObstacleAlive(el:Obstacle, alive:boolean) {
+        el.alive = alive;
+        this.obstacleChanges.push([el.id, alive ? 1 : 0]);
+    }
+
+    /** Изменения препятствий с прошлого вызова: срубленные деревья, разбитые ящики. */
+    takeObstacleChanges() {
+        const changes = this.obstacleChanges;
+        this.obstacleChanges = [];
+        return changes;
+    }
+
+    private respawnObstacles(now:number) {
+        for (const el of this.obstacles) {
+            if (!el.respawnAt || now < el.respawnAt) {
+                continue;
+            }
+            // Не возвращаем дерево прямо под ногами у игрока
+            const near = el.alive ? false : this.isNearAnyPlayer(el.x, el.y, el.r + 60);
+            if (near) {
+                continue;
+            }
+            el.respawnAt = 0;
+            el.amount = el.maxAmount;
+            if (el.kind === "crate") {
+                el.hp = 60;
+            }
+            if (!el.alive) {
+                this.setObstacleAlive(el, true);
+            }
+        }
+    }
+
+    private rollDamage(player:Player, weapon:WeaponConfig, isLastBullet:boolean) {
+        const stats = player.stats;
+        let damage = weapon.damage * stats.damage;
+        if (isLastBullet) {
+            damage *= stats.lastBullet;
+        }
+        const hpFrac = player.hp / stats.maxHp;
+        if (hpFrac < 0.35) {
+            damage *= 1 + stats.lowHpDamage;
+        }
+        if (hpFrac > 0.9) {
+            damage *= 1 + stats.highHpDamage;
+        }
+        damage *= 1 + (player.moving ? stats.movingDamage : stats.stillDamage);
+        if (stats.damageVariance > 0) {
+            damage *= 1 + (Math.random() * 2 - 1) * stats.damageVariance;
+        }
+        const crit = Math.random() < stats.crit;
+        if (crit) {
+            damage *= stats.critDamage;
+        }
+        if (Math.random() < stats.miss) {
+            damage = 0;
+        }
+        return { damage, crit };
     }
 
     private spawnBullet(player:Player, weapon:WeaponConfig, rotation:number, isLastBullet:boolean) {
@@ -754,9 +1241,14 @@ export class World extends EventEmitter {
         type Hit = { t:number, enemy?:Enemy, player?:Player, obstacle?:Obstacle };
         const hits:Hit[] = [];
 
-        this.obstacleGrid.query(midX, midY, reach, (el) => {
-            const t = segmentCircleHit(from, to, el, el.r);
-            if (t !== null && el.kind !== "crate") {
+        this.obstacleGrid.query(midX, midY, stepLen / 2 + 10, (el) => {
+            if (!el.alive) {
+                return;
+            }
+            const t = el.shape === "r"
+                ? segmentRectHit(from, to, el.x, el.y, el.w, el.h)
+                : segmentCircleHit(from, to, el, el.r);
+            if (t !== null) {
                 hits.push({ t, obstacle: el });
             }
         });
@@ -793,6 +1285,9 @@ export class World extends EventEmitter {
             const py = from.y + (to.y - from.y) * hit.t;
 
             if (hit.obstacle) {
+                if (hit.obstacle.kind === "crate" && !bullet.fromEnemy) {
+                    this.damageCrate(hit.obstacle, bullet.damage, owner);
+                }
                 if (bullet.explosion) {
                     this.explode(px, py, bullet.explosion, bullet.damage, owner);
                 }
@@ -909,7 +1404,8 @@ export class World extends EventEmitter {
         if (enemy.hp <= 0) {
             return;
         }
-        let damage = rawDamage;
+        let damage = rawDamage * (1 - (enemy.cfg.armor || 0));
+        enemy.revealedUntil = Date.now() + 2500;
         if (attacker) {
             damage *= attacker.stats.monsterDamage;
             if (enemy.type === "boss") {
@@ -934,8 +1430,14 @@ export class World extends EventEmitter {
     private killEnemy(enemy:Enemy, killer?:Player) {
         this.enemies.delete(enemy.id);
         this.addFx(["gore", enemy.x, enemy.y, enemy.cfg.size]);
+        if (enemy.cfg.explode) {
+            this.explode(enemy.x, enemy.y, enemy.cfg.explode.radius, enemy.cfg.explode.damage * 0.7, undefined, "bloater");
+        }
 
         if (killer) {
+            for (const [id, count] of rollLoot(enemy.cfg.loot, Math.min(2, killer.stats.drop))) {
+                this.dropStack(id, count, enemy.x, enemy.y);
+            }
             const dropMul = killer.stats.drop;
             if (Math.random() < enemy.cfg.dropChance * dropMul) {
                 this.dropWeapon(rollWeapon(enemy.cfg.tier), enemy.x, enemy.y);
@@ -1025,7 +1527,8 @@ export class World extends EventEmitter {
             return;
         }
         const reduction = clamp(player.stats.armor, -1, 0.7)
-            + (attacker ? player.stats.playerArmor : player.stats.monsterArmor);
+            + (attacker ? player.stats.playerArmor : player.stats.monsterArmor)
+            + (ITEMS[player.armorId]?.armor || 0);
         const damage = rawDamage * (1 - clamp(reduction, -1, 0.8));
         player.hp -= damage;
         this.addFx(["dmg", player.x, player.y, Math.round(damage), crit ? 1 : 0]);
@@ -1050,9 +1553,27 @@ export class World extends EventEmitter {
         player.bestExp = Math.max(player.bestExp, player.exp);
         this.addFx(["gore", player.x, player.y, 60]);
 
+        // Всё, что было при себе, остаётся в сумке на месте гибели
+        const bag:ItemStack[] = player.inventory.filter((slot):slot is ItemStack => !!slot).map(slot => ({ ...slot }));
         if (player.weaponId !== STARTING_WEAPON) {
-            this.dropWeapon(player.weaponId, player.x, player.y);
+            bag.push({ id: `w:${player.weaponId}`, n: 1 });
         }
+        if (player.armorId) {
+            bag.push({ id: player.armorId, n: 1 });
+        }
+        if (player.maskId) {
+            bag.push({ id: player.maskId, n: 1 });
+        }
+        if (bag.length) {
+            const id = this.nextId++;
+            this.pickups.set(id, {
+                id, kind: "bag", bag, owner: player.name, x: player.x, y: player.y,
+                expiresAt: Date.now() + WORLD.bagLifetimeMs
+            });
+        }
+        player.inventory = new Array(INVENTORY_SLOTS).fill(null);
+        player.armorId = "";
+        player.maskId = "";
 
         const stats = player.stats;
         if (stats.explodeOnDeath > 0) {
@@ -1077,8 +1598,10 @@ export class World extends EventEmitter {
             }
 
             if (enemy.moving) {
-                let vx = Math.cos(enemy.rotation) * enemy.speed;
-                let vy = Math.sin(enemy.rotation) * enemy.speed;
+                const charging = now < enemy.chargeUntil;
+                const speed = enemy.speed * (charging ? enemy.cfg.charge!.speedMul : 1);
+                let vx = Math.cos(enemy.rotation) * speed;
+                let vy = Math.sin(enemy.rotation) * speed;
 
                 // Монстры расталкивают друг друга, чтобы не сливаться в одну кучу
                 this.enemyGrid.query(enemy.x, enemy.y, enemy.cfg.radius + 50, (other) => {
@@ -1126,6 +1649,60 @@ export class World extends EventEmitter {
             enemy.lastSeenPlayerAt = now;
             const directAngle = Math.atan2(target.y - enemy.y, target.x - enemy.x);
             const dist = Math.sqrt(bestDist);
+            const cfg = enemy.cfg;
+
+            // Невидимка проявляется вблизи
+            if (cfg.stealth && dist < cfg.stealth) {
+                enemy.revealedUntil = now + 1200;
+            }
+            // Рывок: короткий разгон прямо на цель
+            if (cfg.charge && now >= enemy.nextChargeAt && dist < cfg.charge.range && dist > 90) {
+                enemy.nextChargeAt = now + cfg.charge.interval;
+                enemy.chargeUntil = now + cfg.charge.duration;
+                enemy.rotation = directAngle;
+                enemy.moving = true;
+                enemy.targetId = target.id;
+                this.addFx(["roar", enemy.x, enemy.y]);
+                return;
+            }
+            if (now < enemy.chargeUntil) {
+                return;
+            }
+            // Крик: зовёт зомби на помощь, но не больше лимита
+            if (cfg.summon && now >= enemy.nextSummonAt) {
+                enemy.nextSummonAt = now + cfg.summon.interval;
+                let alive = 0;
+                for (const other of this.enemies.values()) {
+                    if (other.summonedBy === enemy.id) {
+                        alive++;
+                    }
+                }
+                const count = Math.min(cfg.summon.count, cfg.summon.cap - alive);
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const spot = this.resolveMove(enemy.x + Math.cos(angle) * 90, enemy.y + Math.sin(angle) * 90, 20);
+                    const minion = this.createEnemy(cfg.summon.type, spot.x, spot.y, now);
+                    minion.summonedBy = enemy.id;
+                    minion.targetId = target.id;
+                }
+                if (count > 0) {
+                    this.addFx(["scream", enemy.x, enemy.y]);
+                }
+            }
+            // Взрыв раздутого рядом с игроком
+            if (cfg.explode && dist < cfg.explode.trigger + WORLD.playerRadius) {
+                this.enemies.delete(enemy.id);
+                this.addFx(["gore", enemy.x, enemy.y, cfg.size]);
+                this.explode(enemy.x, enemy.y, cfg.explode.radius, cfg.explode.damage, undefined, "bloater");
+                return;
+            }
+            if (cfg.keepDistance && dist < cfg.keepDistance) {
+                // Отходит назад, чтобы держать дистанцию
+                enemy.moving = dist < cfg.keepDistance * 0.7;
+                enemy.rotation = enemy.moving ? directAngle + Math.PI : directAngle;
+                enemy.targetId = target.id;
+                return;
+            }
             // Логика обхода из оригинальной игры: издалека идём по дуге, вблизи — прямо
             let angle = directAngle;
             if (dist > 260) {
@@ -1152,7 +1729,8 @@ export class World extends EventEmitter {
         }
 
         // Монстры без игроков поблизости исчезают и появляются снова там, где есть кому в них стрелять
-        if (now - enemy.lastSeenPlayerAt > 60000 && enemy.type !== "boss" && !this.isNearAnyPlayer(enemy.x, enemy.y, 1300)) {
+        if (now - enemy.lastSeenPlayerAt > 45000 && enemy.type !== "boss"
+            && !this.isNearAnyPlayer(enemy.x, enemy.y, WORLD.enemyAreaRadius + 200)) {
             this.enemies.delete(enemy.id);
         }
     }
@@ -1170,7 +1748,8 @@ export class World extends EventEmitter {
                     x: enemy.x, y: enemy.y,
                     vx: Math.cos(angle) * ranged.speed, vy: Math.sin(angle) * ranged.speed,
                     left: ranged.range * 1.2, speed: ranged.speed, damage: ranged.damage,
-                    pierceLeft: 0, ricochetLeft: 0, explosion: 0, size: 7, kind: "acid",
+                    pierceLeft: 0, ricochetLeft: 0, explosion: 0,
+                    size: ranged.kind === "shot" ? 3 : 7, kind: ranged.kind || "acid",
                     hit: new Set(), crit: false
                 };
                 this.bullets.push(bullet);
@@ -1186,7 +1765,10 @@ export class World extends EventEmitter {
                 continue;
             }
             const reach = enemy.cfg.radius + WORLD.playerRadius + 4;
-            if (distSq(enemy.x, enemy.y, player.x, player.y) < reach * reach) {
+            if (enemy.cfg.damage > 0 && distSq(enemy.x, enemy.y, player.x, player.y) < reach * reach) {
+                if (now < enemy.chargeUntil) {
+                    enemy.chargeUntil = 0;
+                }
                 enemy.nextAttackAt = now + enemy.cfg.attackInterval;
                 const hpBefore = player.hp;
                 this.damagePlayer(player, enemy.cfg.damage, null, null);
@@ -1209,12 +1791,25 @@ export class World extends EventEmitter {
     }
 
     private spawnEnemies(now:number) {
-        const target = Math.min(WORLD.maxEnemies, WORLD.baseEnemies + this.players.size * WORLD.enemiesPerPlayer);
-        let budget = 6;
-        while (this.enemies.size < target && budget-- > 0) {
-            const spot = this.findEnemySpawn();
-            if (spot) {
-                this.spawnEnemyAt(spot.x, spot.y, now);
+        // Вокруг каждого игрока держим столько монстров, сколько положено зоне, где он стоит
+        let budget = 8;
+        for (const player of this.players.values()) {
+            if (player.dead || budget <= 0 || this.enemies.size >= WORLD.maxEnemies) {
+                continue;
+            }
+            const want = WORLD.enemiesAround[zoneLevel(player.zone)];
+            let around = 0;
+            this.enemyGrid.query(player.x, player.y, WORLD.enemyAreaRadius, (enemy) => {
+                if (distSq(enemy.x, enemy.y, player.x, player.y) < WORLD.enemyAreaRadius ** 2) {
+                    around++;
+                }
+            });
+            for (let i = around; i < want && budget > 0; i++) {
+                budget--;
+                const spot = this.findEnemySpawn(player);
+                if (spot) {
+                    this.spawnEnemyAt(spot.x, spot.y, now);
+                }
             }
         }
 
@@ -1224,30 +1819,41 @@ export class World extends EventEmitter {
         if (now >= this.nextBossAt) {
             this.nextBossAt = now + WORLD.bossEveryMs;
             const hasBoss = [...this.enemies.values()].some(el => el.type === "boss");
-            if (!hasBoss) {
-                this.createEnemy("boss", WORLD.size / 2, WORLD.size / 2, now);
-                this.emit("announce", "В центре карты появился Владыка. С него падает лучшее оружие.");
+            const spot = this.findBossSpot();
+            if (!hasBoss && spot) {
+                this.createEnemy("boss", spot.x, spot.y, now);
+                const place = this.settlementAt(spot.x, spot.y);
+                this.emit("announce", `Появился Владыка${place ? `: ${place.name}` : " в мёртвых землях"}. С него падает лучшее оружие.`);
             }
         }
     }
 
-    private findEnemySpawn():Coords | null {
-        const players = [...this.players.values()];
-        for (let attempt = 0; attempt < 10; attempt++) {
-            let x:number;
-            let y:number;
-            // Половина появляется рядом с игроками за экраном, остальные — по всей карте
-            if (Math.random() < 0.5 && players.length) {
-                const anchor = players[Math.floor(Math.random() * players.length)];
-                const angle = Math.random() * Math.PI * 2;
-                const dist = SPAWN_MIN_DIST + Math.random() * 500;
-                x = anchor.x + Math.cos(angle) * dist;
-                y = anchor.y + Math.sin(angle) * dist;
-            } else {
-                x = Math.random() * WORLD.size;
-                y = Math.random() * WORLD.size;
+    /** Мёртвые земли, но не ядовитый воздух: туда можно дойти без противогаза. */
+    private findBossSpot():Coords | null {
+        for (let i = 0; i < 300; i++) {
+            const x = 300 + Math.random() * (WORLD.size - 600);
+            const y = 300 + Math.random() * (WORLD.size - 600);
+            const zone = this.zoneAt(x, y);
+            if (zone > ZONES.danger + 0.03 && zone < ZONES.toxic - 0.03 && !this.isBlocked(x, y, 70)) {
+                return { x, y };
             }
+        }
+        return null;
+    }
+
+    private findEnemySpawn(anchor:Player):Coords | null {
+        for (let attempt = 0; attempt < 10; attempt++) {
+            // За краем экрана игрока, но в пределах его области
+            const angle = Math.random() * Math.PI * 2;
+            const dist = SPAWN_MIN_DIST + Math.random() * (WORLD.enemyAreaRadius - SPAWN_MIN_DIST);
+            const x = anchor.x + Math.cos(angle) * dist;
+            const y = anchor.y + Math.sin(angle) * dist;
             if (x < 40 || y < 40 || x > WORLD.size - 40 || y > WORLD.size - 40) {
+                continue;
+            }
+            // В безопасной зоне почти пусто: точка с низкой опасностью часто отбраковывается
+            const zone = this.zoneAt(x, y);
+            if (Math.random() > 0.15 + zone) {
                 continue;
             }
             if (this.isNearAnyPlayer(x, y, SPAWN_MIN_DIST - 50) || this.isBlocked(x, y, 40)) {
@@ -1259,15 +1865,18 @@ export class World extends EventEmitter {
     }
 
     private spawnEnemyAt(x:number, y:number, now:number) {
-        // 0 на краю карты, 1 в центре
-        const half = WORLD.size / 2;
-        const depth = 1 - Math.min(1, Math.hypot(x - half, y - half) / half);
-        const pool = Object.values(ENEMIES).filter(el => el.weight > 0 && el.minDepth <= depth);
-        const total = pool.reduce((sum, el) => sum + el.weight, 0);
+        const zone = this.zoneAt(x, y);
+        const urban = !!this.settlementAt(x, y);
+        const pool = Object.values(ENEMIES).filter(el => el.weight > 0 && zone >= el.zoneMin && zone <= el.zoneMax);
+        if (!pool.length) {
+            return;
+        }
+        const weightOf = (cfg:typeof pool[number]) => cfg.weight * (urban ? cfg.urban || 1 : 1);
+        const total = pool.reduce((sum, el) => sum + weightOf(el), 0);
         let roll = Math.random() * total;
         let chosen = pool[0];
         for (const cfg of pool) {
-            roll -= cfg.weight;
+            roll -= weightOf(cfg);
             if (roll <= 0) {
                 chosen = cfg;
                 break;
@@ -1287,7 +1896,8 @@ export class World extends EventEmitter {
             flankBias: (Math.random() - 0.5) * 1.2,
             wanderAt: 0, thinkAt: 0, targetId: 0,
             nextAttackAt: 0, nextShotAt: now + Math.random() * 1000,
-            lastSeenPlayerAt: now, moving: false
+            lastSeenPlayerAt: now, moving: false,
+            nextSummonAt: now + 2000, nextChargeAt: now + 1500, chargeUntil: 0, revealedUntil: 0, summonedBy: 0
         };
         this.enemies.set(id, enemy);
         return enemy;
@@ -1379,7 +1989,22 @@ export class World extends EventEmitter {
                 this.pickups.delete(item.id);
                 continue;
             }
-            if (item.kind === "medkit") {
+            if (item.kind === "item" && item.itemId) {
+                for (const player of this.players.values()) {
+                    if (!player.dead && distSq(item.x, item.y, player.x, player.y) < WORLD.pickupRadius * WORLD.pickupRadius) {
+                        const left = this.addItem(player, item.itemId, item.count || 1);
+                        if (left < (item.count || 1)) {
+                            this.addFx(["loot", player.x, player.y, (item.count || 1) - left]);
+                        }
+                        if (left > 0) {
+                            item.count = left;
+                        } else {
+                            this.pickups.delete(item.id);
+                        }
+                        break;
+                    }
+                }
+            } else if (item.kind === "medkit") {
                 for (const player of this.players.values()) {
                     if (!player.dead && player.hp < player.stats.maxHp
                         && distSq(item.x, item.y, player.x, player.y) < WORLD.pickupRadius * WORLD.pickupRadius) {
@@ -1436,9 +2061,12 @@ export class World extends EventEmitter {
         const enemies:any[] = [];
         this.enemyGrid.query(me.x, me.y, radius, (enemy) => {
             if (enemy.hp > 0 && this.enemies.has(enemy.id) && inView(enemy.x, enemy.y)) {
+                // Невидимку видно, только если он рядом или недавно ранен
+                const hidden = !!enemy.cfg.stealth && now > enemy.revealedUntil;
                 enemies.push([
                     enemy.id, enemy.type, Math.round(enemy.x), Math.round(enemy.y),
-                    Number(enemy.rotation.toFixed(2)), Math.round(enemy.hp), enemy.maxHp, enemy.moving ? 1 : 0
+                    Number(enemy.rotation.toFixed(2)), Math.round(enemy.hp), enemy.maxHp,
+                    (enemy.moving ? 1 : 0) | (hidden ? 2 : 0) | (now < enemy.chargeUntil ? 4 : 0)
                 ]);
             }
         });
@@ -1447,8 +2075,8 @@ export class World extends EventEmitter {
         for (const item of this.pickups.values()) {
             if (inView(item.x, item.y)) {
                 pickups.push([
-                    item.id, item.kind, item.weaponId || item.perkId || "",
-                    Math.round(item.x), Math.round(item.y), Math.max(0, item.expiresAt - now)
+                    item.id, item.kind, item.weaponId || item.perkId || item.itemId || item.owner || "",
+                    Math.round(item.x), Math.round(item.y), Math.max(0, item.expiresAt - now), item.count || 0
                 ]);
             }
         }
@@ -1504,7 +2132,13 @@ export class World extends EventEmitter {
                     id: el.id, name: el.name, description: el.description, rarity: el.rarity,
                     category: el.category, icon: el.icon || ""
                 })) : null,
-                perks: [...me.perks]
+                perks: [...me.perks],
+                inv: me.inventory,
+                armor: me.armorId,
+                mask: me.maskId,
+                zone: Math.round(me.zone * 1000) / 1000,
+                toxic: me.toxicDamage > 0,
+                place: this.settlementAt(me.x, me.y)?.name || ""
             },
             p: players,
             e: enemies,

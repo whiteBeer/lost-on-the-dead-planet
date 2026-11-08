@@ -5,6 +5,10 @@ import { App } from "../game/App";
 import { imgUrl } from "../game/Assets";
 import { HudState } from "../game/Types";
 import styles from "./GameView.module.css";
+import Inventory from "./Inventory";
+import { itemImage } from "../game/Assets";
+
+const ZONE_COLORS = ["#8ff06a", "#e8d36a", "#f0954e", "#ff5a5a"];
 
 const RARITY_TEXT:Record<string, string> = { common: "обычный", rare: "редкий", epic: "эпический" };
 const WEAPON_RARITY_TEXT:Record<string, string> = {
@@ -26,12 +30,19 @@ function GameView({ name }:{ name:string }) {
     const [hud, setHud] = useState<HudState | null>(null);
     const [teamOpen, setTeamOpen] = useState(false);
     const [perksOpen, setPerksOpen] = useState(false);
+    const [invOpen, setInvOpen] = useState(false);
 
     const onUiKey = useCallback((code:string) => {
         if (code === "KeyT") {
             setTeamOpen(value => !value);
         } else if (code === "KeyP") {
             setPerksOpen(value => !value);
+        } else if (code === "KeyI" || code === "Tab") {
+            setInvOpen(value => !value);
+        } else if (code === "Escape") {
+            setInvOpen(false);
+            setTeamOpen(false);
+            setPerksOpen(false);
         }
     }, []);
 
@@ -58,12 +69,11 @@ function GameView({ name }:{ name:string }) {
         const pos = app.getPosition();
         const k = canvas.width / pos.size;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#26301d";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#4a3c2f";
-        ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width * 0.2, 0, Math.PI * 2);
-        ctx.fill();
+        const terrain = app.getMinimap();
+        if (terrain) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(terrain, 0, 0, canvas.width, canvas.height);
+        }
         const dot = (x:number, y:number, color:string, radius:number) => {
             ctx.fillStyle = color;
             ctx.beginPath();
@@ -139,7 +149,7 @@ function GameView({ name }:{ name:string }) {
                             <div>
                                 <div className={styles.myWeaponName}>{currentWeapon?.name}</div>
                                 <div className={styles.myWeaponAmmo}>
-                                    {me.reloadLeft > 0 ? "Перезарядка..." : `${me.ammo} / ${me.clip}`}
+                                    {hud?.weapons[me.weapon]?.melee ? "ближний бой" : me.reloadLeft > 0 ? "Перезарядка..." : `${me.ammo} / ${me.clip}`}
                                 </div>
                             </div>
                         </div>
@@ -172,20 +182,43 @@ function GameView({ name }:{ name:string }) {
                             <span className={styles.barText}>{me.hp} / {me.maxHp}</span>
                         </div>
                         {me.prot && <div className={styles.protect}>Защита после появления: пропадёт после первого выстрела</div>}
+                        {hud?.zones && (() => {
+                            const z = hud.zones;
+                            const level = me.zone < z.safe ? 0 : me.zone < z.wild ? 1 : me.zone < z.danger ? 2 : 3;
+                            return (
+                                <div className={styles.zone} style={{ color: ZONE_COLORS[level] }}>
+                                    {hud.zoneNames[level]}{me.place ? ` · ${me.place}` : ""}
+                                    {me.toxic && <b className={styles.toxic}> Ядовитый воздух! Нужен противогаз</b>}
+                                </div>
+                            );
+                        })()}
                     </section>
 
                     {hud?.nearPickup && (
                         <button className={styles.pickupHint} onClick={() => app?.pickup()}>
-                            <WeaponIcon id={hud.nearPickup} className={styles.pickupIcon} />
-                            <span>
-                                <b className={styles.desktopOnly}>E: </b>взять {weaponName(hud.nearPickup)}
-                                {" "}({WEAPON_RARITY_TEXT[hud.weapons[hud.nearPickup]?.rarity]})
-                            </span>
+                            {hud.nearPickup.startsWith("bag:") ? (
+                                <>
+                                    <img src={itemImage("bag")} className={styles.pickupIcon} alt="" />
+                                    <span><b className={styles.desktopOnly}>E: </b>обыскать сумку {hud.nearPickup.slice(4)}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <WeaponIcon id={hud.nearPickup} className={styles.pickupIcon} />
+                                    <span>
+                                        <b className={styles.desktopOnly}>E: </b>взять {weaponName(hud.nearPickup)}
+                                        {" "}({WEAPON_RARITY_TEXT[hud.weapons[hud.nearPickup]?.rarity]})
+                                    </span>
+                                </>
+                            )}
                         </button>
                     )}
 
+                    {invOpen && hud && <Inventory hud={hud} app={app} onClose={() => setInvOpen(false)} />}
+
                     {!me.dead && (
                         <div className={styles.touchButtons}>
+                            <button onClick={() => setInvOpen(value => !value)}>Рюкзак</button>
+                            <button onClick={() => app?.heal()}>Лечиться</button>
                             <button onClick={() => app?.reload()}>Перезарядка</button>
                             <button onClick={() => setTeamOpen(value => !value)}>Команда</button>
                             <button onClick={() => setPerksOpen(value => !value)}>Перки</button>

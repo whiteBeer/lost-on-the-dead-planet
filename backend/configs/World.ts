@@ -1,6 +1,7 @@
 export const WORLD = {
-    // 9000² / 4000² = 5.06: площадь мира увеличена примерно в пять раз
-    size: 9000,
+    // 14000² / 9000² = 2.4: место под деревни, города и мегаполис
+    size: 14000,
+    spawnZoneMax: 0.14,      // игрок появляется только глубоко в безопасной зоне
     tickRate: 30,
     snapshotEvery: 2,        // Снимок каждые 2 тика: 15 раз в секунду
     viewHalfWidth: 950,      // Зона видимости, чуть шире экрана клиента
@@ -8,9 +9,10 @@ export const WORLD = {
     playerRadius: 13,
     playerSpeed: 170,
     maxPlayers: 200,
-    maxEnemies: 280,
-    baseEnemies: 110,
-    enemiesPerPlayer: 22,
+    maxEnemies: 520,
+    // Сколько монстров держать в радиусе enemyAreaRadius вокруг игрока, по зонам: безопасная → мёртвая
+    enemiesAround: [3, 11, 19, 27],
+    enemyAreaRadius: 1700,
     spawnProtectionMs: 4000,
     respawnDelayMs: 2500,
     pickupRadius: 42,
@@ -32,6 +34,10 @@ export const WORLD = {
     teamExpRadius: 1100,
     bossEveryMs: 240000,
     explosionDamage: 90,
+    toxicDamage: 4,          // урон в секунду в ядовитом воздухе без противогаза
+    resourceRespawnMs: 240000,
+    crateRespawnMs: 300000,
+    bagLifetimeMs: 240000,
     maxLevel: 99
 };
 

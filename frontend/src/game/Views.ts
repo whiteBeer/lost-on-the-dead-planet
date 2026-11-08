@@ -174,11 +174,16 @@ export class EnemyView {
         this.bar.gfx.visible = false;
     }
 
-    setTarget(x:number, y:number, rotation:number, moving:boolean) {
+    private hidden = false;
+    private charging = false;
+
+    setTarget(x:number, y:number, rotation:number, flags:number) {
         this.tx = x;
         this.ty = y;
         this.tr = rotation;
-        this.moving = moving;
+        this.moving = (flags & 1) !== 0;
+        this.hidden = (flags & 2) !== 0;
+        this.charging = (flags & 4) !== 0;
     }
 
     teleport(x:number, y:number, rotation:number) {
@@ -209,6 +214,10 @@ export class EnemyView {
             this.sprite.rotation += Math.sin(this.phase * 0.5) * 0.06;
         }
         this.sprite.scale.set(this.baseScaleX * squash, this.baseScaleY / squash);
+        // Невидимку выдаёт лишь лёгкое дрожание воздуха
+        const targetAlpha = this.hidden ? 0.1 : 1;
+        this.root.alpha += (targetAlpha - this.root.alpha) * Math.min(1, dt * 6);
+        this.sprite.tint = this.charging ? 0xff8080 : 0xffffff;
     }
 
     destroy() {
@@ -221,14 +230,25 @@ export class PickupView {
     private time = Math.random() * 6;
     private icon:PIXI.Sprite;
 
-    constructor(readonly kind:string, readonly weaponId:string, readonly x:number, readonly y:number, rarity?:string) {
+    constructor(readonly kind:string, readonly weaponId:string, readonly x:number, readonly y:number, rarity?:string, readonly count = 0) {
         this.root.position.set(x, y);
         const textureName = kind === "medkit" ? "medkit"
             : kind === "perk" ? `perk_${weaponId}`
-                : `weapon_${weaponId}`;
+                : kind === "item" ? `item_${weaponId}`
+                    : kind === "bag" ? "item_bag"
+                        : `weapon_${weaponId}`;
         this.icon = new PIXI.Sprite(Assets.tex(textureName));
         this.icon.anchor.set(0.5);
-        const target = kind === "medkit" ? 30 : kind === "perk" ? 46 : 56;
+        const target = kind === "medkit" ? 30 : kind === "perk" ? 46 : kind === "item" ? 30 : kind === "bag" ? 42 : 56;
+        if (count > 1) {
+            const label = new PIXI.Text({
+                text: String(count),
+                style: { fontFamily: "Rubik, Arial", fontSize: 12, fontWeight: "700", fill: 0xffffff, stroke: { color: 0x000000, width: 3 } }
+            });
+            label.anchor.set(0, 0);
+            label.position.set(8, 4);
+            this.root.addChild(label);
+        }
         this.icon.scale.set(target / Math.max(this.icon.texture.width, this.icon.texture.height));
 
         if (kind === "weapon" || kind === "perk") {

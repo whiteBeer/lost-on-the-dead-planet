@@ -65,6 +65,12 @@ class Server {
         socket.on("reload", () => this.world.reload(player));
         socket.on("pickup", () => this.world.takePickup(player));
         socket.on("perk", index => this.world.pickPerk(player, index));
+        socket.on("useSlot", index => this.world.useSlot(player, index));
+        socket.on("dropSlot", index => this.world.dropSlot(player, index));
+        socket.on("unequip", what => this.world.unequip(player, what));
+        socket.on("craft", recipeId => this.world.craft(player, recipeId));
+        socket.on("heal", () => this.world.quickHeal(player));
+        socket.on("grenade", () => this.world.useGrenade(player));
         socket.on("respawn", () => this.world.respawn(player));
         socket.on("teamInvite", (targetId) => {
             const target = this.world.invite(player, targetId);
@@ -89,6 +95,11 @@ class Server {
     }
 
     private sendSnapshots() {
+        // Срубленные деревья и разбитые ящики видны всем, где бы они ни были
+        const changes = this.world.takeObstacleChanges();
+        if (changes.length) {
+            this.io.emit("obs", changes);
+        }
         for (const player of this.world.allPlayers()) {
             this.io.to(player.socketId).emit("s", this.world.buildSnapshot(player));
         }

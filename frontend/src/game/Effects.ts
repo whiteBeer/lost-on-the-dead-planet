@@ -2,6 +2,8 @@ import * as PIXI from "pixi.js";
 import { NetBullet, NetFx, WorldConfig } from "./Types";
 
 const BULLET_COLORS:Record<string, number> = {
+    Bow: 0xd9c08a,
+    shot: 0xffe28a,
     Flamethrower: 0xff9a2e,
     Rocket: 0xffd24a,
     Railgun: 0x7ff3ff,
@@ -99,6 +101,34 @@ export class Effects {
                 case "boom":
                     this.burst(x, y, a || 100, 0xff8a2a, 0.4);
                     break;
+                case "swing":
+                    this.swing(x, y, (a || 0) / 100, b || 60);
+                    break;
+                case "gather":
+                    this.text(`+${a} ${["дерево", "камень", "металл"][b || 0]}`, x, y, [0xd9a66b, 0xc8c8c8, 0xd08850][b || 0], 15);
+                    this.burst(x, y, 14, [0x8a5a2b, 0x9a9a9a, 0x9a5a30][b || 0], 0.25);
+                    break;
+                case "loot":
+                    this.text(`+${a}`, x, y - 10, 0xfff3b0, 14);
+                    break;
+                case "crate":
+                    this.burst(x, y, 34, 0xb07a40, 0.35);
+                    break;
+                case "craft":
+                    this.text("Создано!", x, y - 30, 0xa8e05f, 17);
+                    break;
+                case "toxic":
+                    this.text("яд", x, y, 0x9be05a, 14);
+                    break;
+                case "scream":
+                    this.ring(x, y, 220, 0xffe07a);
+                    break;
+                case "roar":
+                    this.ring(x, y, 140, 0xff6060);
+                    break;
+                case "throw":
+                    this.grenadeArc(x, y, a || x, b || y);
+                    break;
             }
         }
     }
@@ -123,6 +153,52 @@ export class Effects {
         obj.position.set(x + (Math.random() - 0.5) * 20, y - 18);
         this.fxLayer.addChild(obj);
         this.floaters.push({ obj, life: 0.8, total: 0.8, vy: -38, grow: 0 });
+    }
+
+    private swing(x:number, y:number, rotation:number, range:number) {
+        if (this.floaters.length >= MAX_FLOATERS) {
+            return;
+        }
+        const obj = new PIXI.Graphics();
+        obj.arc(0, 0, range, -0.75, 0.75).stroke({ width: 5, color: 0xffffff, alpha: 0.7 });
+        obj.position.set(x, y);
+        obj.rotation = rotation;
+        this.fxLayer.addChild(obj);
+        this.floaters.push({ obj, life: 0.16, total: 0.16, vy: 0, grow: 0 });
+    }
+
+    private ring(x:number, y:number, radius:number, color:number) {
+        if (this.floaters.length >= MAX_FLOATERS) {
+            return;
+        }
+        const obj = new PIXI.Graphics();
+        obj.circle(0, 0, radius).stroke({ width: 4, color, alpha: 0.8 });
+        obj.position.set(x, y);
+        obj.scale.set(0.3);
+        this.fxLayer.addChild(obj);
+        this.floaters.push({ obj, life: 0.45, total: 0.45, vy: 0, grow: 1.5 });
+    }
+
+    /** Граната летит по дуге 0,65 с, потом взрывается на сервере. */
+    private grenadeArc(x:number, y:number, tx:number, ty:number) {
+        const obj = new PIXI.Graphics();
+        obj.circle(0, 0, 6).fill(0x4a6a2a).stroke({ width: 2, color: 0x000000 });
+        obj.position.set(x, y);
+        this.fxLayer.addChild(obj);
+        const start = performance.now();
+        const step = () => {
+            const t = Math.min(1, (performance.now() - start) / 650);
+            if (obj.destroyed) {
+                return;
+            }
+            obj.position.set(x + (tx - x) * t, y + (ty - y) * t - Math.sin(t * Math.PI) * 60);
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                obj.destroy();
+            }
+        };
+        requestAnimationFrame(step);
     }
 
     private burst(x:number, y:number, radius:number, color:number, life:number) {

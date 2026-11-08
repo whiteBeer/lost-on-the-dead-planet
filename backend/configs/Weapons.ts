@@ -23,11 +23,48 @@ export interface WeaponConfig {
     pierce?:number;    // Сквозь сколько целей проходит
     explosion?:number; // Радиус взрыва
     bulletSize?:number;
+    // Ближний бой: удар по дуге перед игроком вместо пули
+    melee?:{ range:number, arc:number, gather?:Partial<Record<"wood" | "stone" | "scrap", number>> };
+    craftOnly?:boolean;     // не выпадает с монстров и из сундуков
 }
 
-export const STARTING_WEAPON = "Pistol";
+export const STARTING_WEAPON = "Knife";
 
 export const WEAPONS:Record<string, WeaponConfig> = {
+    "Knife": {
+        id: "Knife", name: "Нож", rarity: "common", craftOnly: true,
+        damage: 17, speedInSecond: 0, range: 0, fireRate: 380,
+        spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
+        clipSize: 1, reloadTime: 0,
+        melee: { range: 58, arc: 1.7, gather: { wood: 1, stone: 1, scrap: 1 } }
+    },
+    "Spear": {
+        id: "Spear", name: "Копьё", rarity: "common", craftOnly: true,
+        damage: 34, speedInSecond: 0, range: 0, fireRate: 620,
+        spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
+        clipSize: 1, reloadTime: 0,
+        melee: { range: 92, arc: 0.9, gather: { wood: 1, stone: 1, scrap: 1 } }
+    },
+    "Axe": {
+        id: "Axe", name: "Топор", rarity: "common", craftOnly: true,
+        damage: 28, speedInSecond: 0, range: 0, fireRate: 640,
+        spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
+        clipSize: 1, reloadTime: 0,
+        melee: { range: 66, arc: 1.5, gather: { wood: 3, stone: 1, scrap: 1 } }
+    },
+    "Pickaxe": {
+        id: "Pickaxe", name: "Кирка", rarity: "common", craftOnly: true,
+        damage: 24, speedInSecond: 0, range: 0, fireRate: 700,
+        spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
+        clipSize: 1, reloadTime: 0,
+        melee: { range: 64, arc: 1.3, gather: { wood: 1, stone: 3, scrap: 2 } }
+    },
+    "Bow": {
+        id: "Bow", name: "Лук", rarity: "common", craftOnly: true,
+        damage: 30, speedInSecond: 760, range: 720, fireRate: 650,
+        spreadBase: 0, spreadMax: 0.06, spreadIncrement: 0.03, spreadRecovery: 0.3,
+        clipSize: 6, reloadTime: 1.6, bulletSize: 3
+    },
     "Pistol": {
         id: "Pistol", name: "Пистолет", rarity: "common",
         damage: 18, speedInSecond: 1000, range: 650, fireRate: 260,
@@ -93,7 +130,7 @@ export const WEAPONS:Record<string, WeaponConfig> = {
 
 // Какие редкости падают с монстра какого уровня опасности: tier -> [редкость, вес]
 export const DROP_TABLE:Record<number, [WeaponRarity, number][]> = {
-    1: [["uncommon", 85], ["rare", 15]],
+    1: [["common", 45], ["uncommon", 45], ["rare", 10]],
     2: [["uncommon", 50], ["rare", 40], ["epic", 10]],
     3: [["rare", 45], ["epic", 45], ["legendary", 10]],
     4: [["epic", 50], ["legendary", 50]]
@@ -111,6 +148,6 @@ export function rollWeapon(tier:number):string {
             break;
         }
     }
-    const pool = Object.values(WEAPONS).filter(el => el.rarity === rarity);
+    const pool = Object.values(WEAPONS).filter(el => el.rarity === rarity && !el.craftOnly);
     return pool[Math.floor(Math.random() * pool.length)].id;
 }

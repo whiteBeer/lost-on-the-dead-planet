@@ -5,8 +5,20 @@ export interface WorldConfig {
     playerSpeed:number;
     viewWidth:number;
     viewHeight:number;
-    obstacles:[string, number, number, number, number][];
-    weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number }>;
+    // [id, вид, форма, x, y, радиус, ширина, высота, поворот, стиль, цел ли]
+    obstacles:[number, string, "c" | "r", number, number, number, number, number, number, string, number][];
+    map:{
+        gridSize:number;
+        cell:number;
+        zone:string;
+        zones:{ safe:number, wild:number, danger:number, toxic:number };
+        zoneNames:string[];
+        settlements:{ kind:string, name:string, x:number, y:number, w:number, h:number }[];
+        roads:{ x:number, y:number, w:number, h:number }[];
+    };
+    items:Record<string, { name:string, kind:string, description:string }>;
+    recipes:{ id:string, result:string, count:number, cost:Record<string, number> }[];
+    weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number, melee:{ range:number, arc:number } | null }>;
     enemies:Record<string, { id:string, name:string, size:number, radius:number }>;
     perks:Record<string, { name:string, description:string, icon:string }>;
 }
@@ -44,14 +56,20 @@ export interface MeState {
     offersLeft:number;
     offer:PerkCard[] | null;
     perks:string[];
+    inv:({ id:string, n:number } | null)[];
+    armor:string;
+    mask:string;
+    zone:number;
+    toxic:boolean;
+    place:string;
 }
 
 // [id, x, y, rotation, hp, maxHp, weaponId, protected]
 export type NetPlayer = [number, number, number, number, number, number, string, number];
-// [id, type, x, y, rotation, hp, maxHp, moving]
+// [id, type, x, y, rotation, hp, maxHp, флаги: 1 идёт, 2 невидим, 4 рывок]
 export type NetEnemy = [number, string, number, number, number, number, number, number];
-// [id, kind, itemId, x, y, lifetimeLeftMs]
-export type NetPickup = [number, string, string, number, number, number];
+// [id, kind, itemId, x, y, lifetimeLeftMs, count]
+export type NetPickup = [number, string, string, number, number, number, number];
 // [id, x, y, opensInMs]
 export type NetChest = [number, number, number, number];
 // [id, kind, x, y, vx, vy, left, size, ownerId]
@@ -112,4 +130,8 @@ export interface HudState {
     weapons:WorldConfig["weapons"];
     nearPickup:string;
     perkCatalog:WorldConfig["perks"];
+    items:WorldConfig["items"];
+    recipes:WorldConfig["recipes"];
+    zoneNames:string[];
+    zones:WorldConfig["map"]["zones"] | null;
 }
