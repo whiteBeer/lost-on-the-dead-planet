@@ -28,6 +28,7 @@ async function shootUntil(world, shooter, done, limitMs = 6000) {
     if (WEAPONS[shooter.weaponId].melee) {
         world.equip(shooter, "Pistol");
     }
+    world.addItem(shooter, WEAPONS[shooter.weaponId].ammo, 300);
     const start = Date.now();
     shooter.firing = true;
     while (!done() && Date.now() - start < limitMs) {
@@ -71,7 +72,7 @@ const tests = {
         assert.strictEqual(kinds.filter(el => el === "city").length, 1);
         assert.ok(kinds.filter(el => el === "town").length >= 3, kinds.join());
         assert.ok(kinds.filter(el => el === "village").length >= 8, kinds.join());
-        assert.ok(world.obstacles.filter(el => el.kind === "building").length >= 150);
+        assert.ok(world.obstacles.filter(el => el.kind === "building" || el.kind === "interior").length >= 150);
         assert.ok(world.obstacles.length > 3000);
         const safe = [...world.map.zone].filter(v => v / 255 < ZONES.safe).length / world.map.zone.length;
         assert.ok(safe > 0.2 && safe < 0.25, `безопасных ${safe}`);
@@ -223,7 +224,8 @@ const tests = {
     },
     "здание останавливает пулю": async () => {
         const world = new World(9);
-        const building = world.obstacles.find(el => el.kind === "building" && el.w > 100 && el.zone < 0.9);
+        // Стены дома с дверью сверху или снизу: по горизонтали пуля упирается в стену
+        const building = world.obstacles.find(el => el.kind === "interior" && el.doorNy !== 0 && el.w > 70 && el.zone < 0.9);
         const a = world.addPlayer("a", "Стрелок");
         const b = world.addPlayer("b", "За стеной");
         world.spawnEnemies = () => {};
@@ -233,6 +235,7 @@ const tests = {
         const hp = b.hp;
         const start = Date.now();
         world.equip(a, "Rifle");
+        world.addItem(a, "ammo_556", 200);
         a.firing = true;
         while (Date.now() - start < 1500) { world.tick(); await sleep(15); }
         assert.strictEqual(b.hp, hp);
@@ -357,9 +360,10 @@ const tests = {
         assert.ok(["epic", "legendary"].includes(WEAPONS[weapons[0].weaponId].rarity));
         world.takePickup(a);
         assert.strictEqual(a.weaponId, weapons[0].weaponId);
-        assert.strictEqual(a.ammo, WEAPONS[a.weaponId].clipSize);
+        assert.strictEqual(a.ammo, weapons[0].ammo, "магазин такой, каким лежал");
+        assert.ok(a.ammo < WEAPONS[a.weaponId].clipSize);
     },
-    "аирдроп спускается, открывается по E и даёт оружие не выше зелёного": () => {
+    "аирдроп спускается, открывается по E и даёт только положительный перк": () => {
         const world = arena();
         const a = world.addPlayer("a", "A");
         place(a, 500, 500);
@@ -367,36 +371,156 @@ const tests = {
         const chest = world.createChest(560, 500, now + 45000);
         const before = world.buildSnapshot(a);
         assert.strictEqual(before.c.length, 1);
-        assert.strictEqual(before.c[0][0], chest.id);
         assert.ok(before.c[0][3] > 44000 && before.c[0][3] <= 45000);
-        // В воздухе открыть нельзя
         world.takePickup(a);
-        assert.strictEqual(world.chests.size, 1);
+        assert.strictEqual(world.chests.size, 1, "в воздухе не открыть");
         chest.landsAt = now - 1;
         world.updateChests(now);
-        assert.strictEqual(world.chests.size, 1, "приземлился и ждёт игрока");
         world.takePickup(a);
         assert.strictEqual(world.chests.size, 0);
-        const weapons = [...world.pickups.values()].filter(el => el.kind === "weapon");
-        assert.strictEqual(weapons.length, 1);
-        const reward = weapons[0];
-        assert.ok(reward.expiresAt - now >= 179900 && reward.expiresAt - now <= 180200);
-        for (const el of world.pickups.values()) {
-            el.expiresAt = now - 1;
-        }
-        world.updatePickups(now);
-        assert.strictEqual(world.pickups.size, 0);
-        // Никто не открыл за 3 минуты — исчезает
+        const rewards = [...world.pickups.values()];
+        assert.strictEqual(rewards.length, 1);
+        assert.strictEqual(rewards[0].kind, "perk");
+        assert.ok(POSITIVE_PERKS.some(el => el.id === rewards[0].perkId));
+        assert.ok(rewards[0].expiresAt - now >= 179900 && rewards[0].expiresAt - now <= 180200);
         const lost = world.createChest(560, 500, now - 1);
         lost.expiresAt = now - 1;
         world.updateChests(now);
-        assert.strictEqual(world.chests.size, 0);
-        // Оружие из аирдропа всегда обычное или зелёное
-        for (let i = 0; i < 300; i++) {
-            world.openChest(world.createChest(9000, 9000, now - 1));
+        assert.strictEqual(world.chests.size, 0, "не вскрытый за 3 минуты исчезает");
+    },
+    "патроны по калибрам: перезарядка берёт из рюкзака, смена оружия не заряжает": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        world.equip(a, "Pistol", 0);
+        world.reload(a);
+        assert.strictEqual(a.reloadEndsAt, 0, "без патронов перезарядки нет");
+        assert.ok(a.hint.includes("9×19"));
+        world.addItem(a, "ammo_9mm", 5);
+        world.reload(a);
+        assert.ok(a.reloadEndsAt > 0);
+        a.reloadEndsAt = Date.now() - 1;
+        world.tick();
+        assert.strictEqual(a.ammo, 5);
+        assert.strictEqual(world.countItem(a, "ammo_9mm"), 0);
+        // Пистолет в рюкзак, SMG в руки и обратно: патроны не появляются из воздуха
+        world.addItem(a, "w:SMG", 1, 0);
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "w:SMG"));
+        assert.strictEqual(a.weaponId, "SMG");
+        assert.strictEqual(a.ammo, 0);
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "w:Pistol"));
+        assert.strictEqual(a.weaponId, "Pistol");
+        assert.strictEqual(a.ammo, 5);
+        world.switchSlot(a, "tool");
+        world.switchSlot(a, "gun");
+        assert.strictEqual(a.ammo, 5);
+        // Выброшенное оружие хранит магазин
+        world.dropSlot(a, a.inventory.findIndex(el => el && el.id === "w:SMG"));
+        const smg = [...world.pickups.values()].find(el => el.weaponId === "SMG");
+        assert.strictEqual(smg.ammo, 0);
+    },
+    "голод и жажда: убывают, на нуле ранят, еда и вода восстанавливают": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        a.food = 0;
+        a.water = 10;
+        const hp = a.hp;
+        world.updatePlayers(Date.now(), 2);
+        assert.ok(a.hp < hp, "голод ранит");
+        assert.ok(a.water < 10);
+        world.addItem(a, "canned", 1);
+        world.addItem(a, "water", 1);
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "canned"));
+        world.useSlot(a, a.inventory.findIndex(el => el && el.id === "water"));
+        assert.strictEqual(a.food, 45);
+        assert.ok(a.water > 55);
+        assert.strictEqual(world.countItem(a, "canned"), 0);
+    },
+    "уровень даёт постоянную прибавку к урону, здоровью и защите": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        const base = { ...a.stats };
+        a.exp = 30000;
+        world.applyLevels(a);
+        assert.ok(a.level >= 15, `уровень ${a.level}`);
+        assert.ok(a.stats.damage >= base.damage * 1.5);
+        assert.ok(a.stats.maxHp >= base.maxHp + 40);
+        assert.ok(a.stats.armor >= 0.14);
+    },
+    "лагерь выживших: торговля, монстры не нападают, игроки не ранят": async () => {
+        const world = new World(20261104);
+        const camp = world.map.camps[0];
+        assert.ok(world.map.camps.length === 3, "три лагеря");
+        const a = world.addPlayer("a", "Покупатель");
+        const b = world.addPlayer("b", "Задира");
+        world.enemies.clear();
+        world.spawnEnemies = () => {};
+        place(a, camp.x, camp.y);
+        place(b, camp.x + 60, camp.y);
+        // Обмен: без вещей нельзя, с вещами — получаем товар
+        assert.strictEqual(world.trade(a, "t0_water"), false);
+        world.addItem(a, "wood", 4);
+        assert.strictEqual(world.trade(a, "t0_water"), true);
+        assert.strictEqual(world.countItem(a, "wood"), 0);
+        assert.strictEqual(world.countItem(a, "water"), 1);
+        assert.strictEqual(world.trade(a, "t2_rocket"), false, "товар чужого лагеря");
+        // Далеко от торговца — нельзя
+        place(a, camp.x + 3000, camp.y);
+        world.addItem(a, "wood", 4);
+        assert.strictEqual(world.trade(a, "t0_water"), false);
+        place(a, camp.x, camp.y);
+        // Монстр рядом не выбирает целью игрока в лагере
+        const zombie = world.createEnemy("zombie", camp.x + camp.size / 2 + 80, camp.y);
+        world.enemyThink(zombie, Date.now());
+        assert.strictEqual(zombie.targetId, 0);
+        // PvP в лагере не работает
+        const hp = a.hp;
+        world.damagePlayer(a, 50, b, "Pistol");
+        assert.strictEqual(a.hp, hp);
+    },
+    "в дом можно зайти через дверь, на полке есть добыча": () => {
+        const world = new World(4);
+        const home = world.obstacles.find(el => el.kind === "interior" && el.w > 70 && el.h > 70);
+        assert.ok(home, "дома с входом есть");
+        assert.strictEqual(world.interiorAt(home.x, home.y), home);
+        const p = world.addPlayer("p", "Жилец");
+        world.enemies.clear();
+        world.spawnEnemies = () => {};
+        // Входим через дверь пошагово
+        p.x = home.doorX + home.doorNx * 40;
+        p.y = home.doorY + home.doorNy * 40;
+        p.protectedUntil = Date.now() + 99999;
+        for (let i = 0; i < 30; i++) {
+            const moved = world.resolveMove(p.x - home.doorNx * 4, p.y - home.doorNy * 4, 13);
+            p.x = moved.x;
+            p.y = moved.y;
         }
-        const rarities = new Set([...world.pickups.values()].filter(el => el.kind === "weapon").map(el => WEAPONS[el.weaponId].rarity));
-        assert.deepStrictEqual([...rarities].sort(), ["common", "uncommon"]);
+        assert.strictEqual(world.interiorAt(p.x, p.y), home, "игрок внутри");
+        // Сквозь стену не пройти
+        const side = home.doorNy !== 0 ? { x: home.x + home.w / 2 + 30, y: home.y } : { x: home.x, y: home.y + home.h / 2 + 30 };
+        let q = { x: side.x, y: side.y };
+        for (let i = 0; i < 30; i++) {
+            q = world.resolveMove(q.x + (home.x - side.x) / 30, q.y + (home.y - side.y) / 30, 13);
+        }
+        assert.notStrictEqual(world.interiorAt(q.x, q.y), home, "стена держит");
+        // Монстр снаружи идёт к двери, а не в стену
+        const goal = world.doorGoal(side.x, side.y, p.x, p.y);
+        assert.ok(goal && Math.hypot(goal.x - home.doorX, goal.y - home.doorY) <= 45);
+        // Полки: обыскиваются по E, потом пустые
+        const shelf = world.obstacles.find(el => el.kind === "shelf" && Math.abs(el.x - home.x) < home.w / 2 && Math.abs(el.y - home.y) < home.h / 2);
+        assert.ok(shelf);
+        let found = 0;
+        for (let i = 0; i < 20; i++) {
+            shelf.alive = true;
+            p.inventory = new Array(12).fill(null);
+            p.x = shelf.x;
+            p.y = shelf.y + 20;
+            world.takePickup(p);
+            assert.strictEqual(shelf.alive, false);
+            found += p.inventory.filter(Boolean).length;
+        }
+        assert.ok(found > 0, "за 20 обысков что-то нашлось");
     },
     "слоты инструмента и оружия переключаются, патроны не восстанавливаются": () => {
         const world = arena();

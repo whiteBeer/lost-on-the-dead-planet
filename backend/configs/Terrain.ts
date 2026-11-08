@@ -2,7 +2,9 @@
  * Генерация мира: поле опасности, поселения, дороги, природа.
  * Всё детерминировано seed: сервер строит карту один раз и отдаёт клиенту готовые данные.
  */
-export type ObstacleKind = "tree" | "rock" | "wreck" | "crate" | "building";
+// building — сплошная высотка; interior — пол дома, в который можно зайти (не сталкивается);
+// wall — стены такого дома; shelf — полка с добычей внутри (не сталкивается)
+export type ObstacleKind = "tree" | "rock" | "wreck" | "crate" | "building" | "interior" | "wall" | "shelf" | "trader";
 export type ResourceKind = "wood" | "stone" | "scrap";
 
 export interface Obstacle {
@@ -24,6 +26,11 @@ export interface Obstacle {
     respawnAt:number;
     zone:number;       // опасность в точке, 0..1
     settlement:number; // индекс поселения или -1
+    // У дома с входом: середина двери на стене и наружу смотрящая нормаль
+    doorX?:number;
+    doorY?:number;
+    doorNx?:number;
+    doorNy?:number;
 }
 
 export type SettlementKind = "village" | "town" | "city";
@@ -35,6 +42,15 @@ export interface Settlement {
     y:number;
     w:number;
     h:number;
+}
+
+/** Лагерь выживших: частокол, торговец, монстры не заходят, игроки не ранят друг друга. tier — 0 безопасная зона … 2 опасная */
+export interface Camp {
+    name:string;
+    x:number;
+    y:number;
+    size:number;
+    tier:number;
 }
 
 export interface Road {
@@ -51,6 +67,7 @@ export interface WorldMap {
     zone:Uint8Array;     // опасность 0..255 по клеткам, это процентиль: 0.22 — граница безопасной зоны
     settlements:Settlement[];
     roads:Road[];
+    camps:Camp[];
     obstacles:Obstacle[];
 }
 
@@ -218,6 +235,58 @@ export function generateWorld(seed:number, size:number):WorldMap {
             zone: zoneAt(x, y), settlement: settlementIndexAt(x, y), ...extra
         });
     };
+    // Дом, в который можно зайти: пол, четыре стены с дверным проёмом и полки у дальней стены
+    const WALL = 10;
+    const DOOR = 50;
+    const house = (cx:number, cy:number, w:number, h:number, style:string, door:"n" | "s" | "w" | "e") => {
+        const x = Math.round(cx);
+        const y = Math.round(cy);
+        w = Math.round(w);
+        h = Math.round(h);
+        const nx = door === "e" ? 1 : door === "w" ? -1 : 0;
+        const ny = door === "s" ? 1 : door === "n" ? -1 : 0;
+        addRect("interior", x, y, w, h, style, { doorX: x + nx * w / 2, doorY: y + ny * h / 2, doorNx: nx, doorNy: ny });
+        const horizontal = (wy:number, open:boolean) => {
+            if (!open) {
+                addRect("wall", x, wy, w, WALL, "wall");
+                return;
+            }
+            const len = w / 2 - DOOR / 2;
+            if (len >= 6) {
+                addRect("wall", x - DOOR / 2 - len / 2, wy, len, WALL, "wall");
+                addRect("wall", x + DOOR / 2 + len / 2, wy, len, WALL, "wall");
+            }
+        };
+        const vertical = (wx:number, open:boolean) => {
+            const inner = h - WALL * 2;
+            if (!open) {
+                addRect("wall", wx, y, WALL, inner, "wall");
+                return;
+            }
+            const len = inner / 2 - DOOR / 2;
+            if (len >= 6) {
+                addRect("wall", wx, y - DOOR / 2 - len / 2, WALL, len, "wall");
+                addRect("wall", wx, y + DOOR / 2 + len / 2, WALL, len, "wall");
+            }
+        };
+        horizontal(y - h / 2 + WALL / 2, door === "n");
+        horizontal(y + h / 2 - WALL / 2, door === "s");
+        vertical(x - w / 2 + WALL / 2, door === "w");
+        vertical(x + w / 2 - WALL / 2, door === "e");
+        // Полки вдоль стены напротив двери
+        const along = ny !== 0 ? w : h;
+        const count = along > 150 ? 3 : along > 100 ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+            const t = (i + 0.5) / count - 0.5;
+            if (ny !== 0) {
+                addRect("shelf", x + t * (w - WALL * 2 - 44), y - ny * (h / 2 - WALL - 8), 40, 14, "shelf", { hp: 1, maxAmount: 1 });
+            } else {
+                addRect("shelf", x - nx * (w / 2 - WALL - 8), y + t * (h - WALL * 2 - 44), 14, 40, "shelf", { hp: 1, maxAmount: 1 });
+            }
+        }
+    };
+    const randomDoor = ():"n" | "s" | "w" | "e" => (["n", "s", "w", "e"] as const)[Math.floor(random() * 4)];
+
     const crate = (x:number, y:number) => addCircle("crate", x, y, 22, "crate", { hp: 60, maxAmount: 60 });
     const wreck = (x:number, y:number) => addCircle("wreck", x, y, 42, "wreck", { res: "scrap", amount: 5, maxAmount: 5 });
 
@@ -242,7 +311,8 @@ export function generateWorld(seed:number, size:number):WorldMap {
                 const offset = roadW / 2 + 40 + (horizontal ? h : w) / 2 + random() * 30;
                 const x = horizontal ? s.x + along * s.w : s.x + side * offset;
                 const y = horizontal ? s.y + side * offset : s.y + along * s.h;
-                addRect("building", x, y, w, h, "house");
+                // Дверь смотрит на улицу
+                house(x, y, w, h, "house", horizontal ? (side < 0 ? "s" : "n") : (side < 0 ? "e" : "w"));
             }
             for (let i = 0; i < 3; i++) {
                 crate(s.x + (random() - 0.5) * s.w * 0.8, s.y + (random() - 0.5) * s.h * 0.8);
@@ -287,13 +357,15 @@ export function generateWorld(seed:number, size:number):WorldMap {
                     const half = (inner - pad * 3) / 2;
                     const style = s.kind === "city" ? "office" : "shop";
                     if (split) {
-                        addRect("building", bx + pad + half / 2, by + inner / 2, half, inner - pad * 2, style);
-                        addRect("building", bx + pad * 2 + half * 1.5, by + inner / 2, half, inner - pad * 2, style);
+                        house(bx + pad + half / 2, by + inner / 2, half, inner - pad * 2, style, random() < 0.5 ? "w" : randomDoor());
+                        house(bx + pad * 2 + half * 1.5, by + inner / 2, half, inner - pad * 2, style, random() < 0.5 ? "e" : randomDoor());
                     } else {
                         for (let i = 0; i < 4; i++) {
                             const ox = i % 2;
                             const oy = Math.floor(i / 2);
-                            addRect("building", bx + pad + half / 2 + ox * (half + pad), by + pad + half / 2 + oy * (half + pad), half, half, style);
+                            // Дверь наружу квартала, чтобы проём не упирался в соседний дом
+                            const door = random() < 0.5 ? (ox ? "e" : "w") : (oy ? "s" : "n");
+                            house(bx + pad + half / 2 + ox * (half + pad), by + pad + half / 2 + oy * (half + pad), half, half, style, door);
                         }
                     }
                 }
@@ -307,9 +379,45 @@ export function generateWorld(seed:number, size:number):WorldMap {
         }
     }
 
+    // ---------- Лагеря выживших ----------
+    const camps:Camp[] = [];
+    const CAMP = 380;
+    const campSpecs:[string, number, number, number][] = [
+        ["Лагерь «Рассвет»", 0, 0.04, 0.18], ["Форпост «Ржавый»", 1, 0.3, 0.5], ["Бункер «Последний рубеж»", 2, 0.6, 0.78]
+    ];
+    for (const [name, tier, lo, hi] of campSpecs) {
+        for (let attempt = 0; attempt < 3000; attempt++) {
+            const x = 600 + random() * (size - 1200);
+            const y = 600 + random() * (size - 1200);
+            const z = zoneAt(x, y);
+            const box = { x, y, w: CAMP, h: CAMP };
+            if (z < lo || z > hi || settlements.some(s => rectsOverlap(s, box, 500)) || camps.some(c => Math.hypot(c.x - x, c.y - y) < 2500)
+                || roads.some(r => rectsOverlap(r, box, 60))) {
+                continue;
+            }
+            camps.push({ name, x: Math.round(x), y: Math.round(y), size: CAMP, tier });
+            break;
+        }
+    }
+    for (const c of camps) {
+        // Частокол с двумя воротами
+        const half = c.size / 2;
+        const gate = 70;
+        const seg = half - gate / 2;
+        for (const sy of [-1, 1]) {
+            addRect("wall", c.x - gate / 2 - seg / 2, c.y + sy * half, seg, 12, "fence");
+            addRect("wall", c.x + gate / 2 + seg / 2, c.y + sy * half, seg, 12, "fence");
+        }
+        for (const sx of [-1, 1]) {
+            addRect("wall", c.x + sx * half, c.y, 12, c.size + 12, "fence");
+        }
+        addCircle("trader", c.x, c.y - 40, 18, "trader");
+    }
+
     // ---------- Природа ----------
     const insideSettlement = (x:number, y:number, gap:number) =>
-        settlements.some(s => Math.abs(x - s.x) * 2 < s.w + gap * 2 && Math.abs(y - s.y) * 2 < s.h + gap * 2);
+        settlements.some(s => Math.abs(x - s.x) * 2 < s.w + gap * 2 && Math.abs(y - s.y) * 2 < s.h + gap * 2)
+        || camps.some(c => Math.abs(x - c.x) * 2 < c.size + gap * 2 && Math.abs(y - c.y) * 2 < c.size + gap * 2);
     const onRoad = (x:number, y:number, gap:number) =>
         roads.some(r => Math.abs(x - r.x) * 2 < r.w + gap * 2 && Math.abs(y - r.y) * 2 < r.h + gap * 2);
 
@@ -361,5 +469,5 @@ export function generateWorld(seed:number, size:number):WorldMap {
     obstacles.forEach((el, index) => {
         el.id = index + 1;
     });
-    return { size, gridSize, cell, zone, settlements, roads, obstacles };
+    return { size, gridSize, cell, zone, settlements, roads, camps, obstacles };
 }

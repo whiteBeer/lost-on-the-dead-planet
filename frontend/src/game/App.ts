@@ -3,6 +3,8 @@ import { io, Socket } from "socket.io-client";
 import { Assets } from "./Assets";
 import { Control } from "./Control";
 import { ChestView, EnemyView, PickupView, PlayerView } from "./Views";
+import { Sound } from "./Sound";
+import { TRADER_REACH } from "./WorldMap";
 import { Effects } from "./Effects";
 import { WorldMap } from "./WorldMap";
 import { FeedEvent, HudState, Invite, MeState, Roster, Snapshot, WorldConfig } from "./Types";
@@ -11,6 +13,7 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || undefined;
 const SOCKET_PATH = process.env.NEXT_PUBLIC_SOCKET_PATH || "/socket.io";
 const PICKUP_REACH = 60;
 const CHEST_REACH = 90;
+const SHELF_REACH = 62;
 
 export class App {
     private pixi = new PIXI.Application();
@@ -31,6 +34,8 @@ export class App {
     private enemies = new Map<number, EnemyView>();
     private pickups = new Map<number, PickupView>();
     private chests = new Map<number, ChestView>();
+    readonly sound = new Sound();
+    private lastHint = "";
     private effects:Effects | null = null;
     private mine:PlayerView | null = null;
     private map:WorldMap | null = null;
@@ -179,6 +184,11 @@ export class App {
         this.syncChests(snapshot);
         this.effects?.spawnBullets(snapshot.b);
         this.effects?.applyFx(snapshot.fx, this.config);
+        this.sound.fromSnapshot(snapshot, this.x, this.y);
+        if (me.hint && me.hint !== this.lastHint && me.hint.startsWith("Нет патронов")) {
+            this.sound.play("empty", this.x, this.y, this.x, this.y);
+        }
+        this.lastHint = me.hint;
     }
 
     private syncMine(me:MeState) {
@@ -319,6 +329,8 @@ export class App {
         this.enemies.forEach(view => view.update(dt));
         this.pickups.forEach(view => view.update(dt));
         this.chests.forEach(view => view.update(dt));
+        this.map?.updateRoofs(this.x, this.y, dt);
+        this.sound.ambient(this.enemies.size, dt);
         this.effects?.update(dt);
 
         this.updateCamera();
@@ -406,11 +418,18 @@ export class App {
         if (code === "KeyR") {
             this.socket?.emit("reload");
         } else if (code === "KeyE") {
-            this.socket?.emit("pickup");
+            if (this.nearPickupName() === "trader") {
+                this.onUiKey("OpenTrade");
+            } else {
+                this.socket?.emit("pickup");
+            }
         } else if (code === "KeyH") {
             this.socket?.emit("heal");
         } else if (code === "KeyG") {
             this.socket?.emit("grenade");
+        } else if (code === "KeyM") {
+            this.sound.toggle();
+            this.pushHud(true);
         } else if (code === "KeyQ") {
             this.switchSlot("swap");
         } else if ((code === "Digit1" || code === "Digit2") && !me?.offer) {
@@ -436,10 +455,16 @@ export class App {
         if (!me || me.dead) {
             return "";
         }
+        for (const trader of this.map?.traders || []) {
+            if (Math.hypot(trader.x - this.x, trader.y - this.y) < TRADER_REACH) {
+                return "trader";
+            }
+        }
         let best = "";
         let bestDist = PICKUP_REACH;
         let chestDist = CHEST_REACH;
         let chest = false;
+        let shelfNear = false;
         this.chests.forEach((view) => {
             const dist = Math.hypot(view.x - this.x, view.y - this.y);
             if (view.landed && dist < chestDist) {
@@ -447,6 +472,14 @@ export class App {
                 chestDist = dist;
             }
         });
+        for (const shelf of this.map?.shelves || []) {
+            const dist = Math.hypot(shelf.x - this.x, shelf.y - this.y);
+            if (shelf.alive && dist < SHELF_REACH && dist < chestDist) {
+                chest = true;
+                chestDist = dist;
+                shelfNear = true;
+            }
+        }
         this.pickups.forEach((view) => {
             if (view.kind === "weapon" || view.kind === "bag") {
                 const dist = Math.hypot(view.x - this.x, view.y - this.y);
@@ -456,7 +489,7 @@ export class App {
                 }
             }
         });
-        return chest && (!best || chestDist <= bestDist) ? "chest" : best;
+        return chest && (!best || chestDist <= bestDist) ? (shelfNear ? "shelf" : "chest") : best;
     }
 
     private pushHud(force = false) {
@@ -479,6 +512,9 @@ export class App {
             announce: this.announce,
             weapons: this.config?.weapons || {},
             nearPickup: this.nearPickupName(),
+            muted: this.sound.muted,
+            trades: this.config?.trades || [],
+            camps: this.config?.map.camps || [],
             perkCatalog: this.config?.perks || {},
             items: this.config?.items || {},
             recipes: this.config?.recipes || [],
@@ -507,6 +543,10 @@ export class App {
 
     unequip(what:"weapon" | "tool" | "gun" | "armor" | "mask") {
         this.socket?.emit("unequip", what);
+    }
+
+    trade(tradeId:string) {
+        this.socket?.emit("trade", tradeId);
     }
 
     switchSlot(which:"tool" | "gun" | "swap") {

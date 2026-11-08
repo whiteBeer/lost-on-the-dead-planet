@@ -3,8 +3,8 @@ import { WORLD, expForLevel } from "./configs/World";
 import { ENEMIES, EnemyConfig } from "./configs/Enemies";
 import { WEAPONS, WeaponConfig, STARTING_WEAPON, isToolWeapon, rollWeapon } from "./configs/Weapons";
 import { PERKS, POSITIVE_PERKS, Perk, PlayerStats, computeStats, getPerk, rollPerkOffer } from "./configs/Perks";
-import { generateWorld, Obstacle, WorldMap, ZONES, ZONE_NAMES, zoneLevel } from "./configs/Terrain";
-import { AIRDROP_LOOT, CRATE_LOOT, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
+import { Camp, generateWorld, Obstacle, WorldMap, ZONES, ZONE_NAMES, zoneLevel } from "./configs/Terrain";
+import { CRATE_LOOT, SHELF_LOOT, TRADES, CRATE_WEAPON, INVENTORY_SLOTS, ITEMS, RECIPES, isWeaponItem, rollLoot, stackOf } from "./configs/Items";
 import {
     AreaGrid, Coords, SpatialGrid, clamp, distSq, pushCircleOutOfRect, segmentCircleHit, segmentRectHit
 } from "./utils/geometry";
@@ -12,6 +12,7 @@ import {
 export interface ItemStack {
     id:string;
     n:number;
+    a?:number;   // патронов в магазине у оружия в рюкзаке
 }
 
 export interface Team {
@@ -52,6 +53,8 @@ export interface Player {
     ammo:number;
     hint:string;          // короткая подсказка только для этого игрока
     hintUntil:number;
+    food:number;          // сытость 0..100
+    water:number;         // вода 0..100
     reloadEndsAt:number;
     nextShotAt:number;
     spreadNow:number;
@@ -126,6 +129,7 @@ export interface Pickup {
     count?:number;
     bag?:ItemStack[];
     owner?:string;
+    ammo?:number;      // патронов в магазине у лежащего оружия
     x:number;
     y:number;
     expiresAt:number;
@@ -177,6 +181,8 @@ export class World extends EventEmitter {
     private newBullets = new SpatialGrid<{ x:number, y:number, data:any[] }>(600);
     private enemyGrid = new SpatialGrid<Enemy>(120);
     private obstacleGrid = new AreaGrid<Obstacle>(200);
+    private interiors = new Map<number, Obstacle[]>();   // дома с входом по поселениям
+    private shelves:Obstacle[] = [];
     private killFeed:KillEvent[] = [];
 
     constructor(seed = 20261104) {
@@ -184,7 +190,18 @@ export class World extends EventEmitter {
         this.seed = seed;
         this.map = generateWorld(seed, WORLD.size);
         this.obstacles = this.map.obstacles;
-        this.obstacles.forEach(el => this.obstacleGrid.insert(el));
+        // Пол дома и полки не мешают ходить и стрелять: в сетке столкновений их нет
+        for (const el of this.obstacles) {
+            if (el.kind === "interior") {
+                const list = this.interiors.get(el.settlement) || [];
+                list.push(el);
+                this.interiors.set(el.settlement, list);
+            } else if (el.kind === "shelf") {
+                this.shelves.push(el);
+            } else {
+                this.obstacleGrid.insert(el);
+            }
+        }
         this.zoneBase64 = Buffer.from(this.map.zone).toString("base64");
     }
 
@@ -230,14 +247,16 @@ export class World extends EventEmitter {
                 zones: ZONES,
                 zoneNames: ZONE_NAMES,
                 settlements: this.map.settlements,
+                camps: this.map.camps,
                 roads: this.map.roads
             },
             items: Object.fromEntries(Object.values(ITEMS).map(el => [el.id, {
-                name: el.name, kind: el.kind, description: el.description
+                name: el.name, kind: el.kind, description: el.description, food: el.food || 0, water: el.water || 0
             }])),
             recipes: RECIPES,
+            trades: TRADES,
             weapons: Object.fromEntries(Object.values(WEAPONS).map(el => [el.id, {
-                id: el.id, name: el.name, rarity: el.rarity, fireRate: el.fireRate, clipSize: el.clipSize,
+                id: el.id, name: el.name, rarity: el.rarity, fireRate: el.fireRate, clipSize: el.clipSize, ammo: el.ammo || "",
                 melee: el.melee ? { range: el.melee.range, arc: el.melee.arc } : null,
                 spreadBase: el.spreadBase, spreadMax: el.spreadMax,
                 spreadIncrement: el.spreadIncrement, spreadRecovery: el.spreadRecovery
@@ -265,7 +284,7 @@ export class World extends EventEmitter {
             hp: 100, dead: false, deadAt: 0, protectedUntil: 0,
             exp: 0, level: 1, kills: 0, bestExp: 0,
             perks: new Set(), stats: computeStats([]), offers: [],
-            weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0,
+            weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0, food: 100, water: 100,
             ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
             invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
@@ -315,7 +334,19 @@ export class World extends EventEmitter {
         player.toolId = STARTING_WEAPON;
         player.gunId = "";
         player.gunAmmo = 0;
+        player.food = 100;
+        player.water = 100;
         this.equip(player, STARTING_WEAPON);
+    }
+
+    /** Характеристики из перков плюс постоянный бонус уровня: опытный игрок заметно сильнее новичка. */
+    private refreshStats(player:Player) {
+        const stats = computeStats(player.perks);
+        const levels = player.level - 1;
+        stats.damage *= 1 + WORLD.levelDamage * levels;
+        stats.maxHp += WORLD.levelHp * levels;
+        stats.armor = Math.min(0.7, stats.armor + Math.min(WORLD.levelArmorMax, WORLD.levelArmor * levels));
+        player.stats = stats;
     }
 
     private findSpawnPoint(player:Player):Coords {
@@ -399,19 +430,81 @@ export class World extends EventEmitter {
         return zone[gy * gridSize + gx] / 255;
     }
 
+    /** Лагерь выживших, в котором точка (с запасом margin), или undefined. */
+    campAt(x:number, y:number, margin = 0):Camp | undefined {
+        return this.map.camps.find(c => Math.abs(x - c.x) <= c.size / 2 + margin && Math.abs(y - c.y) <= c.size / 2 + margin);
+    }
+
+    /** Обмен у торговца лагеря: только рядом с ним и если хватает вещей. */
+    trade(player:Player, tradeId:unknown) {
+        if (player.dead || typeof tradeId !== "string") {
+            return false;
+        }
+        const camp = this.campAt(player.x, player.y);
+        if (!camp || Math.hypot(player.x - camp.x, player.y - (camp.y - 40)) > WORLD.traderReach) {
+            return false;
+        }
+        const offer = TRADES[camp.tier]?.find(el => el.id === tradeId);
+        if (!offer) {
+            return false;
+        }
+        for (const [id, need] of Object.entries(offer.give)) {
+            if (this.countItem(player, id) < need) {
+                this.hint(player, "Не хватает вещей для обмена");
+                return false;
+            }
+        }
+        for (const [id, need] of Object.entries(offer.give)) {
+            this.removeItem(player, id, need);
+        }
+        const [id, count] = offer.get;
+        this.giveOrDrop(player, id, count);
+        this.addFx(["loot", player.x, player.y, count]);
+        return true;
+    }
+
+    /** Дом, внутри которого точка, или undefined. */
+    interiorAt(x:number, y:number) {
+        const index = this.map.settlements.findIndex(s => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2);
+        if (index < 0) {
+            return undefined;
+        }
+        return this.interiors.get(index)?.find(el => Math.abs(x - el.x) <= el.w / 2 && Math.abs(y - el.y) <= el.h / 2);
+    }
+
+    /** Куда идти монстру, чтобы попасть в дом к цели или выйти из своего: через дверь. */
+    private doorGoal(ex:number, ey:number, tx:number, ty:number):Coords | null {
+        const targetHome = this.interiorAt(tx, ty);
+        const ownHome = this.interiorAt(ex, ey);
+        if (targetHome === ownHome) {
+            return null;
+        }
+        const home = (ownHome || targetHome)!;
+        const nx = home.doorNx || 0;
+        const ny = home.doorNy || 0;
+        const doorX = home.doorX ?? home.x;
+        const doorY = home.doorY ?? home.y;
+        const nearDoor = distSq(ex, ey, doorX, doorY) < 34 * 34;
+        if (ownHome) {
+            return nearDoor ? { x: doorX + nx * 50, y: doorY + ny * 50 } : { x: doorX - nx * 6, y: doorY - ny * 6 };
+        }
+        const outside = { x: doorX + nx * 40, y: doorY + ny * 40 };
+        return nearDoor || distSq(ex, ey, outside.x, outside.y) < 16 * 16 ? { x: doorX - nx * 40, y: doorY - ny * 40 } : outside;
+    }
+
     private settlementAt(x:number, y:number) {
         return this.map.settlements.find(s => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2);
     }
 
     /** Кладёт оружие в его слот (инструмент или огнестрел) и берёт в руки с полным магазином. */
-    private equip(player:Player, weaponId:string) {
+    private equip(player:Player, weaponId:string, ammo?:number) {
         if (isToolWeapon(weaponId)) {
             player.toolId = weaponId;
         } else {
             player.gunId = weaponId;
         }
         player.weaponId = weaponId;
-        player.ammo = this.clipOf(player);
+        player.ammo = Math.min(this.clipOf(player), ammo ?? this.clipOf(player));
         player.reloadEndsAt = 0;
         player.spreadNow = WEAPONS[weaponId].spreadBase;
     }
@@ -438,6 +531,11 @@ export class World extends EventEmitter {
         player.reloadEndsAt = 0;
         player.spreadNow = WEAPONS[player.weaponId].spreadBase;
         player.nextShotAt = Math.max(player.nextShotAt, Date.now() + WORLD.slotSwitchMs);
+    }
+
+    /** Сколько патронов сейчас в магазине у оружия из слота 2, в руках оно или нет. */
+    private loadedGunAmmo(player:Player) {
+        return player.gunId && player.weaponId === player.gunId ? player.ammo : player.gunAmmo;
     }
 
     /** Запоминает патроны огнестрела, который убирают из рук. */
@@ -529,10 +627,30 @@ export class World extends EventEmitter {
     }
 
     reload(player:Player) {
-        if (player.dead || player.reloadEndsAt || this.weaponOf(player).melee || player.ammo >= this.clipOf(player)) {
+        const weapon = this.weaponOf(player);
+        if (player.dead || player.reloadEndsAt || weapon.melee || player.ammo >= this.clipOf(player)) {
             return;
         }
-        player.reloadEndsAt = Date.now() + this.weaponOf(player).reloadTime * 1000 / player.stats.reload;
+        if (weapon.ammo && this.countItem(player, weapon.ammo) <= 0) {
+            this.hint(player, `Нет патронов: ${ITEMS[weapon.ammo]?.name || weapon.ammo}`);
+            return;
+        }
+        player.reloadEndsAt = Date.now() + weapon.reloadTime * 1000 / player.stats.reload;
+    }
+
+    /** Досылает в магазин патроны из рюкзака. */
+    private finishReload(player:Player) {
+        player.reloadEndsAt = 0;
+        const weapon = this.weaponOf(player);
+        if (weapon.melee) {
+            return;
+        }
+        const need = Math.max(0, this.clipOf(player) - player.ammo);
+        const take = weapon.ammo ? Math.min(need, this.countItem(player, weapon.ammo)) : need;
+        if (weapon.ammo) {
+            this.removeItem(player, weapon.ammo, take);
+        }
+        player.ammo += take;
     }
 
     respawn(player:Player) {
@@ -561,13 +679,13 @@ export class World extends EventEmitter {
         const oldMaxHp = player.stats.maxHp;
         const oldClip = this.clipOf(player);
         player.perks.add(perk.id);
-        player.stats = computeStats(player.perks);
+        this.refreshStats(player);
         // Здоровье меняется вместе с максимумом, но перк не может убить
         const hpDelta = player.stats.maxHp - oldMaxHp;
         player.hp = clamp(player.hp + Math.max(0, hpDelta), 1, player.stats.maxHp);
         const newClip = this.clipOf(player);
         if (newClip !== oldClip) {
-            player.ammo = Math.min(newClip, player.ammo + Math.max(0, newClip - oldClip));
+            player.ammo = Math.min(newClip, player.ammo);
         }
         return true;
     }
@@ -586,6 +704,19 @@ export class World extends EventEmitter {
                 chestDist = dist;
             }
         }
+        let nearShelf:Obstacle | null = null;
+        let shelfDist = WORLD.shelfReach * WORLD.shelfReach;
+        for (const el of this.shelves) {
+            const dist = distSq(player.x, player.y, el.x, el.y);
+            if (el.alive && dist < shelfDist) {
+                nearShelf = el;
+                shelfDist = dist;
+            }
+        }
+        if (nearShelf && shelfDist <= chestDist) {
+            nearChest = null;
+            chestDist = shelfDist;
+        }
         let best:Pickup | null = null;
         let bestDist = WORLD.weaponReach * WORLD.weaponReach;
         for (const item of this.pickups.values()) {
@@ -599,14 +730,18 @@ export class World extends EventEmitter {
             }
         }
         // Как и подсказка на клиенте: E действует на то, что ближе — аирдроп или вещь
-        if (nearChest && (!best || chestDist <= bestDist)) {
-            this.openChest(nearChest, player);
+        if ((nearChest || nearShelf) && (!best || chestDist <= bestDist)) {
+            if (nearChest) {
+                this.openChest(nearChest, player);
+            } else {
+                this.searchShelf(nearShelf!, player);
+            }
             return;
         }
         if (best?.kind === "bag" && best.bag) {
             // Сумка погибшего: забираем всё, что влезет, остальное остаётся в ней
             best.bag = best.bag
-                .map(stack => ({ id: stack.id, n: this.addItem(player, stack.id, stack.n) }))
+                .map(stack => ({ id: stack.id, n: this.addItem(player, stack.id, stack.n, stack.a), a: stack.a }))
                 .filter(stack => stack.n > 0);
             if (best.bag.length === 0) {
                 this.pickups.delete(best.id);
@@ -620,7 +755,26 @@ export class World extends EventEmitter {
         this.pickups.delete(best.id);
         this.holster(player);
         this.stashSlot(player, isToolWeapon(best.weaponId) ? "tool" : "gun");
-        this.equip(player, best.weaponId);
+        this.equip(player, best.weaponId, best.ammo);
+        this.addFx(["pickup", player.x, player.y]);
+    }
+
+    /** Обыскивает полку: добыча сразу в рюкзак, что не влезло — на пол. */
+    searchShelf(el:Obstacle, player:Player) {
+        if (!el.alive) {
+            return;
+        }
+        this.setObstacleAlive(el, false);
+        el.respawnAt = Date.now() + WORLD.shelfRespawnMs;
+        const kind = this.map.settlements[el.settlement]?.kind || "village";
+        const found = rollLoot(SHELF_LOOT[kind], player.stats.drop);
+        if (!found.length) {
+            this.hint(player, "Полка пустая");
+        }
+        for (const [id, count] of found) {
+            this.giveOrDrop(player, id, count);
+            this.addFx(["loot", player.x, player.y, count]);
+        }
         this.addFx(["pickup", player.x, player.y]);
     }
 
@@ -630,15 +784,16 @@ export class World extends EventEmitter {
         if (!id || id === STARTING_WEAPON) {
             return;
         }
-        if (this.addItem(player, `w:${id}`, 1) > 0) {
-            this.dropWeapon(id, player.x, player.y);
+        const ammo = slot === "gun" ? this.loadedGunAmmo(player) : undefined;
+        if (this.addItem(player, `w:${id}`, 1, ammo) > 0) {
+            this.dropWeapon(id, player.x, player.y, WORLD.pickupLifetimeMs, ammo);
         }
     }
 
     // ---------- Инвентарь ----------
 
     /** Кладёт предметы в рюкзак. Возвращает, сколько не поместилось. */
-    addItem(player:Player, id:string, count:number):number {
+    addItem(player:Player, id:string, count:number, ammo?:number):number {
         const stack = stackOf(id);
         let left = count;
         for (const slot of player.inventory) {
@@ -651,7 +806,7 @@ export class World extends EventEmitter {
         for (let i = 0; i < player.inventory.length && left > 0; i++) {
             if (!player.inventory[i]) {
                 const add = Math.min(stack, left);
-                player.inventory[i] = { id, n: add };
+                player.inventory[i] = ammo !== undefined && isWeaponItem(id) ? { id, n: add, a: ammo } : { id, n: add };
                 left -= add;
             }
         }
@@ -678,11 +833,11 @@ export class World extends EventEmitter {
     }
 
     /** Бросает предмет на землю: оружие — как оружие, остальное — как предмет. */
-    private dropStack(id:string, count:number, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs) {
+    private dropStack(id:string, count:number, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs, ammo?:number) {
         if (isWeaponItem(id)) {
             const weaponId = id.slice(2);
             if (WEAPONS[weaponId]) {
-                this.dropWeapon(weaponId, x, y, lifetimeMs);
+                this.dropWeapon(weaponId, x, y, lifetimeMs, ammo);
             }
             return;
         }
@@ -716,10 +871,14 @@ export class World extends EventEmitter {
             if (!WEAPONS[weaponId]) {
                 return;
             }
-            const old = isToolWeapon(weaponId) ? player.toolId : player.gunId;
+            const tool = isToolWeapon(weaponId);
+            const old = tool ? player.toolId : player.gunId;
+            const oldAmmo = tool ? undefined : this.loadedGunAmmo(player);
             this.holster(player);
-            player.inventory[slotIndex] = !old || old === STARTING_WEAPON ? null : { id: `w:${old}`, n: 1 };
-            this.equip(player, weaponId);
+            player.inventory[slotIndex] = !old || old === STARTING_WEAPON ? null
+                : oldAmmo !== undefined ? { id: `w:${old}`, n: 1, a: oldAmmo } : { id: `w:${old}`, n: 1 };
+            // Магазин остаётся тем, каким был: смена оружия не заряжает его
+            this.equip(player, weaponId, slot.a);
             return;
         }
         const item = ITEMS[slot.id];
@@ -736,7 +895,15 @@ export class World extends EventEmitter {
         if (item.kind !== "use") {
             return;
         }
-        if (item.heal) {
+        if (item.food || item.water) {
+            if ((!item.food || player.food >= 99) && (!item.water || item.water < 0 || player.water >= 99)) {
+                this.hint(player, "Ты не голоден и не хочешь пить");
+                return;
+            }
+            player.food = clamp(player.food + (item.food || 0), 0, 100);
+            player.water = clamp(player.water + (item.water || 0), 0, 100);
+            this.addFx(["heal", player.x, player.y]);
+        } else if (item.heal) {
             if (player.hp >= player.stats.maxHp) {
                 return;
             }
@@ -800,7 +967,7 @@ export class World extends EventEmitter {
             return;
         }
         player.inventory[slotIndex] = null;
-        this.dropStack(slot.id, slot.n, player.x, player.y);
+        this.dropStack(slot.id, slot.n, player.x, player.y, WORLD.pickupLifetimeMs, slot.a);
     }
 
     /** Снимает в рюкзак броню, противогаз, инструмент ("tool") или оружие ("gun"; "weapon" — то, что в руках). */
@@ -822,7 +989,7 @@ export class World extends EventEmitter {
             return;
         }
         if (what === "gun") {
-            if (player.gunId && this.addItem(player, `w:${player.gunId}`, 1) === 0) {
+            if (player.gunId && this.addItem(player, `w:${player.gunId}`, 1, this.loadedGunAmmo(player)) === 0) {
                 const inHands = player.weaponId === player.gunId;
                 player.gunId = "";
                 player.gunAmmo = 0;
@@ -859,12 +1026,15 @@ export class World extends EventEmitter {
         return true;
     }
 
-    private dropWeapon(weaponId:string, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs) {
+    /** Бросает оружие. Без ammo — найденное оружие: в магазине от четверти до трёх четвертей патронов. */
+    private dropWeapon(weaponId:string, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs, ammo?:number) {
         const angle = Math.random() * Math.PI * 2;
         const spot = this.resolveMove(x + Math.cos(angle) * 30, y + Math.sin(angle) * 30, 10);
         const id = this.nextId++;
+        const weapon = WEAPONS[weaponId];
+        const loaded = weapon.melee ? 1 : ammo ?? Math.max(1, Math.round(weapon.clipSize * (0.25 + Math.random() * 0.5)));
         this.pickups.set(id, {
-            id, kind: "weapon", weaponId, x: spot.x, y: spot.y,
+            id, kind: "weapon", weaponId, ammo: loaded, x: spot.x, y: spot.y,
             expiresAt: Date.now() + lifetimeMs
         });
     }
@@ -995,8 +1165,21 @@ export class World extends EventEmitter {
                 continue;
             }
             if (player.reloadEndsAt && now >= player.reloadEndsAt) {
-                player.reloadEndsAt = 0;
-                player.ammo = this.clipOf(player);
+                this.finishReload(player);
+            }
+
+            // Голод и жажда: на нуле медленно отнимают здоровье
+            player.food = Math.max(0, player.food - WORLD.hungerPerSec * dt);
+            player.water = Math.max(0, player.water - WORLD.thirstPerSec * dt);
+            if (player.food <= 0 || player.water <= 0) {
+                player.hp -= WORLD.starveDamage * dt * ((player.food <= 0 ? 1 : 0) + (player.water <= 0 ? 1 : 0));
+                if (now > player.hintUntil) {
+                    this.hint(player, player.water <= 0 ? "Жажда! Выпей воды из рюкзака" : "Голод! Съешь что-нибудь из рюкзака");
+                }
+                if (player.hp <= 0) {
+                    this.killPlayer(player, null, player.water <= 0 ? "thirst" : "hunger");
+                    continue;
+                }
             }
 
             const weapon = this.weaponOf(player);
@@ -1567,8 +1750,7 @@ export class World extends EventEmitter {
             killer.speedBoostUntil = Date.now() + 3000;
         }
         if (Math.random() < killer.stats.reloadOnKill) {
-            killer.reloadEndsAt = 0;
-            killer.ammo = this.clipOf(killer);
+            this.finishReload(killer);
         }
         if (killer.stats.explodeOnKill > 0) {
             this.explode(x, y, killer.stats.explodeOnKill, WORLD.explosionDamage * 0.5, killer, killer.weaponId);
@@ -1594,6 +1776,8 @@ export class World extends EventEmitter {
     }
 
     private applyLevels(player:Player) {
+        const before = player.level;
+        const oldMaxHp = player.stats.maxHp;
         while (player.level < WORLD.maxLevel && player.exp >= totalExpForLevel(player.level + 1)) {
             player.level++;
             const offer = rollPerkOffer(this.takenWithOffers(player), player.level);
@@ -1605,6 +1789,10 @@ export class World extends EventEmitter {
                 player.hp = Math.min(player.stats.maxHp, player.hp + player.stats.maxHp * 0.25);
             }
         }
+        if (player.level !== before) {
+            this.refreshStats(player);
+            player.hp = Math.min(player.stats.maxHp, player.hp + Math.max(0, player.stats.maxHp - oldMaxHp));
+        }
     }
 
     private takenWithOffers(player:Player) {
@@ -1615,6 +1803,11 @@ export class World extends EventEmitter {
 
     private damagePlayer(player:Player, rawDamage:number, attacker:Player | null, weaponId:string | null, crit = false) {
         if (player.dead || Date.now() < player.protectedUntil) {
+            return;
+        }
+        // В лагере выживших игроки друг друга не ранят
+        if (attacker && attacker !== player && this.campAt(player.x, player.y)) {
+            this.addFx(["miss", player.x, player.y]);
             return;
         }
         if (rawDamage <= 0) {
@@ -1658,7 +1851,7 @@ export class World extends EventEmitter {
             bag.push({ id: `w:${player.toolId}`, n: 1 });
         }
         if (player.gunId) {
-            bag.push({ id: `w:${player.gunId}`, n: 1 });
+            bag.push({ id: `w:${player.gunId}`, n: 1, a: this.loadedGunAmmo(player) });
         }
         if (player.armorId) {
             bag.push({ id: player.armorId, n: 1 });
@@ -1733,8 +1926,16 @@ export class World extends EventEmitter {
     private enemyThink(enemy:Enemy, now:number) {
         let target:Player | null = null;
         let bestDist = Infinity;
+        // Монстры обходят лагеря выживших стороной
+        const camp = this.campAt(enemy.x, enemy.y, 40);
+        if (camp) {
+            enemy.targetId = 0;
+            enemy.moving = true;
+            enemy.rotation = Math.atan2(enemy.y - camp.y, enemy.x - camp.x);
+            return;
+        }
         for (const player of this.players.values()) {
-            if (player.dead) {
+            if (player.dead || this.campAt(player.x, player.y)) {
                 continue;
             }
             const dist = distSq(enemy.x, enemy.y, player.x, player.y);
@@ -1807,7 +2008,10 @@ export class World extends EventEmitter {
             }
             // Логика обхода из оригинальной игры: издалека идём по дуге, вблизи — прямо
             let angle = directAngle;
-            if (dist > 260) {
+            const door = this.doorGoal(enemy.x, enemy.y, target.x, target.y);
+            if (door) {
+                angle = Math.atan2(door.y - enemy.y, door.x - enemy.x);
+            } else if (dist > 260) {
                 angle += enemy.flankBias;
             }
             const ranged = enemy.cfg.ranged;
@@ -1909,7 +2113,7 @@ export class World extends EventEmitter {
             for (let i = around; i < want && budget > 0; i++) {
                 budget--;
                 const spot = this.findEnemySpawn(player);
-                if (spot) {
+                if (spot && !this.campAt(spot.x, spot.y, 300)) {
                     this.spawnEnemyAt(spot.x, spot.y, now);
                 }
             }
@@ -2017,7 +2221,7 @@ export class World extends EventEmitter {
         for (let attempt = 0; attempt < 80; attempt++) {
             const x = margin + Math.random() * (WORLD.size - margin * 2);
             const y = margin + Math.random() * (WORLD.size - margin * 2);
-            if (this.isBlocked(x, y, 60)) {
+            if (this.isBlocked(x, y, 60) || this.interiorAt(x, y)) {
                 continue;
             }
             let tooClose = false;
@@ -2062,23 +2266,13 @@ export class World extends EventEmitter {
         }
     }
 
-    /** Игрок открыл приземлившийся аирдроп: оружие не выше зелёного, припасы, иногда перк. */
+    /** Игрок вскрыл приземлившийся аирдроп: внутри только положительный перк — за него стоит драться. */
     openChest(chest:Chest, player?:Player) {
         this.chests.delete(chest.id);
-        const life = WORLD.chestRewardLifetimeMs;
-        const weaponId = rollWeapon(0);
-        this.dropWeapon(weaponId, chest.x, chest.y, life);
-        const names = [WEAPONS[weaponId].name];
-        for (const [id, count] of rollLoot(AIRDROP_LOOT)) {
-            this.dropStack(id, count, chest.x, chest.y, life);
-        }
-        if (Math.random() < WORLD.chestPerkChance) {
-            const perk = POSITIVE_PERKS[Math.floor(Math.random() * POSITIVE_PERKS.length)];
-            this.dropPerk(perk.id, chest.x, chest.y, life);
-            names.push(perk.name);
-        }
+        const perk = POSITIVE_PERKS[Math.floor(Math.random() * POSITIVE_PERKS.length)];
+        this.dropPerk(perk.id, chest.x, chest.y, WORLD.chestRewardLifetimeMs);
         this.addFx(["chest", chest.x, chest.y]);
-        this.emit("announce", `${player ? player.name : "Кто-то"} вскрыл аирдроп: ${names.join(", ")} и припасы.`);
+        this.emit("announce", `${player ? player.name : "Кто-то"} вскрыл аирдроп: перк «${perk.name}».`);
     }
 
     private updatePickups(now:number) {
@@ -2220,6 +2414,14 @@ export class World extends EventEmitter {
                 gun: me.gunId,
                 gunAmmo: me.gunId && me.weaponId !== me.gunId ? me.gunAmmo : me.ammo,
                 hint: now < me.hintUntil ? me.hint : "",
+                food: Math.round(me.food),
+                water: Math.round(me.water),
+                reserve: (() => {
+                    const ammo = WEAPONS[me.gunId]?.ammo;
+                    return ammo ? this.countItem(me, ammo) : 0;
+                })(),
+                levelBonus: [Math.round(WORLD.levelDamage * (me.level - 1) * 100), WORLD.levelHp * (me.level - 1),
+                    Math.round(Math.min(WORLD.levelArmorMax, WORLD.levelArmor * (me.level - 1)) * 100)],
                 ammo: me.ammo,
                 clip: this.clipOf(me),
                 reloadLeft: me.reloadEndsAt ? Math.max(0, me.reloadEndsAt - now) : 0,

@@ -27,6 +27,7 @@ export interface WeaponConfig {
     // gather: сколько ресурса за удар; нет ключа — этим инструментом ресурс не добыть
     melee?:{ range:number, arc:number, gather?:Partial<Record<"wood" | "stone" | "scrap", number>> };
     craftOnly?:boolean;     // не выпадает с монстров и из сундуков
+    ammo?:string;           // id патронов в рюкзаке; у холодного оружия нет
 }
 
 export const STARTING_WEAPON = "Knife";
@@ -68,68 +69,68 @@ export const WEAPONS:Record<string, WeaponConfig> = {
         melee: { range: 60, arc: 1.4, gather: { scrap: 1 } }
     },
     "Bow": {
-        id: "Bow", name: "Лук", rarity: "common", craftOnly: true,
+        id: "Bow", name: "Лук", rarity: "common", craftOnly: true, ammo: "arrow",
         damage: 30, speedInSecond: 760, range: 720, fireRate: 650,
         spreadBase: 0, spreadMax: 0.06, spreadIncrement: 0.03, spreadRecovery: 0.3,
         clipSize: 6, reloadTime: 1.6, bulletSize: 3
     },
     "Pistol": {
-        id: "Pistol", name: "Пистолет", rarity: "common",
+        id: "Pistol", name: "Пистолет", rarity: "common", ammo: "ammo_9mm",
         damage: 18, speedInSecond: 1000, range: 650, fireRate: 260,
         spreadBase: 0, spreadMax: 0.12, spreadIncrement: 0.04, spreadRecovery: 0.4,
         clipSize: 12, reloadTime: 1.0
     },
     "SMG": {
-        id: "SMG", name: "Пистолет-пулемёт", rarity: "uncommon",
+        id: "SMG", name: "Пистолет-пулемёт", rarity: "uncommon", ammo: "ammo_9mm",
         damage: 11, speedInSecond: 1050, range: 600, fireRate: 75,
         spreadBase: 0.02, spreadMax: 0.3, spreadIncrement: 0.05, spreadRecovery: 0.4,
         clipSize: 35, reloadTime: 1.4
     },
     // Параметры автомата — из оригинальной игры
     "Rifle": {
-        id: "Rifle", name: "Автомат", rarity: "uncommon",
+        id: "Rifle", name: "Автомат", rarity: "uncommon", ammo: "ammo_556",
         damage: 25, speedInSecond: 1200, range: 1000, fireRate: 100,
         spreadBase: 0, spreadMax: 0.35, spreadIncrement: 0.07, spreadRecovery: 0.35,
         clipSize: 30, reloadTime: 1.3
     },
     "Shotgun": {
-        id: "Shotgun", name: "Дробовик", rarity: "rare",
+        id: "Shotgun", name: "Дробовик", rarity: "rare", ammo: "ammo_12g",
         damage: 13, speedInSecond: 950, range: 420, fireRate: 750,
         spreadBase: 0, spreadMax: 0.05, spreadIncrement: 0.05, spreadRecovery: 0.3,
         clipSize: 6, reloadTime: 2.0, pellets: 8, pelletCone: 0.32
     },
     "Crossbow": {
-        id: "Crossbow", name: "Арбалет", rarity: "rare",
+        id: "Crossbow", name: "Арбалет", rarity: "rare", ammo: "arrow",
         damage: 60, speedInSecond: 850, range: 900, fireRate: 800,
         spreadBase: 0, spreadMax: 0.02, spreadIncrement: 0.01, spreadRecovery: 0.3,
         clipSize: 5, reloadTime: 1.8, pierce: 3, bulletSize: 4
     },
     "Sniper": {
-        id: "Sniper", name: "Снайперская винтовка", rarity: "epic",
+        id: "Sniper", name: "Снайперская винтовка", rarity: "epic", ammo: "ammo_762",
         damage: 120, speedInSecond: 2200, range: 1500, fireRate: 1300,
         spreadBase: 0, spreadMax: 0.03, spreadIncrement: 0.03, spreadRecovery: 0.2,
         clipSize: 5, reloadTime: 2.4, pierce: 1, bulletSize: 3
     },
     "Flamethrower": {
-        id: "Flamethrower", name: "Огнемёт", rarity: "epic",
+        id: "Flamethrower", name: "Огнемёт", rarity: "epic", ammo: "fuel",
         damage: 7, speedInSecond: 480, range: 300, fireRate: 45,
         spreadBase: 0.14, spreadMax: 0.26, spreadIncrement: 0.02, spreadRecovery: 0.5,
         clipSize: 90, reloadTime: 2.6, pierce: 2, bulletSize: 8
     },
     "Minigun": {
-        id: "Minigun", name: "Миниган", rarity: "epic",
+        id: "Minigun", name: "Миниган", rarity: "epic", ammo: "ammo_556",
         damage: 14, speedInSecond: 1300, range: 850, fireRate: 45,
         spreadBase: 0.05, spreadMax: 0.28, spreadIncrement: 0.02, spreadRecovery: 0.3,
         clipSize: 150, reloadTime: 3.6
     },
     "Rocket": {
-        id: "Rocket", name: "Ракетомёт", rarity: "legendary",
+        id: "Rocket", name: "Ракетомёт", rarity: "legendary", ammo: "rocket",
         damage: 120, speedInSecond: 650, range: 1100, fireRate: 1200,
         spreadBase: 0, spreadMax: 0.04, spreadIncrement: 0.02, spreadRecovery: 0.3,
         clipSize: 4, reloadTime: 2.8, explosion: 130, bulletSize: 6
     },
     "Railgun": {
-        id: "Railgun", name: "Рельсотрон", rarity: "legendary",
+        id: "Railgun", name: "Рельсотрон", rarity: "legendary", ammo: "cell",
         damage: 200, speedInSecond: 3200, range: 1800, fireRate: 1700,
         spreadBase: 0, spreadMax: 0.01, spreadIncrement: 0.01, spreadRecovery: 0.3,
         clipSize: 3, reloadTime: 3.0, pierce: 12, bulletSize: 3

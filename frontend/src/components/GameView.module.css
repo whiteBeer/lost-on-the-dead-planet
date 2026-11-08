@@ -35,6 +35,20 @@
 .barWrap { position: relative; flex: none; width: 100%; height: 22px; background: rgba(0, 0, 0, 0.65); border: 1px solid #39442b; border-radius: 6px; overflow: hidden; }
 .barHp { height: 100%; background: #c9443c; transition: width 0.12s linear; }
 .barExp { height: 100%; background: #8a6ee0; transition: width 0.2s linear; }
+.needs { display: flex; gap: 5px; }
+.trade { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, 94vw); max-height: 86vh; overflow-y: auto; padding: 12px; background: rgba(12, 15, 10, 0.86); border: 1px solid #5fd1ff; border-radius: 12px; z-index: 7; }
+.trade h3 { font-size: 18px; font-weight: 800; color: #5fd1ff; }
+.trade ul { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; }
+.trade li { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; }
+.trade li img { width: 40px; height: 32px; object-fit: contain; }
+.trade li div { flex: 1; display: flex; flex-direction: column; font-size: 13px; }
+.trade li span { font-size: 12px; color: #a9ae9b; }
+.trade li button:disabled { opacity: 0.4; cursor: default; }
+.barSmall { height: 16px; flex: 1; width: auto; }
+.barSmall .barText { font-size: 11px; }
+.barFood { height: 100%; background: #c9913c; }
+.barWater { height: 100%; background: #3c8fc9; }
+.mute { position: absolute; left: 186px; bottom: 150px; width: 34px; height: 30px; font-size: 16px; background: rgba(12, 15, 10, 0.72); border: 1px solid #39442b; border-radius: 7px; cursor: pointer; }
 .barText { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px #000; }
 .zone { font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 .toxic { color: #b6ff5a; }
@@ -113,6 +127,9 @@
   .stats { left: 88px; top: 6px; bottom: auto; width: calc(100vw - 88px - 160px); max-width: 240px; gap: 3px; }
   .levelBadge { width: 22px; height: 22px; font-size: 12px; }
   .barWrap { height: 16px; }
+  .barSmall { height: 12px; }
+  .barSmall .barText { font-size: 9px; }
+  .mute { left: 6px; top: 86px; bottom: auto; width: 30px; height: 26px; font-size: 13px; }
   .barText { font-size: 10px; }
   .protect { display: none; }
   .zone { font-size: 11px; }

@@ -46,6 +46,7 @@ function GameView({ name }:{ name:string }) {
     const [teamOpen, setTeamOpen] = useState(false);
     const [perksOpen, setPerksOpen] = useState(false);
     const [invOpen, setInvOpen] = useState(false);
+    const [tradeOpen, setTradeOpen] = useState(false);
 
     const onUiKey = useCallback((code:string) => {
         if (code === "KeyT") {
@@ -54,7 +55,10 @@ function GameView({ name }:{ name:string }) {
             setPerksOpen(value => !value);
         } else if (code === "KeyI" || code === "Tab") {
             setInvOpen(value => !value);
+        } else if (code === "OpenTrade") {
+            setTradeOpen(value => !value);
         } else if (code === "Escape") {
+            setTradeOpen(false);
             setInvOpen(false);
             setTeamOpen(false);
             setPerksOpen(false);
@@ -202,7 +206,7 @@ function GameView({ name }:{ name:string }) {
                                                 {slot === "tool" ? "инструмент"
                                                     : !id ? "—"
                                                         : active && me.reloadLeft > 0 ? "Перезарядка..."
-                                                            : `${active ? me.ammo : me.gunAmmo} / ${me.clip && active ? me.clip : hud?.weapons[id]?.clipSize}`}
+                                                            : `${active ? me.ammo : me.gunAmmo} / ${me.clip && active ? me.clip : hud?.weapons[id]?.clipSize} · запас ${me.reserve}`}
                                             </div>
                                         </div>
                                     </button>
@@ -224,6 +228,10 @@ function GameView({ name }:{ name:string }) {
                     {hud?.announce && <div className={styles.announce}>{hud.announce}</div>}
 
                     <canvas ref={miniRef} className={styles.mini} width={170} height={170} />
+                    <button className={styles.mute} title="Звук (M)" onClick={() => {
+                        app?.sound.toggle();
+                        setHud(value => value ? { ...value, muted: !value.muted } : value);
+                    }}>{hud?.muted ? "🔇" : "🔊"}</button>
 
                     <section className={styles.stats}>
                         <div className={styles.level}>
@@ -236,6 +244,16 @@ function GameView({ name }:{ name:string }) {
                         <div className={styles.barWrap}>
                             <div className={styles.barHp} style={{ width: `${me.hp / me.maxHp * 100}%` }} />
                             <span className={styles.barText}>{me.hp} / {me.maxHp}</span>
+                        </div>
+                        <div className={styles.needs}>
+                            <div className={`${styles.barWrap} ${styles.barSmall}`} title="Сытость: ешь консервы или мясо из рюкзака">
+                                <div className={styles.barFood} style={{ width: `${me.food}%` }} />
+                                <span className={styles.barText}>Еда {me.food}</span>
+                            </div>
+                            <div className={`${styles.barWrap} ${styles.barSmall}`} title="Вода: пей из рюкзака">
+                                <div className={styles.barWater} style={{ width: `${me.water}%` }} />
+                                <span className={styles.barText}>Вода {me.water}</span>
+                            </div>
                         </div>
                         {me.prot && <div className={styles.protect}>Защита после появления: пропадёт после первого выстрела</div>}
                         {hud?.zones && (() => {
@@ -253,12 +271,16 @@ function GameView({ name }:{ name:string }) {
                     {me.hint && <div className={styles.hint}>{me.hint}</div>}
 
                     {hud?.nearPickup && (
-                        <button className={styles.pickupHint} onClick={() => app?.pickup()}>
+                        <button className={styles.pickupHint} onClick={() => hud.nearPickup === "trader" ? setTradeOpen(value => !value) : app?.pickup()}>
                             {hud.nearPickup === "chest" ? (
                                 <>
                                     <img src={imgUrl("chest")} className={styles.pickupIcon} alt="" />
                                     <span><b className={styles.desktopOnly}>E: </b>вскрыть аирдроп</span>
                                 </>
+                            ) : hud.nearPickup === "trader" ? (
+                                <span><b className={styles.desktopOnly}>E: </b>торговать</span>
+                            ) : hud.nearPickup === "shelf" ? (
+                                <span><b className={styles.desktopOnly}>E: </b>обыскать полку</span>
                             ) : hud.nearPickup.startsWith("bag:") ? (
                                 <>
                                     <img src={itemImage("bag")} className={styles.pickupIcon} alt="" />
@@ -277,6 +299,35 @@ function GameView({ name }:{ name:string }) {
                     )}
 
                     {invOpen && hud && <Inventory hud={hud} app={app} onClose={() => setInvOpen(false)} />}
+
+                    {tradeOpen && hud?.nearPickup === "trader" && (() => {
+                        const camp = hud.camps.find(c => Math.abs((app?.getPosition().x || 0) - c.x) < c.size && Math.abs((app?.getPosition().y || 0) - c.y) < c.size);
+                        const offers = camp ? hud.trades[camp.tier] || [] : [];
+                        const have = (id:string) => me.inv.reduce((sum, slot) => sum + (slot && slot.id === id ? slot.n : 0), 0);
+                        const label = (id:string) => id.startsWith("w:") ? hud.weapons[id.slice(2)]?.name || id : hud.items[id]?.name || id;
+                        return (
+                            <section className={styles.trade}>
+                                <h3>{camp?.name || "Торговец"}</h3>
+                                <p className={styles.muted}>Здесь безопасно: монстры не заходят, игроки не ранят друг друга.</p>
+                                <ul>
+                                    {offers.map(offer => {
+                                        const can = Object.entries(offer.give).every(([id, n]) => have(id) >= n);
+                                        return (
+                                            <li key={offer.id}>
+                                                <img src={itemImage(offer.get[0])} alt="" />
+                                                <div>
+                                                    <b>{label(offer.get[0])}{offer.get[1] > 1 ? ` ×${offer.get[1]}` : ""}</b>
+                                                    <span>за {Object.entries(offer.give).map(([id, n]) => `${label(id)} ${have(id)}/${n}`).join(", ")}</span>
+                                                </div>
+                                                <button className={styles.small} disabled={!can} onClick={() => app?.trade(offer.id)}>Обменять</button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <button className={styles.secondary} onClick={() => setTradeOpen(false)}>Закрыть</button>
+                            </section>
+                        );
+                    })()}
 
                     {!me.dead && (
                         <button className={styles.swapButton} onClick={() => app?.switchSlot("swap")}>
@@ -321,6 +372,12 @@ function GameView({ name }:{ name:string }) {
                     {perksOpen && (
                         <section className={styles.side}>
                             <h3>Мои перки: {me.perks.length}</h3>
+                            {me.level > 1 && (
+                                <p className={styles.muted}>
+                                    Бонус {me.level} уровня: урон +{me.levelBonus[0]}%, здоровье +{me.levelBonus[1]}, защита +{me.levelBonus[2]}%.
+                                    Растёт с каждым уровнем.
+                                </p>
+                            )}
                             {me.perks.length === 0 && <p className={styles.muted}>Пока пусто. Перки даются за новый уровень.</p>}
                             <ul className={styles.perkList}>
                                 {me.perks.map(id => (

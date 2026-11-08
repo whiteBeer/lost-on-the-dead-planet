@@ -26,7 +26,9 @@ function Inventory({ hud, app, onClose }:Props) {
     const have = (id:string) => me.inv.reduce((sum, slot) => sum + (slot && slot.id === id ? slot.n : 0), 0);
     const slot = selected !== null ? me.inv[selected] : null;
     const kind = slot ? (slot.id.startsWith("w:") ? "weapon" : hud.items[slot.id]?.kind) : "";
-    const actionText = kind === "weapon" ? "Взять в руки" : kind === "armor" || kind === "mask" ? "Надеть" : kind === "use" ? "Использовать" : "";
+    const info = slot ? hud.items[slot.id] : undefined;
+    const actionText = kind === "weapon" ? "Взять в руки" : kind === "armor" || kind === "mask" ? "Надеть"
+        : info?.food ? "Съесть" : info?.water ? "Выпить" : kind === "use" ? "Использовать" : "";
 
     return (
         <section className={styles.panel}>
@@ -71,7 +73,7 @@ function Inventory({ hud, app, onClose }:Props) {
 
                     {slot ? (
                         <div className={styles.details}>
-                            <b>{nameOf(slot.id)}{slot.n > 1 ? ` ×${slot.n}` : ""}</b>
+                            <b>{nameOf(slot.id)}{slot.n > 1 ? ` ×${slot.n}` : ""}{slot.a !== undefined ? ` · в магазине ${slot.a}` : ""}</b>
                             <p>{describe(slot.id)}</p>
                             <div className={styles.actions}>
                                 {actionText && <button className={styles.primary} onClick={() => app?.useSlot(selected!)}>{actionText}</button>}

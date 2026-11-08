@@ -16,8 +16,22 @@ World.prototype.addPlayer = function (socketId, name) {
     const spot = this.freeSpotNear(place.x, place.y, 40) || { x: place.x, y: place.y };
     player.x = spot.x;
     player.y = spot.y;
+    if (process.env.PLAYGROUND_CAMP) {
+        // Рядом с торговцем первого лагеря
+        const camp = this.map.camps[0];
+        player.x = camp.x + 40;
+        player.y = camp.y;
+    }
+    if (process.env.PLAYGROUND_INDOOR) {
+        // Сразу в доме деревни, чтобы проверить пол, стены, полки и прозрачную крышу
+        const home = this.obstacles.find(el => el.kind === "interior" && el.settlement === this.map.settlements.indexOf(place));
+        if (home) {
+            player.x = home.x;
+            player.y = home.y;
+        }
+    }
     // Ресурсы, чтобы проверить крафт
-    for (const [id, n] of [["wood", 25], ["stone", 12], ["cloth", 8], ["slime", 8], ["scrap", 14], ["powder", 9], ["hide", 6], ["bone", 10]]) {
+    for (const [id, n] of [["wood", 25], ["stone", 12], ["cloth", 8], ["slime", 8], ["scrap", 14], ["powder", 9], ["hide", 6], ["bone", 10], ["ammo_9mm", 60], ["ammo_556", 90], ["ammo_12g", 20], ["canned", 2], ["water", 2]]) {
         this.addItem(player, id, n);
     }
     player.protectedUntil = Date.now() + 45000;

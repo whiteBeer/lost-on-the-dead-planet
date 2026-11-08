@@ -22,7 +22,16 @@ export const WORLD = {
     chestRewardLifetimeMs: 180000,  // сколько лежит приземлившийся аирдроп и выпавшее из него
     chestFallMs: 45000,             // спуск аирдропа на парашюте
     chestReach: 90,
-    chestPerkChance: 0.3,
+    hungerPerSec: 100 / 1500,       // сытость 100 → 0 за 25 минут
+    thirstPerSec: 100 / 960,        // вода 100 → 0 за 16 минут
+    starveDamage: 1.5,              // урон в секунду, когда сытость или вода на нуле
+    levelDamage: 0.04,              // +4% урона за каждый уровень после первого
+    levelHp: 3,                     // +3 здоровья за уровень
+    levelArmor: 0.01,               // +1% защиты за уровень, не больше levelArmorMax
+    levelArmorMax: 0.25,
+    shelfRespawnMs: 420000,
+    shelfReach: 70,
+    traderReach: 130,
     slotSwitchMs: 250,              // задержка выстрела после смены инструмента на оружие
     chestFirstDelayMs: 35000,
     chestMinIntervalMs: 150000,

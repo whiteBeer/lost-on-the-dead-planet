@@ -13,7 +13,8 @@ export const WEAPON_IDS = [
 ];
 export const ITEM_IDS = [
     "wood", "stone", "scrap", "bone", "hide", "slime", "cloth", "powder",
-    "bandage", "medkit", "grenade", "mutagen", "armor_wood", "armor_bone", "armor_kevlar", "gasmask", "bag", "rope"
+    "bandage", "medkit", "grenade", "mutagen", "armor_wood", "armor_bone", "armor_kevlar", "gasmask", "bag", "rope",
+    "ammo_9mm", "ammo_556", "ammo_762", "ammo_12g", "arrow", "fuel", "rocket", "cell", "canned", "meat", "water"
 ];
 const OBSTACLES = ["tree", "rock", "wreck", "crate"];
 const ROOFS = ["house", "shop", "office", "tower"];

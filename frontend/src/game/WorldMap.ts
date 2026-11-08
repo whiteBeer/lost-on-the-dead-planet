@@ -13,7 +13,20 @@ export interface MapObstacle {
     h:number;
     alive:boolean;
     sprite:PIXI.Container;
+    goods?:PIXI.Container;   // у полки: то, что на ней лежит
 }
+
+interface Roof {
+    x:number;
+    y:number;
+    w:number;
+    h:number;
+    sprite:PIXI.Container;
+}
+
+// Пол и полки не сталкиваются: по ним ходят
+const PASSABLE = new Set(["interior", "shelf"]);
+export const TRADER_REACH = 120;
 
 const CHUNK = 1000;
 const COLLISION_CELL = 200;
@@ -28,6 +41,9 @@ function smoothstep(edge0:number, edge1:number, x:number) {
  */
 export class WorldMap {
     readonly obstacles = new Map<number, MapObstacle>();
+    readonly shelves:MapObstacle[] = [];
+    readonly traders:{ x:number, y:number }[] = [];
+    private roofs:Roof[] = [];
     private collision = new Map<number, MapObstacle[]>();
     private chunks = new Map<number, PIXI.Container[]>();
     private zone:Uint8Array;
@@ -127,6 +143,19 @@ export class WorldMap {
         // Ядовитый воздух: зелёная дымка поверх земли
         layer.addChild(this.zoneMask(v => smoothstep(zones.toxic - 0.015, zones.toxic + 0.02, v) * 0.2, "150,220,40"));
 
+        // Лагеря выживших: утоптанная земля и костёр
+        const camps = new PIXI.Graphics();
+        for (const c of this.config.map.camps || []) {
+            camps.rect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size).fill({ color: 0x6d5a3c, alpha: 0.55 });
+            camps.circle(c.x, c.y + 40, 22).fill(0x3a2a1c);
+            camps.circle(c.x, c.y + 40, 13).fill(0xff8a2e);
+            camps.circle(c.x, c.y + 40, 6).fill(0xffe08a);
+            for (const [dx, dy] of [[-120, -110], [110, -100], [-120, 110], [115, 115]]) {
+                camps.poly([c.x + dx - 34, c.y + dy + 26, c.x + dx, c.y + dy - 30, c.x + dx + 34, c.y + dy + 26]).fill(0x5f6b3a).stroke({ width: 3, color: 0x2a3018 });
+            }
+        }
+        layer.addChild(camps);
+
         const border = new PIXI.Graphics();
         border.rect(0, 0, size, size).stroke({ width: 14, color: 0x000000, alpha: 0.7 });
         layer.addChild(border);
@@ -150,7 +179,73 @@ export class WorldMap {
         const parents = [itemsLayer, topLayer];
         for (const [id, kind, shape, x, y, r, w, h, rotation, style, alive] of this.config.obstacles) {
             let sprite:PIXI.Container;
-            if (shape === "r") {
+            let goods:PIXI.Container | undefined;
+            let layer = kind === "tree" ? 1 : 0;
+            if (kind === "interior") {
+                // Деревянный пол, сверху крыша, которая исчезает, когда заходишь внутрь
+                const floor = new PIXI.Graphics();
+                floor.rect(x - w / 2, y - h / 2, w, h).fill(0x5b4530);
+                for (let py = y - h / 2 + 12; py < y + h / 2; py += 12) {
+                    floor.moveTo(x - w / 2, py).lineTo(x + w / 2, py);
+                }
+                floor.stroke({ width: 1, color: 0x3f2f20, alpha: 0.7 });
+                this.chunkFor(x, y, 0, parents).addChild(floor);
+                const roof = this.roofSprite(style, x, y, w, h);
+                this.chunkFor(x, y, 1, parents).addChild(roof);
+                this.roofs.push({ x, y, w, h, sprite: roof });
+                sprite = floor;
+            } else if (kind === "wall" && style === "fence") {
+                // Частокол лагеря: брёвна поперёк
+                const fence = new PIXI.Graphics();
+                fence.rect(x - w / 2, y - h / 2, w, h).fill(0x7a5634).stroke({ width: 2, color: 0x2a1a0e });
+                const long = Math.max(w, h);
+                for (let t = 10; t < long; t += 12) {
+                    if (w > h) {
+                        fence.moveTo(x - w / 2 + t, y - h / 2).lineTo(x - w / 2 + t, y + h / 2);
+                    } else {
+                        fence.moveTo(x - w / 2, y - h / 2 + t).lineTo(x + w / 2, y - h / 2 + t);
+                    }
+                }
+                fence.stroke({ width: 1.5, color: 0x3a2412 });
+                sprite = fence;
+            } else if (kind === "wall") {
+                const wall = new PIXI.Graphics();
+                wall.rect(x - w / 2, y - h / 2, w, h).fill(0x3a322b).stroke({ width: 2, color: 0x16120f });
+                sprite = wall;
+            } else if (kind === "trader") {
+                const trader = new PIXI.Container();
+                const body = new PIXI.Sprite(Assets.playerFrames[0]);
+                body.anchor.set(0.5);
+                body.scale.set(r * 2.6 / Math.max(body.texture.width, body.texture.height));
+                body.tint = 0xb8f08a;
+                body.position.set(x, y);
+                body.rotation = Math.PI / 2;
+                const label = new PIXI.Text({
+                    text: "Торговец",
+                    style: { fontFamily: "Rubik, Arial", fontSize: 14, fontWeight: "800", fill: 0xb8f08a, stroke: { color: 0x000000, width: 4 } },
+                    resolution: 2
+                });
+                label.anchor.set(0.5, 1);
+                label.position.set(x, y - r - 6);
+                trader.addChild(body, label);
+                this.traders.push({ x, y });
+                sprite = trader;
+            } else if (kind === "shelf") {
+                const shelf = new PIXI.Container();
+                const frame = new PIXI.Graphics();
+                frame.rect(x - w / 2, y - h / 2, w, h).fill(0x7a5332).stroke({ width: 2, color: 0x2a1a0e });
+                goods = new PIXI.Graphics();
+                const colors = [0xd9c27a, 0x5fa8d8, 0xc0503c, 0x8fbf5a];
+                const along = w > h;
+                for (let i = 0; i < 4; i++) {
+                    const t = (i + 0.5) / 4 - 0.5;
+                    const gx = along ? x + t * (w - 8) : x;
+                    const gy = along ? y : y + t * (h - 8);
+                    (goods as PIXI.Graphics).rect(gx - 3.5, gy - 3.5, 7, 7).fill(colors[i]);
+                }
+                shelf.addChild(frame, goods);
+                sprite = shelf;
+            } else if (shape === "r") {
                 const texture = Assets.tex(`roof_${style}`);
                 const texSize = Math.min(texture.width, texture.height);
                 const border = Math.round(texSize * 0.22);
@@ -173,11 +268,23 @@ export class WorldMap {
                 image.rotation = rotation;
                 sprite = image;
             }
-            sprite.visible = alive === 1;
-            this.chunkFor(x, y, kind === "tree" ? 1 : 0, parents).addChild(sprite);
+            if (goods) {
+                goods.visible = alive === 1;
+            } else {
+                sprite.visible = alive === 1;
+            }
+            if (kind !== "interior") {
+                this.chunkFor(x, y, layer, parents).addChild(sprite);
+            }
 
-            const entry:MapObstacle = { id, kind, shape, x, y, r, w, h, alive: alive === 1, sprite };
+            const entry:MapObstacle = { id, kind, shape, x, y, r, w, h, alive: alive === 1, sprite, goods };
             this.obstacles.set(id, entry);
+            if (kind === "shelf") {
+                this.shelves.push(entry);
+            }
+            if (PASSABLE.has(kind)) {
+                continue;
+            }
             const extent = shape === "r" ? Math.max(w, h) / 2 : r;
             for (let cx = Math.floor((x - extent) / COLLISION_CELL); cx <= Math.floor((x + extent) / COLLISION_CELL); cx++) {
                 for (let cy = Math.floor((y - extent) / COLLISION_CELL); cy <= Math.floor((y + extent) / COLLISION_CELL); cy++) {
@@ -197,7 +304,36 @@ export class WorldMap {
         const entry = this.obstacles.get(id);
         if (entry) {
             entry.alive = alive;
-            entry.sprite.visible = alive;
+            (entry.goods || entry.sprite).visible = alive;
+        }
+    }
+
+    private roofSprite(style:string, x:number, y:number, w:number, h:number) {
+        const texture = Assets.tex(`roof_${style}`);
+        const texSize = Math.min(texture.width, texture.height);
+        const border = Math.round(texSize * 0.22);
+        const scale = Math.min(w, h) / texSize;
+        const roof = new PIXI.NineSliceSprite({
+            texture, leftWidth: border, rightWidth: border, topHeight: border, bottomHeight: border,
+            width: w / scale, height: h / scale
+        });
+        roof.scale.set(scale);
+        roof.position.set(x - w / 2, y - h / 2);
+        return roof;
+    }
+
+    /** Крыша дома, в котором стоит игрок, плавно становится прозрачной. */
+    updateRoofs(px:number, py:number, dt:number) {
+        const k = Math.min(1, dt * 8);
+        for (const roof of this.roofs) {
+            const inside = Math.abs(px - roof.x) <= roof.w / 2 + 2 && Math.abs(py - roof.y) <= roof.h / 2 + 2;
+            const target = inside ? 0.06 : 1;
+            if (roof.sprite.alpha !== target) {
+                roof.sprite.alpha += (target - roof.sprite.alpha) * k;
+                if (Math.abs(roof.sprite.alpha - target) < 0.01) {
+                    roof.sprite.alpha = target;
+                }
+            }
         }
     }
 
@@ -294,6 +430,10 @@ export class WorldMap {
         ctx.fillStyle = "rgba(205, 205, 195, 0.75)";
         for (const s of this.config.map.settlements) {
             ctx.fillRect((s.x - s.w / 2) * k, (s.y - s.h / 2) * k, s.w * k, s.h * k);
+        }
+        ctx.fillStyle = "#5fd1ff";
+        for (const c of this.config.map.camps || []) {
+            ctx.fillRect((c.x - 260) * k, (c.y - 260) * k, Math.max(3, 520 * k), Math.max(3, 520 * k));
         }
         return canvas;
     }

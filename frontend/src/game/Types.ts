@@ -15,10 +15,12 @@ export interface WorldConfig {
         zoneNames:string[];
         settlements:{ kind:string, name:string, x:number, y:number, w:number, h:number }[];
         roads:{ x:number, y:number, w:number, h:number }[];
+        camps:{ name:string, x:number, y:number, size:number, tier:number }[];
     };
-    items:Record<string, { name:string, kind:string, description:string }>;
+    trades:{ id:string, give:Record<string, number>, get:[string, number] }[][];
+    items:Record<string, { name:string, kind:string, description:string, food:number, water:number }>;
     recipes:{ id:string, result:string, count:number, cost:Record<string, number> }[];
-    weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number, melee:{ range:number, arc:number } | null }>;
+    weapons:Record<string, { id:string, name:string, rarity:string, fireRate:number, clipSize:number, ammo?:string, melee:{ range:number, arc:number } | null }>;
     enemies:Record<string, { id:string, name:string, size:number, radius:number }>;
     perks:Record<string, { name:string, description:string, icon:string }>;
 }
@@ -48,6 +50,10 @@ export interface MeState {
     gun:string;
     gunAmmo:number;
     hint:string;
+    food:number;
+    water:number;
+    reserve:number;               // патронов к оружию из слота 2 в рюкзаке
+    levelBonus:[number, number, number];  // урон %, здоровье, защита % за уровень
     ammo:number;
     clip:number;
     reloadLeft:number;
@@ -60,7 +66,7 @@ export interface MeState {
     offersLeft:number;
     offer:PerkCard[] | null;
     perks:string[];
-    inv:({ id:string, n:number } | null)[];
+    inv:({ id:string, n:number, a?:number } | null)[];
     armor:string;
     mask:string;
     zone:number;
@@ -133,6 +139,9 @@ export interface HudState {
     announce:string;
     weapons:WorldConfig["weapons"];
     nearPickup:string;
+    muted:boolean;
+    trades:WorldConfig["trades"];
+    camps:WorldConfig["map"]["camps"];
     perkCatalog:WorldConfig["perks"];
     items:WorldConfig["items"];
     recipes:WorldConfig["recipes"];

@@ -53,7 +53,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "hound", name: "Гончая", tier: 2, health: 60, speed: 185, speedJitter: 30,
         radius: 20, size: 66, damage: 11, attackInterval: 650, aggro: 720,
         exp: 25, dropChance: 0.04, healChance: 0.04, zoneMin: 0.3, zoneMax: 1, weight: 14,
-        loot: [["hide", 0.6, 1, 2], ["bone", 0.4, 1, 2]]
+        loot: [["hide", 0.6, 1, 2], ["bone", 0.4, 1, 2], ["meat", 0.5, 1, 1]]
     },
     "spitter": {
         id: "spitter", name: "Плевальщик", tier: 2, health: 80, speed: 55, speedJitter: 20,
@@ -96,20 +96,20 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         exp: 45, dropChance: 0.12, healChance: 0.1, zoneMin: 0.5, zoneMax: 1, weight: 3, urban: 7,
         armor: 0.4, keepDistance: 330,
         ranged: { range: 620, speed: 950, damage: 9, interval: 750, kind: "shot" },
-        loot: [["scrap", 0.9, 1, 3], ["powder", 0.8, 1, 3], ["cloth", 0.4, 1, 2]]
+        loot: [["scrap", 0.9, 1, 3], ["powder", 0.8, 1, 3], ["cloth", 0.4, 1, 2], ["ammo_556", 0.6, 5, 12], ["ammo_9mm", 0.3, 4, 8], ["water", 0.2, 1, 1]]
     },
     "brute": {
         id: "brute", name: "Громила", tier: 3, health: 450, speed: 48, speedJitter: 15,
         radius: 40, size: 118, damage: 34, attackInterval: 1200, aggro: 620,
         exp: 110, dropChance: 0.25, healChance: 0.25, zoneMin: 0.65, zoneMax: 1, weight: 7,
-        loot: [["hide", 0.8, 2, 3], ["bone", 0.8, 2, 4]]
+        loot: [["hide", 0.8, 2, 3], ["bone", 0.8, 2, 4], ["meat", 0.8, 1, 2]]
     },
     "behemoth": {
         id: "behemoth", name: "Бегемот", tier: 3, health: 1100, speed: 50, speedJitter: 10,
         radius: 52, size: 172, damage: 40, attackInterval: 1100, aggro: 700,
         exp: 350, dropChance: 0.5, healChance: 0.5, zoneMin: 0.8, zoneMax: 1, weight: 3,
         charge: { interval: 5000, range: 520, speedMul: 4, duration: 700 },
-        loot: [["hide", 1, 3, 5], ["bone", 1, 4, 6], ["slime", 0.5, 2, 3]]
+        loot: [["hide", 1, 3, 5], ["bone", 1, 4, 6], ["slime", 0.5, 2, 3], ["meat", 1, 2, 3]]
     },
     "boss": {
         id: "boss", name: "Владыка", tier: 4, health: 4000, speed: 72, speedJitter: 0,

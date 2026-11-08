@@ -11,6 +11,8 @@ export interface ItemConfig {
     stack:number;
     description:string;
     heal?:number;      // для аптечек
+    food?:number;      // сколько сытости даёт
+    water?:number;     // сколько воды даёт
     armor?:number;     // доля снижения урона
 }
 
@@ -26,6 +28,17 @@ export const ITEMS:Record<string, ItemConfig> = {
     slime: { id: "slime", name: "Слизь мутанта", kind: "res", stack: 99, description: "Падает с плевальщиков, раздутых и пауков." },
     cloth: { id: "cloth", name: "Ткань", kind: "res", stack: 99, description: "Обрывки одежды зомби и находки в домах." },
     powder: { id: "powder", name: "Порох", kind: "res", stack: 99, description: "Солдаты-зомби и ящики в городах." },
+    ammo_9mm: { id: "ammo_9mm", name: "Патроны 9×19 мм", kind: "res", stack: 120, description: "Для пистолета и пистолета-пулемёта." },
+    ammo_556: { id: "ammo_556", name: "Патроны 5,56×45 мм", kind: "res", stack: 120, description: "Для автомата и минигана." },
+    ammo_762: { id: "ammo_762", name: "Патроны 7,62×54 мм", kind: "res", stack: 60, description: "Для снайперской винтовки." },
+    ammo_12g: { id: "ammo_12g", name: "Дробь 12 калибра", kind: "res", stack: 48, description: "Для дробовика." },
+    arrow: { id: "arrow", name: "Стрелы", kind: "res", stack: 40, description: "Для лука и арбалета." },
+    fuel: { id: "fuel", name: "Топливо", kind: "res", stack: 270, description: "Для огнемёта." },
+    rocket: { id: "rocket", name: "Ракета", kind: "res", stack: 8, description: "Для ракетомёта." },
+    cell: { id: "cell", name: "Энергоячейка", kind: "res", stack: 12, description: "Для рельсотрона." },
+    canned: { id: "canned", name: "Консервы", kind: "use", stack: 6, food: 45, description: "Сытость +45." },
+    meat: { id: "meat", name: "Мясо мутанта", kind: "use", stack: 8, food: 20, water: -5, description: "Сытость +20, но хочется пить: вода −5." },
+    water: { id: "water", name: "Бутылка воды", kind: "use", stack: 6, water: 50, description: "Вода +50." },
     bandage: { id: "bandage", name: "Бинт", kind: "use", stack: 10, heal: 30, description: "Восстанавливает 30 здоровья." },
     medkit: { id: "medkit", name: "Аптечка", kind: "use", stack: 5, heal: 75, description: "Восстанавливает 75 здоровья." },
     grenade: { id: "grenade", name: "Граната", kind: "use", stack: 5, description: "Бросок туда, куда смотришь. Взрыв ранит всех вокруг, кроме союзников." },
@@ -59,32 +72,40 @@ export const RECIPES:Recipe[] = [
     { id: "shotgun", result: "w:Shotgun", count: 1, cost: { scrap: 10, powder: 5, wood: 3 } },
     { id: "grenade", result: "grenade", count: 1, cost: { scrap: 2, powder: 3 } },
     { id: "armor_kevlar", result: "armor_kevlar", count: 1, cost: { scrap: 8, cloth: 5, hide: 3 } },
-    { id: "mutagen", result: "mutagen", count: 1, cost: { slime: 6, bone: 4 } }
+    { id: "mutagen", result: "mutagen", count: 1, cost: { slime: 6, bone: 4 } },
+    { id: "arrow", result: "arrow", count: 6, cost: { wood: 2, stone: 1 } },
+    { id: "ammo_9mm", result: "ammo_9mm", count: 12, cost: { scrap: 1, powder: 1 } },
+    { id: "ammo_12g", result: "ammo_12g", count: 6, cost: { scrap: 1, powder: 2 } },
+    { id: "ammo_556", result: "ammo_556", count: 15, cost: { scrap: 2, powder: 2 } },
+    { id: "ammo_762", result: "ammo_762", count: 5, cost: { scrap: 2, powder: 3 } }
 ];
 
 // Что лежит в ящиках: [предмет, шанс, минимум, максимум]
 export type LootRow = [string, number, number, number];
 
 export const CRATE_LOOT:Record<"wild" | "village" | "town" | "city", LootRow[]> = {
-    wild: [["wood", 0.3, 1, 2], ["cloth", 0.35, 1, 2], ["bandage", 0.2, 1, 1], ["scrap", 0.15, 1, 1]],
-    village: [["cloth", 0.6, 1, 2], ["bandage", 0.35, 1, 1], ["wood", 0.25, 1, 2], ["scrap", 0.2, 1, 2], ["powder", 0.1, 1, 1], ["w:Wrench", 0.05, 1, 1]],
-    town: [["w:Wrench", 0.07, 1, 1], ["scrap", 0.7, 1, 3], ["cloth", 0.6, 1, 3], ["powder", 0.5, 1, 3], ["bandage", 0.4, 1, 2], ["medkit", 0.15, 1, 1], ["grenade", 0.1, 1, 1]],
-    city: [["scrap", 0.9, 3, 6], ["powder", 0.7, 2, 4], ["cloth", 0.5, 2, 4], ["medkit", 0.3, 1, 1], ["grenade", 0.25, 1, 2], ["armor_kevlar", 0.05, 1, 1], ["gasmask", 0.06, 1, 1]]
+    wild: [["wood", 0.3, 1, 2], ["cloth", 0.35, 1, 2], ["bandage", 0.2, 1, 1], ["scrap", 0.15, 1, 1], ["canned", 0.15, 1, 1], ["water", 0.2, 1, 1]],
+    village: [["cloth", 0.6, 1, 2], ["bandage", 0.35, 1, 1], ["wood", 0.25, 1, 2], ["scrap", 0.2, 1, 2], ["powder", 0.1, 1, 1], ["w:Wrench", 0.05, 1, 1],
+        ["canned", 0.3, 1, 1], ["water", 0.35, 1, 1], ["ammo_9mm", 0.12, 4, 10], ["arrow", 0.15, 3, 6]],
+    town: [["w:Wrench", 0.07, 1, 1], ["canned", 0.3, 1, 1], ["water", 0.3, 1, 1], ["ammo_9mm", 0.3, 6, 14], ["ammo_12g", 0.15, 3, 6], ["ammo_556", 0.1, 8, 15], ["scrap", 0.7, 1, 3], ["cloth", 0.6, 1, 3], ["powder", 0.5, 1, 3], ["bandage", 0.4, 1, 2], ["medkit", 0.15, 1, 1], ["grenade", 0.1, 1, 1]],
+    city: [["canned", 0.3, 1, 2], ["water", 0.3, 1, 2], ["ammo_556", 0.35, 10, 25], ["ammo_9mm", 0.3, 8, 18], ["ammo_12g", 0.2, 4, 8], ["ammo_762", 0.1, 3, 6],
+        ["fuel", 0.05, 30, 60], ["rocket", 0.03, 1, 2], ["cell", 0.03, 1, 3], ["scrap", 0.9, 3, 6], ["powder", 0.7, 2, 4], ["cloth", 0.5, 2, 4], ["medkit", 0.3, 1, 1], ["grenade", 0.25, 1, 2], ["armor_kevlar", 0.05, 1, 1], ["gasmask", 0.06, 1, 1]]
 };
 
 // Шанс найти оружие в ящике и уровень его редкости
 export const CRATE_WEAPON:Record<keyof typeof CRATE_LOOT, [number, number]> = {
-    wild: [0.04, 1],
-    village: [0.08, 1],
-    town: [0.15, 2],
-    city: [0.22, 3]
+    wild: [0.02, 1],
+    village: [0.04, 1],
+    town: [0.06, 1],
+    city: [0.08, 2]
 };
 
-// Аирдроп: всегда оружие (не выше зелёного) и что-то из этого
-export const AIRDROP_LOOT:LootRow[] = [
-    ["medkit", 0.6, 1, 2], ["bandage", 0.7, 2, 3], ["grenade", 0.35, 1, 2], ["armor_bone", 0.15, 1, 1],
-    ["powder", 0.5, 2, 4], ["scrap", 0.5, 2, 4], ["rope", 0.4, 1, 2], ["cloth", 0.5, 2, 3]
-];
+// Полки в домах: в основном еда, вода и патроны
+export const SHELF_LOOT:Record<"village" | "town" | "city", LootRow[]> = {
+    village: [["canned", 0.45, 1, 1], ["water", 0.5, 1, 1], ["cloth", 0.4, 1, 2], ["bandage", 0.25, 1, 1], ["ammo_9mm", 0.2, 4, 10], ["arrow", 0.15, 3, 6]],
+    town: [["canned", 0.45, 1, 2], ["water", 0.45, 1, 2], ["ammo_9mm", 0.35, 6, 14], ["ammo_12g", 0.2, 3, 6], ["ammo_556", 0.12, 6, 12], ["bandage", 0.3, 1, 2], ["powder", 0.2, 1, 2]],
+    city: [["canned", 0.4, 1, 2], ["water", 0.4, 1, 2], ["ammo_556", 0.35, 8, 20], ["ammo_9mm", 0.3, 8, 16], ["ammo_12g", 0.2, 4, 8], ["ammo_762", 0.08, 2, 5], ["medkit", 0.15, 1, 1]]
+};
 
 export function rollLoot(rows:LootRow[], luck = 1):[string, number][] {
     const result:[string, number][] = [];
@@ -103,3 +124,40 @@ export function isWeaponItem(id:string) {
 export function stackOf(id:string) {
     return isWeaponItem(id) ? 1 : ITEMS[id]?.stack || 1;
 }
+
+export interface Trade {
+    id:string;
+    give:Record<string, number>;   // что отдаёт игрок
+    get:[string, number];          // что получает
+}
+
+// Обмен у торговцев: чем опаснее место лагеря, тем ценнее товар
+export const TRADES:Trade[][] = [
+    [
+        { id: "t0_water", give: { wood: 4 }, get: ["water", 1] },
+        { id: "t0_canned", give: { cloth: 3 }, get: ["canned", 1] },
+        { id: "t0_rope", give: { hide: 1, cloth: 1 }, get: ["rope", 1] },
+        { id: "t0_9mm", give: { bone: 5 }, get: ["ammo_9mm", 10] },
+        { id: "t0_arrow", give: { stone: 3 }, get: ["arrow", 6] },
+        { id: "t0_bandage", give: { meat: 2 }, get: ["bandage", 2] },
+        { id: "t0_axe", give: { scrap: 4, wood: 3 }, get: ["w:Axe", 1] },
+        { id: "t0_wrench", give: { stone: 8, cloth: 4 }, get: ["w:Wrench", 1] }
+    ],
+    [
+        { id: "t1_556", give: { scrap: 4, powder: 2 }, get: ["ammo_556", 20] },
+        { id: "t1_12g", give: { scrap: 3, hide: 2 }, get: ["ammo_12g", 8] },
+        { id: "t1_medkit", give: { slime: 4, meat: 2 }, get: ["medkit", 1] },
+        { id: "t1_water", give: { meat: 2 }, get: ["water", 2] },
+        { id: "t1_gasmask", give: { scrap: 6, slime: 4 }, get: ["gasmask", 1] },
+        { id: "t1_smg", give: { scrap: 14, powder: 6, bone: 6 }, get: ["w:SMG", 1] },
+        { id: "t1_armor", give: { scrap: 10, hide: 6 }, get: ["armor_kevlar", 1] }
+    ],
+    [
+        { id: "t2_762", give: { scrap: 6, powder: 4 }, get: ["ammo_762", 8] },
+        { id: "t2_fuel", give: { slime: 8 }, get: ["fuel", 60] },
+        { id: "t2_rocket", give: { scrap: 12, powder: 8 }, get: ["rocket", 1] },
+        { id: "t2_cell", give: { scrap: 10, slime: 10 }, get: ["cell", 2] },
+        { id: "t2_mutagen", give: { slime: 8, bone: 8 }, get: ["mutagen", 1] },
+        { id: "t2_rifle", give: { scrap: 20, powder: 10, hide: 6 }, get: ["w:Rifle", 1] }
+    ]
+];
