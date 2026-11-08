@@ -196,3 +196,10 @@ flowchart LR
 - Автопроверка `backend/tests/full-playthrough.js` с `ARENA_TIME_SCALE=0.002`: прошла все волны 1–10 до `gameWon`, проверяет merge, drop, sprint/stamina, dash, уровни/perks/combo. Последний прогон: ok, level 44 (зависит от случайных perks).
 - Browser E2E 2026-11-09 00:35 МСК: desktop sprint/dash/inventory; mobile 844×390 — пять кнопок, реальное движение левым touch-stick, прицел+стрельба правым, dash, рюкзак помещается; console/page errors 0. Production build обоих компонентов и audit `0 vulnerabilities` прошли.
 - Сервер Каркаде пока остаётся на `eee980d`; изменения локальные поверх `72fc6cf`. Откат до коммита/деплоя — `git restore` текущего diff; открыто: commit/push, серверный бэкап, deploy и публичный E2E.
+
+### Релиз
+
+- 2026-11-09 00:50 МСК — gameplay/UI выпущены на `https://game.lpt-group.ru/wave-arena`: код `ce4ce3e`, следующий infra-fix `df7a5d3` считает штатный SIGTERM Next успешной остановкой. Production `.release=df7a5d3`.
+- Публичный E2E desktop/mobile и production full-playthrough 1–10 прошли; каталог game, Microwar, Zombies, Wave Arena и API отдают 200; backend/frontend/nginx active, рестартов 0.
+- Бэкап прежнего `eee980d`: `/var/backups/lpt-wave-arena/upgrade-20261108T213907Z-ce4ce3e/` (188 МБ, SHA256 проверена). Временная распакованная копия старого приложения после проверки удалена.
+- Открыто только эмпирическое уточнение баланса по живой игре; технических блокеров нет.
