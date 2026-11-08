@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from "express";
 import { roomIdValidator } from "./classes/Validator";
 import { RoomsManager } from "./classes/RoomsManager";
 import { EmitManager } from "./classes/EmitManager";
-import { NotFoundError, BadRequestError } from "./errors";
+import { NotFoundError } from "./errors";
 import errorHandlerMiddleware from "./middleware/errorHandler";
 import notFoundMiddleware from "./middleware/notFound";
 
@@ -48,7 +48,8 @@ export class AppApiServer {
         const roomId = req.params.roomId;
         const scene = this.roomsManager.createRoom(roomId);
         if (!scene) {
-            throw new BadRequestError("Scene already exists");
+            res.json({ isCreated: false });
+            return;
         } else {
             const sceneEvents = [
                 "enemiesUpdated",
