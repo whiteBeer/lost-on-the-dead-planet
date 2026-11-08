@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      APP_HOST: 0.0.0.0
+      APP_PORT: 7789
+      FAST_TEST: ${FAST_TEST:-0}
+      FAST_TEST_SCALE: ${FAST_TEST_SCALE:-10}
+    restart: unless-stopped
+    expose:
+      - "7789"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Same-origin via nginx inside frontend — browser uses one public port.
+        NEXT_PUBLIC_BACKEND_URL: ""
+        NEXT_PUBLIC_BASE_PATH: ""
+        NEXT_PUBLIC_API_BASE_PATH: ""
+    ports:
+      - "${GAME_PORT:-7790}:7790"
+    depends_on:
+      - backend
+    restart: unless-stopped
