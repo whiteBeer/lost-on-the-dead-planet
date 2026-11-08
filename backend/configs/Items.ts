@@ -108,8 +108,8 @@ export const CRATE_WEAPON:Record<keyof typeof CRATE_LOOT, [number, number]> = {
 
 // Полки в домах: в основном еда, вода и патроны
 export const SHELF_LOOT:Record<"village" | "town" | "city", LootRow[]> = {
-    village: [["canned", 0.45, 1, 1], ["water", 0.5, 1, 1], ["cloth", 0.4, 1, 2], ["bandage", 0.25, 1, 1], ["ammo_9mm", 0.2, 4, 10], ["arrow", 0.15, 3, 6]],
-    town: [["canned", 0.45, 1, 2], ["water", 0.45, 1, 2], ["ammo_9mm", 0.35, 6, 14], ["ammo_12g", 0.2, 3, 6], ["ammo_556", 0.12, 6, 12], ["bandage", 0.3, 1, 2], ["powder", 0.2, 1, 2]],
+    village: [["canned", 0.45, 1, 1], ["water", 0.5, 1, 1], ["cloth", 0.4, 1, 2], ["bandage", 0.25, 1, 1], ["ammo_9mm", 0.3, 4, 10], ["arrow", 0.2, 3, 6], ["ammo_12g", 0.08, 2, 4], ["ammo_556", 0.08, 4, 8]],
+    town: [["canned", 0.45, 1, 2], ["water", 0.45, 1, 2], ["ammo_9mm", 0.35, 6, 14], ["ammo_12g", 0.2, 3, 6], ["ammo_556", 0.25, 6, 14], ["bandage", 0.3, 1, 2], ["powder", 0.2, 1, 2], ["arrow", 0.15, 4, 8]],
     city: [["canned", 0.4, 1, 2], ["water", 0.4, 1, 2], ["ammo_556", 0.35, 8, 20], ["ammo_9mm", 0.3, 8, 16], ["ammo_12g", 0.2, 4, 8], ["ammo_762", 0.08, 2, 5], ["medkit", 0.15, 1, 1]]
 };
 

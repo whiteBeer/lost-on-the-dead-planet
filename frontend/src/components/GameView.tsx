@@ -520,6 +520,7 @@ function GameView({ name }:{ name:string }) {
                     {me.dead && (
                         <div className={styles.overlay}>
                             <h2>Ты погиб</h2>
+                            {me.killedBy && <p className={styles.killedBy}>Причина: {me.killedBy}</p>}
                             <p>Опыт за эту жизнь: {me.exp}, уровень {me.level}, убийств: {me.kills}</p>
                             <button className={styles.primary} disabled={!me.canRespawn} onClick={() => app?.respawn()}>
                                 {me.canRespawn ? "Вернуться в мир" : "Подожди немного..."}

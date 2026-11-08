@@ -38,24 +38,24 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "crawler", name: "Ползун", tier: 1, health: 25, speed: 28, speedJitter: 15,
         radius: 20, size: 66, damage: 6, attackInterval: 900, aggro: 360,
         exp: 6, dropChance: 0.01, healChance: 0.03, zoneMin: 0, zoneMax: 0.6, weight: 30,
-        loot: [["cloth", 0.3, 1, 1], ["bone", 0.25, 1, 1]]
+        loot: [["cloth", 0.3, 1, 1], ["bone", 0.25, 1, 1], ["ammo_9mm", 0.06, 2, 5]]
     },
     "zombie": {
         id: "zombie", name: "Зомби", tier: 1, health: 50, speed: 35, speedJitter: 40,
         radius: 24, size: 75, damage: 12, attackInterval: 800, aggro: 520,
         exp: 10, dropChance: 0.025, healChance: 0.04, zoneMin: 0, zoneMax: 0.9, weight: 50, urban: 1.5,
-        loot: [["cloth", 0.35, 1, 2], ["bone", 0.2, 1, 1]]
+        loot: [["cloth", 0.35, 1, 2], ["bone", 0.2, 1, 1], ["ammo_9mm", 0.1, 3, 6], ["ammo_556", 0.04, 3, 6]]
     },
     "runner": {
         id: "runner", name: "Бегун", tier: 1, health: 35, speed: 125, speedJitter: 40,
         radius: 20, size: 64, damage: 8, attackInterval: 600, aggro: 620,
         exp: 15, dropChance: 0.03, healChance: 0.04, zoneMin: 0.18, zoneMax: 0.95, weight: 22,
-        loot: [["bone", 0.35, 1, 2], ["cloth", 0.2, 1, 1]]
+        loot: [["bone", 0.35, 1, 2], ["cloth", 0.2, 1, 1], ["ammo_9mm", 0.08, 2, 5]]
     },
     "hound": {
-        id: "hound", name: "Гончая", tier: 2, health: 60, speed: 185, speedJitter: 30,
+        id: "hound", name: "Гончая", tier: 2, health: 60, speed: 162, speedJitter: 30,
         radius: 20, size: 66, damage: 11, attackInterval: 650, aggro: 720,
-        exp: 25, dropChance: 0.04, healChance: 0.04, zoneMin: 0.3, zoneMax: 1, weight: 14,
+        exp: 25, dropChance: 0.04, healChance: 0.04, zoneMin: 0.35, zoneMax: 1, weight: 14,
         loot: [["hide", 0.6, 1, 2], ["bone", 0.4, 1, 2], ["meat", 0.5, 1, 1]]
     },
     "spitter": {

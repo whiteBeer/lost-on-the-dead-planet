@@ -36,6 +36,7 @@
 .barHp { height: 100%; background: #c9443c; transition: width 0.12s linear; }
 .barExp { height: 100%; background: #8a6ee0; transition: width 0.2s linear; }
 .needs { display: flex; gap: 5px; }
+.killedBy { font-size: 18px; font-weight: 700; color: #ff8a7a; }
 .barStamina { height: 100%; background: #d6c24a; }
 .barThin { height: 14px; }
 .barThin .barText { font-size: 10px; }
@@ -135,7 +136,7 @@
   .dashButton, .sprintButton { position: absolute; right: 80px; bottom: 6px; z-index: 3; display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; font-size: 11px; font-weight: 800; color: #f1f0e6; background: rgba(12, 15, 10, 0.72); border: 2px solid #d6c24a; border-radius: 50%; }
   .sprintButton { right: 142px; border-color: #8a8a6a; }
   .sprintOn { border-color: #d6c24a; background: rgba(214, 194, 74, 0.35); }
-  .quick { left: auto; right: 6px; bottom: auto; top: 128px; flex-direction: column; gap: 3px; }
+  .quick { left: 6px; right: auto; bottom: auto; top: 118px; flex-direction: row; gap: 3px; }
   .quick button { width: 40px; height: 40px; padding: 3px; }
   .toasts { bottom: auto; top: 160px; }
   .toast { font-size: 12px; }

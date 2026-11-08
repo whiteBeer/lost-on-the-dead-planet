@@ -54,6 +54,7 @@ export interface MeState {
     food:number;
     water:number;
     stamina:number;
+    killedBy:string;
     wanted:number;                 // мс до снятия розыска, 0 — не разыскивается
     got:[string, number][];        // подобранное с прошлого снимка
     quests:[string, number][];     // взятые задания и прогресс

@@ -56,6 +56,9 @@ export interface Player {
     food:number;          // сытость 0..100
     water:number;         // вода 0..100
     stamina:number;       // выносливость для бега и рывков 0..100
+    lastHurtAt:number;    // когда последний раз получил урон: сытый игрок вне боя восстанавливается
+    lastHurtBy:string;    // кто ранил последним: показывается на экране гибели
+    killedBy:string;
     sprinting:boolean;
     aiming:boolean;       // правая кнопка мыши: точнее, но медленнее
     dashUntil:number;
@@ -135,6 +138,7 @@ interface Bullet {
     hit:Set<number>;     // Кого уже задела эта пуля
     crit:boolean;
     onlyPlayer?:number;  // Пуля охраны: ранит только того, в кого стреляли
+    srcName?:string;     // Кто выстрелил (для экрана гибели)
     npc?:boolean;        // Пуля наёмника: игроков не ранит
 }
 
@@ -202,6 +206,7 @@ export class World extends EventEmitter {
     private obstacleGrid = new AreaGrid<Obstacle>(200);
     private interiors = new Map<number, Obstacle[]>();   // дома с входом по поселениям
     private campPeople:{ trader:number, guards:Set<number>, respawnAt:number }[] = [];
+    private campGrudge = new Map<number, { damage:number, until:number }>();
     private shelves:Obstacle[] = [];
     private killFeed:KillEvent[] = [];
 
@@ -307,7 +312,7 @@ export class World extends EventEmitter {
             exp: 0, level: 1, kills: 0, bestExp: 0,
             perks: new Set(), stats: computeStats([]), offers: [],
             weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0, food: 100, water: 100,
-            stamina: 100, sprinting: false, aiming: false, dashUntil: 0, dashReadyAt: 0, wantedUntil: 0, got: [], quests: new Map(),
+            stamina: 100, lastHurtAt: 0, lastHurtBy: "", killedBy: "", sprinting: false, aiming: false, dashUntil: 0, dashReadyAt: 0, wantedUntil: 0, got: [], quests: new Map(),
             ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
             invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
@@ -360,6 +365,11 @@ export class World extends EventEmitter {
         player.food = 100;
         player.water = 100;
         player.stamina = 100;
+        player.lastHurtAt = 0;
+        // Стартовый набор новичка: бинт, консервы, вода
+        player.inventory[0] = { id: "bandage", n: 2 };
+        player.inventory[1] = { id: "canned", n: 1 };
+        player.inventory[2] = { id: "water", n: 1 };
         player.wantedUntil = 0;
         player.quests = new Map();
         player.got = [];
@@ -1545,6 +1555,11 @@ export class World extends EventEmitter {
                 this.finishReload(player);
             }
 
+            // Сытый и напоенный игрок вне боя потихоньку восстанавливает здоровье
+            if (now - player.lastHurtAt > WORLD.restRegenDelayMs && player.food > 50 && player.water > 50 && player.hp < player.stats.maxHp) {
+                player.hp = Math.min(player.stats.maxHp, player.hp + WORLD.restRegen * dt);
+            }
+
             // Бег тратит выносливость, отдых её возвращает
             if (player.sprinting && player.moving) {
                 player.stamina = Math.max(0, player.stamina - WORLD.sprintDrain * dt);
@@ -1557,6 +1572,7 @@ export class World extends EventEmitter {
             player.water = Math.max(0, player.water - WORLD.thirstPerSec * dt);
             if (player.food <= 0 || player.water <= 0) {
                 player.hp -= WORLD.starveDamage * dt * ((player.food <= 0 ? 1 : 0) + (player.water <= 0 ? 1 : 0));
+                player.lastHurtAt = now;
                 if (now > player.hintUntil) {
                     this.hint(player, player.water <= 0 ? "Жажда! Выпей воды из рюкзака" : "Голод! Съешь что-нибудь из рюкзака");
                 }
@@ -1584,6 +1600,7 @@ export class World extends EventEmitter {
             player.toxicDamage = player.zone >= ZONES.toxic && player.maskId !== "gasmask" ? WORLD.toxicDamage : 0;
             if (player.toxicDamage > 0) {
                 player.hp -= player.toxicDamage * dt;
+                player.lastHurtAt = now;
                 if (now - player.lastToxicFxAt > 1000) {
                     player.lastToxicFxAt = now;
                     this.addFx(["toxic", player.x, player.y]);
@@ -1977,6 +1994,7 @@ export class World extends EventEmitter {
             } else if (hit.player) {
                 bullet.hit.add(hit.player.id);
                 if (bullet.fromEnemy) {
+                    hit.player.lastHurtBy = bullet.srcName || "монстр";
                     this.damagePlayer(hit.player, bullet.damage, null, null);
                 } else if (owner) {
                     this.damagePlayer(hit.player, bullet.damage * WORLD.pvpDamageMul * owner.stats.playerDamage, owner, bullet.kind, bullet.crit);
@@ -2070,6 +2088,9 @@ export class World extends EventEmitter {
             if (dist < radius) {
                 const falloff = 1 - Math.max(0, dist) / radius * 0.6;
                 const scale = owner ? WORLD.pvpDamageMul * owner.stats.playerDamage : 1;
+                if (!owner) {
+                    player.lastHurtBy = source === "bloater" ? "взрыв раздутого" : "взрыв";
+                }
                 this.damagePlayer(player, damage * falloff * scale, owner || null, source);
             }
         }
@@ -2084,7 +2105,14 @@ export class World extends EventEmitter {
             return;
         }
         if (attacker && (faction === "guard" || faction === "trader")) {
-            this.makeWanted(attacker, enemy.camp, faction === "trader" ? "напал на торговца" : "напал на охрану");
+            // Случайная пуля прощается: врагом лагеря становится тот, кто нанёс людям лагеря заметный урон
+            const now = Date.now();
+            const grudge = this.campGrudge.get(attacker.id);
+            const total = (grudge && grudge.until > now ? grudge.damage : 0) + rawDamage;
+            this.campGrudge.set(attacker.id, { damage: total, until: now + 10000 });
+            if (total >= WORLD.campGrudgeDamage || faction === "trader") {
+                this.makeWanted(attacker, enemy.camp, faction === "trader" ? "напал на торговца" : "напал на охрану");
+            }
         }
         let damage = rawDamage * (1 - (enemy.cfg.armor || 0));
         enemy.revealedUntil = Date.now() + 2500;
@@ -2214,6 +2242,13 @@ export class World extends EventEmitter {
         if (player.dead || Date.now() < player.protectedUntil) {
             return;
         }
+        // Безопасная зона: игроки друг друга не ранят — новичка нельзя убить сразу после появления.
+        // Разыскиваемого лагерями это не защищает
+        if (attacker && attacker !== player && !this.isWanted(player)
+            && (player.zone < ZONES.safe || attacker.zone < ZONES.safe)) {
+            this.addFx(["miss", player.x, player.y]);
+            return;
+        }
         // Стрельба по людям в лагере: охрана встаёт на сторону жертвы. Разыскиваемого бить можно
         if (attacker && attacker !== player && !this.isWanted(player)) {
             const camp = this.campAt(player.x, player.y) || this.campAt(attacker.x, attacker.y);
@@ -2234,6 +2269,7 @@ export class World extends EventEmitter {
             + (ITEMS[player.armorId]?.armor || 0);
         const damage = rawDamage * (1 - clamp(reduction, -1, 0.8));
         player.hp -= damage;
+        player.lastHurtAt = Date.now();
         this.addFx(["dmg", player.x, player.y, Math.round(damage), crit ? 1 : 0]);
 
         if (attacker && attacker.stats.lifesteal > 0 && !attacker.dead) {
@@ -2249,6 +2285,8 @@ export class World extends EventEmitter {
     }
 
     private killPlayer(player:Player, attacker:Player | null, weaponId:string | null) {
+        player.killedBy = attacker ? `игрок ${attacker.name}` : weaponId === "toxic" ? "ядовитый воздух"
+            : weaponId === "hunger" ? "голод" : weaponId === "thirst" ? "жажда" : player.lastHurtBy || "монстры";
         player.hp = 0;
         player.dead = true;
         player.deadAt = Date.now();
@@ -2373,11 +2411,16 @@ export class World extends EventEmitter {
             enemy.rotation = Math.atan2(enemy.y - camp.y, enemy.x - camp.x);
             return;
         }
+        // Монстр из опасных земель не уходит за добычей глубоко в безопасную зону
+        const shy = (x:number, y:number) => this.zoneAt(x, y) < enemy.cfg.zoneMin - 0.12;
         for (const player of this.players.values()) {
             if (player.dead || this.campAt(player.x, player.y)) {
                 continue;
             }
             const dist = distSq(enemy.x, enemy.y, player.x, player.y);
+            if (shy(player.x, player.y) && dist > 110 * 110) {
+                continue;
+            }
             const aggro = enemy.cfg.aggro * player.stats.aggro;
             // Монстр не теряет того, кто в него стрелял
             const isGrudge = enemy.targetId === player.id && dist < 1400 * 1400;
@@ -2467,6 +2510,11 @@ export class World extends EventEmitter {
         }
 
         enemy.targetId = 0;
+        if (shy(enemy.x, enemy.y)) {
+            enemy.moving = true;
+            enemy.rotation = Math.atan2(enemy.homeY - enemy.y, enemy.homeX - enemy.x);
+            return;
+        }
         if (now >= enemy.wanderAt) {
             enemy.wanderAt = now + 1500 + Math.random() * 3500;
             enemy.moving = Math.random() < 0.6;
@@ -2514,7 +2562,8 @@ export class World extends EventEmitter {
                     pierceLeft: 0, ricochetLeft: 0, explosion: 0,
                     size: ranged.kind === "shot" ? 3 : 7, kind: ranged.kind || "acid",
                     hit: new Set(), crit: false,
-                    onlyPlayer: enemy.cfg.faction ? target.id : undefined
+                    onlyPlayer: enemy.cfg.faction ? target.id : undefined,
+                    srcName: enemy.cfg.name
                 };
                 this.bullets.push(bullet);
                 this.announceBullet(bullet);
@@ -2535,6 +2584,7 @@ export class World extends EventEmitter {
                 }
                 enemy.nextAttackAt = now + enemy.cfg.attackInterval;
                 const hpBefore = player.hp;
+                player.lastHurtBy = enemy.cfg.name;
                 this.damagePlayer(player, enemy.cfg.damage, null, null);
                 const thorns = player.stats.thorns;
                 if (thorns > 0 && hpBefore > player.hp) {
@@ -2561,7 +2611,14 @@ export class World extends EventEmitter {
             if (player.dead || budget <= 0 || this.enemies.size >= WORLD.maxEnemies) {
                 continue;
             }
-            const want = WORLD.enemiesAround[zoneLevel(player.zone)];
+            // Где игроков много, монстров тоже больше: иначе толпа делит трёх зомби на всех
+            let crowd = 0;
+            for (const other of this.players.values()) {
+                if (!other.dead && distSq(other.x, other.y, player.x, player.y) < WORLD.enemyAreaRadius ** 2) {
+                    crowd++;
+                }
+            }
+            const want = Math.round(WORLD.enemiesAround[zoneLevel(player.zone)] * Math.min(2, 1 + 0.25 * (crowd - 1)));
             let around = 0;
             this.enemyGrid.query(player.x, player.y, WORLD.enemyAreaRadius, (enemy) => {
                 if (!enemy.cfg.faction && distSq(enemy.x, enemy.y, player.x, player.y) < WORLD.enemyAreaRadius ** 2) {
@@ -2618,6 +2675,10 @@ export class World extends EventEmitter {
             // В безопасной зоне почти пусто: точка с низкой опасностью часто отбраковывается
             const zone = this.zoneAt(x, y);
             if (Math.random() > 0.15 + zone) {
+                continue;
+            }
+            // Рядом с игроком в безопасной зоне не появляются монстры из опасных земель по соседству
+            if (anchor.zone < ZONES.safe && zone > ZONES.safe + 0.08) {
                 continue;
             }
             if (this.isNearAnyPlayer(x, y, SPAWN_MIN_DIST - 50) || this.isBlocked(x, y, 40)) {
@@ -2889,6 +2950,7 @@ export class World extends EventEmitter {
                 speed: Math.round(this.baseSpeedOf(me) * 10) / 10,
                 stamina: Math.round(me.stamina),
                 wanted: Math.max(0, me.wantedUntil - now),
+                killedBy: me.dead ? me.killedBy : "",
                 got: me.got.splice(0),
                 quests: [...me.quests.entries()],
                 fireInterval: weapon.fireRate / me.stats.fireRate,

@@ -83,7 +83,8 @@ const tests = {
             const p = world.addPlayer(`s${i}`, `p${i}`);
             assert.ok(world.zoneAt(p.x, p.y) <= WORLD.spawnZoneMax, `зона ${world.zoneAt(p.x, p.y)}`);
             assert.strictEqual(p.weaponId, "Knife");
-            assert.ok(p.inventory.every(el => el === null));
+            // Стартовый набор: бинты, консервы, вода — и больше ничего
+            assert.deepStrictEqual(p.inventory.filter(Boolean).map(el => el.id).sort(), ["bandage", "canned", "water"]);
         }
     },
     "нож рубит дерево: дерево в рюкзаке, дерево кончается и исчезает": () => {
@@ -141,8 +142,10 @@ const tests = {
     "рюкзак: стопки, переполнение, броня снижает урон": () => {
         const world = arena();
         const p = world.addPlayer("s", "Носильщик");
+        p.inventory.fill(null);
         assert.strictEqual(world.addItem(p, "wood", 99 * 12 + 5), 5);
         const q = world.addPlayer("s2", "Броня");
+        q.inventory.fill(null);
         world.addItem(q, "armor_kevlar", 1);
         world.useSlot(q, 0);
         assert.strictEqual(q.armorId, "armor_kevlar");
@@ -423,6 +426,7 @@ const tests = {
         const world = arena();
         const a = world.addPlayer("a", "A");
         place(a, 500, 500);
+        a.inventory.fill(null);
         a.food = 0;
         a.water = 10;
         const hp = a.hp;
@@ -459,6 +463,7 @@ const tests = {
         world.spawnEnemies = () => {};
         const a = world.addPlayer("a", "Покупатель");
         const b = world.addPlayer("b", "Задира");
+        a.inventory.fill(null);
         place(a, trader.x + 30, trader.y);
         place(b, trader.x + 60, trader.y + 20);
         // Продажа и покупка
@@ -488,7 +493,13 @@ const tests = {
         const coins = world.countItem(a, "coin");
         assert.strictEqual(world.quest(a, "q_zombie", "claim"), true);
         assert.strictEqual(world.countItem(a, "coin"), coins + 15);
-        // Выстрел по игроку в лагере — разыскиваемый, охрана целится в него
+        // В безопасной зоне игроки друг друга не ранят
+        a.zone = b.zone = 0.1;
+        const hpSafe = a.hp;
+        world.damagePlayer(a, 10, b, "Pistol");
+        assert.strictEqual(a.hp, hpSafe);
+        // Выстрел по игроку в лагере вне безопасной зоны — разыскиваемый, охрана целится в него
+        a.zone = b.zone = 0.4;
         world.damagePlayer(a, 10, b, "Pistol");
         assert.ok(world.isWanted(b));
         assert.ok(!world.isWanted(a));
@@ -501,6 +512,7 @@ const tests = {
         assert.ok([...world.enemies.values()].some(el => el.type === "hunter" && el.huntId === b.id));
         // Награда за голову и снятие розыска после смерти
         const before = world.countItem(a, "coin");
+        b.zone = 0.1;
         world.damagePlayer(b, 9999, a, "Pistol");
         assert.ok(b.dead);
         assert.strictEqual(world.countItem(a, "coin"), before + 40);
@@ -523,6 +535,7 @@ const tests = {
     "рюкзак: перекладывание, подсумок, быстрая еда": () => {
         const world = arena();
         const a = world.addPlayer("a", "A");
+        a.inventory.fill(null);
         world.addItem(a, "wood", 5);
         world.moveSlot(a, 0, 7);
         assert.strictEqual(a.inventory[7].id, "wood");
@@ -544,6 +557,7 @@ const tests = {
         const world = arena();
         const a = world.addPlayer("a", "A");
         place(a, 500, 500);
+        a.inventory.fill(null);
         world.addItem(a, "canned", 2);
         world.dropSlot(a, a.inventory.findIndex(el => el && el.id === "canned"));
         world.updatePickups(Date.now());

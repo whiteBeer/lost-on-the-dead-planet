@@ -76,7 +76,23 @@ export class App {
         private readonly onUiKey:(code:string) => void
     ) {}
 
+    /** Только для автотестов (адрес с ?bot): состояние игры для бета-тестеров-ботов. */
+    botState() {
+        return {
+            me: this.meState, x: this.x, y: this.y, near: this.nearPickupName(),
+            screen: { w: this.pixi.screen.width, h: this.pixi.screen.height, scale: this.world.scale.x },
+            enemies: [...this.enemies.values()].map(v => ({ type: v.type, x: v.x, y: v.y })),
+            pickups: [...this.pickups.values()].map(v => ({ kind: v.kind, id: v.weaponId, x: v.x, y: v.y })),
+            shelves: (this.map?.shelves || []).filter(el => el.alive && Math.hypot(el.x - this.x, el.y - this.y) < 900).map(el => ({ x: el.x, y: el.y })),
+            trees: [...(this.map?.obstacles.values() || [])].filter(el => el.alive && (el.kind === "tree" || el.kind === "rock")
+                && Math.hypot(el.x - this.x, el.y - this.y) < 700).map(el => ({ kind: el.kind, x: el.x, y: el.y, r: el.r }))
+        };
+    }
+
     async init() {
+        if (typeof location !== "undefined" && location.search.includes("bot")) {
+            (window as unknown as { __lpt:App }).__lpt = this;
+        }
         await this.pixi.init({
             background: "#10130f",
             resizeTo: window,

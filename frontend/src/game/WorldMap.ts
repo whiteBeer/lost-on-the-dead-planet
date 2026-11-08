@@ -42,6 +42,8 @@ function smoothstep(edge0:number, edge1:number, x:number) {
 export class WorldMap {
     readonly obstacles = new Map<number, MapObstacle>();
     readonly shelves:MapObstacle[] = [];
+    private trees:MapObstacle[] = [];
+    private fadedTrees = new Set<MapObstacle>();
     readonly traders:{ x:number, y:number }[] = [];
     private roofs:Roof[] = [];
     private collision = new Map<number, MapObstacle[]>();
@@ -310,6 +312,9 @@ export class WorldMap {
 
             const entry:MapObstacle = { id, kind, shape, x, y, r, w, h, alive: alive === 1, sprite, goods };
             this.obstacles.set(id, entry);
+            if (kind === "tree") {
+                this.trees.push(entry);
+            }
             if (kind === "shelf") {
                 this.shelves.push(entry);
             }
@@ -353,8 +358,26 @@ export class WorldMap {
         return roof;
     }
 
-    /** Крыша дома, в котором стоит игрок, плавно становится прозрачной. */
+    /** Крыша дома, в котором стоит игрок, плавно становится прозрачной; крона над игроком — полупрозрачной. */
     updateRoofs(px:number, py:number, dt:number) {
+        const under = new Set<MapObstacle>();
+        for (const tree of this.trees) {
+            if (Math.abs(tree.x - px) < 160 && Math.abs(tree.y - py) < 160 && Math.hypot(tree.x - px, tree.y - py) < tree.r * 1.55) {
+                under.add(tree);
+            }
+        }
+        for (const tree of new Set([...this.fadedTrees, ...under])) {
+            const target = under.has(tree) ? 0.4 : 1;
+            tree.sprite.alpha += (target - tree.sprite.alpha) * Math.min(1, dt * 8);
+            if (Math.abs(tree.sprite.alpha - target) < 0.02) {
+                tree.sprite.alpha = target;
+                if (target === 1) {
+                    this.fadedTrees.delete(tree);
+                }
+            } else {
+                this.fadedTrees.add(tree);
+            }
+        }
         const k = Math.min(1, dt * 8);
         for (const roof of this.roofs) {
             const inside = Math.abs(px - roof.x) <= roof.w / 2 + 2 && Math.abs(py - roof.y) <= roof.h / 2 + 2;
