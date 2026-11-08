@@ -45,7 +45,7 @@
 .toast { display: flex; align-items: center; gap: 6px; padding: 3px 10px; font-size: 14px; font-weight: 700; color: #e9f5c8; background: rgba(0, 0, 0, 0.62); border-radius: 7px; animation: toastIn 0.2s ease-out; }
 .toast img { width: 26px; height: 20px; object-fit: contain; }
 @keyframes toastIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-.quick { position: absolute; left: 230px; bottom: 182px; display: flex; gap: 5px; }
+.quick { position: absolute; left: 230px; bottom: 204px; display: flex; gap: 5px; }
 .quick button { position: relative; width: 52px; height: 52px; padding: 4px; background: rgba(12, 15, 10, 0.75); border: 1px solid #4b573a; border-radius: 9px; cursor: pointer; }
 .quick button:disabled { opacity: 0.4; cursor: default; }
 .quick img { width: 100%; height: 100%; object-fit: contain; }

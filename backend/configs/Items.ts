@@ -22,6 +22,8 @@ export const ITEMS:Record<string, ItemConfig> = {
     wood: { id: "wood", name: "Дерево", kind: "res", stack: 99, description: "Добывается из деревьев, топором вдвое быстрее." },
     stone: { id: "stone", name: "Камень", kind: "res", stack: 99, description: "Добывается из валунов, киркой вдвое быстрее." },
     scrap: { id: "scrap", name: "Металлолом", kind: "res", stack: 99, description: "Машины разбираются гаечным ключом. Ещё бывает в ящиках и у солдат-зомби." },
+    ore: { id: "ore", name: "Железная руда", kind: "res", stack: 99, description: "Рыжие камни в диких и опасных землях, добывается только киркой." },
+    crystal: { id: "crystal", name: "Кристалл мутации", kind: "res", stack: 40, description: "Растёт только в мёртвых землях, добывается киркой. Дорого ценится у торговцев." },
     rope: { id: "rope", name: "Верёвка", kind: "res", stack: 20, description: "Скручивается из ткани. Нужна для инструментов." },
     bone: { id: "bone", name: "Кости", kind: "res", stack: 99, description: "Падают с монстров." },
     hide: { id: "hide", name: "Шкура", kind: "res", stack: 99, description: "Падает с гончих, громил и других крупных монстров." },
@@ -73,12 +75,14 @@ export const RECIPES:Recipe[] = [
     { id: "pistol", result: "w:Pistol", count: 1, cost: { scrap: 5, powder: 3, wood: 1 } },
     { id: "shotgun", result: "w:Shotgun", count: 1, cost: { scrap: 10, powder: 5, wood: 3 } },
     { id: "grenade", result: "grenade", count: 1, cost: { scrap: 2, powder: 3 } },
-    { id: "armor_kevlar", result: "armor_kevlar", count: 1, cost: { scrap: 8, cloth: 5, hide: 3 } },
+    { id: "armor_kevlar", result: "armor_kevlar", count: 1, cost: { ore: 6, cloth: 5, hide: 3 } },
     { id: "pouch", result: "pouch", count: 1, cost: { hide: 4, cloth: 4, rope: 2 } },
     { id: "arrow", result: "arrow", count: 6, cost: { wood: 2, stone: 1 } },
     { id: "ammo_9mm", result: "ammo_9mm", count: 12, cost: { scrap: 1, powder: 1 } },
     { id: "ammo_12g", result: "ammo_12g", count: 6, cost: { scrap: 1, powder: 2 } },
-    { id: "ammo_556", result: "ammo_556", count: 15, cost: { scrap: 2, powder: 2 } },
+    { id: "ammo_556", result: "ammo_556", count: 15, cost: { ore: 2, powder: 2 } },
+    { id: "ammo_9mm_ore", result: "ammo_9mm", count: 16, cost: { ore: 1, powder: 1 } },
+    { id: "cell", result: "cell", count: 2, cost: { crystal: 3, scrap: 2 } },
     { id: "ammo_762", result: "ammo_762", count: 5, cost: { scrap: 2, powder: 3 } }
 ];
 
@@ -152,6 +156,7 @@ export const TRADES:Trade[][] = [
     [
         { id: "t1_sell_scrap", give: { scrap: 6 }, get: ["coin", 6] },
         { id: "t1_sell_slime", give: { slime: 4 }, get: ["coin", 6] },
+        { id: "t1_sell_ore", give: { ore: 4 }, get: ["coin", 6] },
         { id: "t1_556", give: { coin: 12 }, get: ["ammo_556", 20] },
         { id: "t1_12g", give: { coin: 10 }, get: ["ammo_12g", 8] },
         { id: "t1_medkit", give: { coin: 15 }, get: ["medkit", 1] },
@@ -163,6 +168,7 @@ export const TRADES:Trade[][] = [
     ],
     [
         { id: "t2_sell_powder", give: { powder: 4 }, get: ["coin", 8] },
+        { id: "t2_sell_crystal", give: { crystal: 2 }, get: ["coin", 16] },
         { id: "t2_762", give: { coin: 16 }, get: ["ammo_762", 8] },
         { id: "t2_fuel", give: { coin: 20 }, get: ["fuel", 60] },
         { id: "t2_rocket", give: { coin: 35 }, get: ["rocket", 1] },

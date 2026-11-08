@@ -267,12 +267,12 @@ export class PickupView {
         this.root.position.set(x, y);
         const textureName = kind === "medkit" ? "medkit"
             : kind === "perk" ? `perk_${weaponId}`
-                : kind === "item" ? `item_${weaponId}`
+                : kind === "item" || kind === "drop" ? `item_${weaponId}`
                     : kind === "bag" ? "item_bag"
                         : `weapon_${weaponId}`;
         this.icon = new PIXI.Sprite(Assets.tex(textureName));
         this.icon.anchor.set(0.5);
-        const target = kind === "medkit" ? 30 : kind === "perk" ? 46 : kind === "item" ? 30 : kind === "bag" ? 42 : 56;
+        const target = kind === "medkit" ? 30 : kind === "perk" ? 46 : kind === "item" || kind === "drop" ? 30 : kind === "bag" ? 42 : 56;
         if (count > 1) {
             const label = new PIXI.Text({
                 text: String(count),
@@ -312,7 +312,7 @@ export class ChestView {
     private marker = new PIXI.Graphics();
     private shadow = new PIXI.Graphics();
     private drop = new PIXI.Container();
-    private chute = new PIXI.Graphics();
+    private chute = new PIXI.Container();
     private icon = new PIXI.Sprite(Assets.tex("chest"));
     private smoke = new PIXI.Container();
     private timer:PIXI.Text;
@@ -329,18 +329,12 @@ export class ChestView {
         this.shadow.ellipse(0, 6, 34, 14).fill({ color: 0x000000, alpha: 0.4 });
         this.root.addChild(this.marker, this.shadow, this.smoke);
 
-        // Купол парашюта: полосатый полукруг и стропы к ящику
-        const stripes = [0xf2f2ea, 0xff6a3d, 0xf2f2ea, 0xff6a3d, 0xf2f2ea];
-        const w = 116;
-        stripes.forEach((color, i) => {
-            const a0 = Math.PI + i / stripes.length * Math.PI;
-            const a1 = Math.PI + (i + 1) / stripes.length * Math.PI;
-            this.chute.moveTo(0, -70).arc(0, -70, w / 2, a0, a1).lineTo(0, -70).fill({ color });
-        });
-        this.chute.arc(0, -70, w / 2, Math.PI, Math.PI * 2).stroke({ width: 2, color: 0x6b2a18 });
-        for (const sx of [-w / 2, -w / 6, w / 6, w / 2]) {
-            this.chute.moveTo(sx, -70).lineTo(sx * 0.25, -22).stroke({ width: 1.5, color: 0x2a2a22, alpha: 0.8 });
-        }
+        // Купол парашюта сверху: картинка со стропами к ящику
+        const canopy = new PIXI.Sprite(Assets.tex("parachute"));
+        canopy.anchor.set(0.5, 0.92);
+        canopy.scale.set(150 / canopy.texture.width);
+        canopy.position.set(0, -14);
+        this.chute.addChild(canopy);
         this.icon.anchor.set(0.5);
         this.icon.scale.set(70 / Math.max(this.icon.texture.width, this.icon.texture.height));
         this.drop.addChild(this.chute, this.icon);

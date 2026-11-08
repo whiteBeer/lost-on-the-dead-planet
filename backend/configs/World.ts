@@ -40,6 +40,8 @@ export const WORLD = {
     mercLifeMs: 8 * 60 * 1000,
     maxInventory: 24,
     sprintMul: 1.45,
+    aimSpreadMul: 0.5,              // прицеливание правой кнопкой: разброс вдвое меньше
+    aimSpeedMul: 0.7,               // и шаг медленнее
     sprintDrain: 22,                // выносливости в секунду при беге
     staminaRegen: 16,
     dashMul: 3.4,

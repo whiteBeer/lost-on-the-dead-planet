@@ -105,8 +105,8 @@ export class Effects {
                     this.swing(x, y, (a || 0) / 100, b || 60);
                     break;
                 case "gather":
-                    this.text(`+${a} ${["дерево", "камень", "металл"][b || 0]}`, x, y, [0xd9a66b, 0xc8c8c8, 0xd08850][b || 0], 15);
-                    this.burst(x, y, 14, [0x8a5a2b, 0x9a9a9a, 0x9a5a30][b || 0], 0.25);
+                    this.text(`+${a} ${["дерево", "камень", "металл", "руда", "кристалл"][b || 0]}`, x, y, [0xd9a66b, 0xc8c8c8, 0xd08850, 0xe0905a, 0xd09cff][b || 0], 15);
+                    this.burst(x, y, 14, [0x8a5a2b, 0x9a9a9a, 0x9a5a30, 0xa0582a, 0x9a4adf][b || 0], 0.25);
                     break;
                 case "loot":
                     this.text(`+${a}`, x, y - 10, 0xfff3b0, 14);

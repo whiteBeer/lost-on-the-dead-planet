@@ -5,7 +5,7 @@
 // building — сплошная высотка; interior — пол дома, в который можно зайти (не сталкивается);
 // wall — стены такого дома; shelf — полка с добычей внутри (не сталкивается)
 export type ObstacleKind = "tree" | "rock" | "wreck" | "crate" | "building" | "interior" | "wall" | "shelf" | "trader";
-export type ResourceKind = "wood" | "stone" | "scrap";
+export type ResourceKind = "wood" | "stone" | "scrap" | "ore" | "crystal";
 
 export interface Obstacle {
     id:number;
@@ -440,7 +440,8 @@ export function generateWorld(seed:number, size:number):WorldMap {
         }
         return true;
     };
-    const scatter = (kind:ObstacleKind, count:number, rMin:number, rMax:number, chance:(zoneValue:number) => number, extra:(r:number) => Partial<Obstacle>) => {
+    const scatter = (kind:ObstacleKind, count:number, rMin:number, rMax:number, chance:(zoneValue:number) => number, extra:(r:number) => Partial<Obstacle>,
+        styleOf:(zoneValue:number) => string = () => kind) => {
         let placed = 0;
         for (let attempt = 0; attempt < count * 12 && placed < count; attempt++) {
             const r = rMin + random() * (rMax - rMin);
@@ -449,7 +450,7 @@ export function generateWorld(seed:number, size:number):WorldMap {
             if (insideSettlement(x, y, 80) || onRoad(x, y, r + 20) || random() > chance(zoneAt(x, y)) || !free(x, y, r, 70)) {
                 continue;
             }
-            addCircle(kind, x, y, r, kind, extra(r));
+            addCircle(kind, x, y, r, styleOf(zoneAt(x, y)), extra(r));
             const el = obstacles[obstacles.length - 1];
             const key = gkey(el.x, el.y);
             grid.set(key, [...(grid.get(key) || []), el]);
@@ -460,8 +461,16 @@ export function generateWorld(seed:number, size:number):WorldMap {
     const area = (size / 9000) ** 2;
     // В мёртвых землях деревьев меньше, камней больше
     // Ресурсов в одном дереве и камне мало: базовые материалы добываются долго
-    scatter("tree", Math.round(900 * area), 26, 44, z => 1 - z * 0.75, r => ({ res: "wood", amount: Math.round(r / 9), maxAmount: Math.round(r / 9) }));
+    // Зелёные деревья — в безопасной зоне; на сухой земле редкие сухие, в мёртвых землях — мёртвые стволы
+    scatter("tree", Math.round(900 * area), 26, 44, z => z < ZONES.safe ? 1 : z < ZONES.wild ? 0.3 : 0.14,
+        r => ({ res: "wood", amount: Math.round(r / 9), maxAmount: Math.round(r / 9) }),
+        z => z < ZONES.safe ? "tree" : z < ZONES.danger ? "tree_dry" : "tree_dead");
     scatter("rock", Math.round(420 * area), 24, 52, z => 0.5 + z * 0.5, r => ({ res: "stone", amount: Math.round(r / 12), maxAmount: Math.round(r / 12) }));
+    // Ресурсы, которых нет на траве: руда в диких и опасных землях, кристаллы в мёртвых
+    scatter("rock", Math.round(160 * area), 24, 40, z => z > 0.35 && z < 0.9 ? 1 : 0,
+        r => ({ res: "ore", amount: Math.round(r / 12), maxAmount: Math.round(r / 12) }), () => "ore");
+    scatter("rock", Math.round(70 * area), 18, 26, z => z > ZONES.danger ? 1 : 0,
+        () => ({ res: "crystal", amount: 2, maxAmount: 2 }), () => "crystal");
     scatter("wreck", Math.round(110 * area), 40, 48, () => 1, () => ({ res: "scrap", amount: 5, maxAmount: 5 }));
     scatter("crate", Math.round(170 * area), 20, 24, z => 0.3 + z * 0.7, () => ({ hp: 60, maxAmount: 60 }));
 

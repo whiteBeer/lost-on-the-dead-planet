@@ -22,17 +22,22 @@ export class Control {
     private handlers:[EventTarget, string, (e:any) => void][] = [];
 
     sprintToggle = false;    // кнопка «Бег» на телефоне
+    aimDown = false;         // правая кнопка мыши — прицеливание
 
     constructor(private readonly canvas:HTMLElement, private readonly onKey:(code:string, mod:boolean) => void) {
         // Стрельба начинается только по клику на canvas: клик по панелям интерфейса не стреляет
         this.on(canvas, "mousedown", (e:MouseEvent) => {
             if (e.button === 0) {
                 this.mouseDown = true;
+            } else if (e.button === 2) {
+                this.aimDown = true;
             }
         });
         this.on(window, "mouseup", (e:MouseEvent) => {
             if (e.button === 0) {
                 this.mouseDown = false;
+            } else if (e.button === 2) {
+                this.aimDown = false;
             }
         });
         this.on(window, "mousemove", (e:MouseEvent) => {
@@ -103,6 +108,7 @@ export class Control {
     private clear() {
         this.keys.clear();
         this.mouseDown = false;
+        this.aimDown = false;
         this.moveStick = null;
         this.aimStick = null;
     }

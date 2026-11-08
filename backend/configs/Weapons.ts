@@ -25,7 +25,7 @@ export interface WeaponConfig {
     bulletSize?:number;
     // Ближний бой: удар по дуге перед игроком вместо пули
     // gather: сколько ресурса за удар; нет ключа — этим инструментом ресурс не добыть
-    melee?:{ range:number, arc:number, gather?:Partial<Record<"wood" | "stone" | "scrap", number>> };
+    melee?:{ range:number, arc:number, gather?:Partial<Record<"wood" | "stone" | "scrap" | "ore" | "crystal", number>> };
     craftOnly?:boolean;     // не выпадает с монстров и из сундуков
     ammo?:string;           // id патронов в рюкзаке; у холодного оружия нет
 }
@@ -59,7 +59,7 @@ export const WEAPONS:Record<string, WeaponConfig> = {
         damage: 24, speedInSecond: 0, range: 0, fireRate: 700,
         spreadBase: 0, spreadMax: 0, spreadIncrement: 0, spreadRecovery: 1,
         clipSize: 1, reloadTime: 0,
-        melee: { range: 64, arc: 1.3, gather: { wood: 1, stone: 2 } }
+        melee: { range: 64, arc: 1.3, gather: { wood: 1, stone: 2, ore: 1, crystal: 1 } }
     },
     "Wrench": {
         id: "Wrench", name: "Гаечный ключ", rarity: "common", craftOnly: true,

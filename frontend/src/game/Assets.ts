@@ -14,7 +14,7 @@ export const WEAPON_IDS = [
 export const ITEM_IDS = [
     "wood", "stone", "scrap", "bone", "hide", "slime", "cloth", "powder",
     "bandage", "medkit", "grenade", "mutagen", "armor_wood", "armor_bone", "armor_kevlar", "gasmask", "bag", "rope",
-    "ammo_9mm", "ammo_556", "ammo_762", "ammo_12g", "arrow", "fuel", "rocket", "cell", "canned", "meat", "water", "coin", "pouch"
+    "ammo_9mm", "ammo_556", "ammo_762", "ammo_12g", "arrow", "fuel", "rocket", "cell", "canned", "meat", "water", "coin", "pouch", "ore", "crystal"
 ];
 const OBSTACLES = ["tree", "rock", "wreck", "crate"];
 const ROOFS = ["house", "shop", "office", "tower"];
@@ -34,7 +34,7 @@ export class Assets {
 
     static async load() {
         const names = [
-            "player_body_sprite", "zombie_sprite", "ground", "ground_dry", "ground_dead", "asphalt", "medkit", "chest",
+            "player_body_sprite", "zombie_sprite", "ground", "ground_dry", "ground_dead", "asphalt", "medkit", "chest", "parachute",
             ...ROOFS.map(el => `roof_${el}`),
             ...ITEM_IDS.map(el => `item_${el}`),
             ...MONSTERS.map(el => `monster_${el}`),

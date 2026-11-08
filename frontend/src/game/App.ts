@@ -38,6 +38,7 @@ export class App {
     private pickups = new Map<number, PickupView>();
     private chests = new Map<number, ChestView>();
     readonly sound = new Sound();
+    private reticle = new PIXI.Graphics();
     private dashUntil = 0;
     private dashReadyAt = 0;
     private toasts:{ key:number, text:string, id:string, until:number }[] = [];
@@ -333,6 +334,8 @@ export class App {
             this.rotation = Math.atan2(mouse.y - cy, mouse.x - cx);
         }
 
+        this.drawReticle(me);
+
         if (this.mine) {
             this.mine.teleport(this.x, this.y, this.rotation);
             const move = this.control.moveVector();
@@ -359,12 +362,37 @@ export class App {
         }
         // Бег и рывок: те же множители, что на сервере
         const dashing = performance.now() < this.dashUntil;
-        const sprint = this.control!.sprinting && me.stamina > 0;
-        const speed = me.speed * (dashing ? DASH_MUL : sprint ? SPRINT_MUL : 1);
+        const aiming = this.control!.aimDown;
+        const sprint = this.control!.sprinting && me.stamina > 0 && !aiming;
+        const speed = me.speed * (dashing ? DASH_MUL : sprint ? SPRINT_MUL : 1) * (aiming && !dashing ? 0.7 : 1);
         // Те же столкновения, что и на сервере, иначе персонаж дёргался бы у препятствий
         const moved = this.map!.resolve(this.x + dx * speed * dt, this.y + dy * speed * dt, this.config!.playerRadius);
         this.x = moved.x;
         this.y = moved.y;
+    }
+
+    /** Прицеливание правой кнопкой: кружок, в пределах которого полетят пули. */
+    private drawReticle(me:MeState | null) {
+        const g = this.reticle;
+        if (!g.parent) {
+            this.layerFx.addChild(g);
+        }
+        g.clear();
+        const weapon = me ? this.config?.weapons[me.weapon] : undefined;
+        if (!me || me.dead || !this.control?.aimDown || this.control.isTouch || !weapon || weapon.melee) {
+            return;
+        }
+        const scale = this.world.scale.x || 1;
+        const mouse = this.control.mouse;
+        const wx = this.x + (mouse.x - this.pixi.screen.width / 2) / scale;
+        const wy = this.y + (mouse.y - this.pixi.screen.height / 2) / scale;
+        const dist = Math.hypot(wx - this.x, wy - this.y);
+        const radius = Math.max(6, dist * Math.tan(me.spread * 0.5)) + 2;
+        g.circle(wx, wy, radius).stroke({ width: 2 / scale + 1, color: 0xffffff, alpha: 0.85 });
+        g.circle(wx, wy, 2).fill({ color: 0xff5a3a });
+        g.moveTo(wx - radius - 6, wy).lineTo(wx - radius + 3, wy).moveTo(wx + radius - 3, wy).lineTo(wx + radius + 6, wy)
+            .moveTo(wx, wy - radius - 6).lineTo(wx, wy - radius + 3).moveTo(wx, wy + radius - 3).lineTo(wx, wy + radius + 6)
+            .stroke({ width: 2, color: 0xffffff, alpha: 0.85 });
     }
 
     private updateCamera() {
@@ -428,7 +456,8 @@ export class App {
             y: Math.round(this.y * 10) / 10,
             r: Number(this.rotation.toFixed(3)),
             f: this.control.isFiring && !this.meState.dead,
-            s: this.control.sprinting
+            s: this.control.sprinting && !this.control.aimDown,
+            a: this.control.aimDown
         });
     }
 
@@ -507,11 +536,11 @@ export class App {
             }
         }
         this.pickups.forEach((view) => {
-            if (view.kind === "weapon" || view.kind === "bag") {
+            if (view.kind === "weapon" || view.kind === "bag" || view.kind === "drop") {
                 const dist = Math.hypot(view.x - this.x, view.y - this.y);
                 if (dist < bestDist) {
                     bestDist = dist;
-                    best = view.kind === "bag" ? `bag:${view.weaponId}` : view.weaponId;
+                    best = view.kind === "bag" ? `bag:${view.weaponId}` : view.kind === "drop" ? `item:${view.weaponId}` : view.weaponId;
                 }
             }
         });
@@ -563,7 +592,8 @@ export class App {
 
     pickup() {
         const near = this.nearPickupName();
-        this.socket?.emit("pickup", near === "chest" || near === "shelf" ? near : near.startsWith("bag:") ? "bag" : near ? "weapon" : "");
+        this.socket?.emit("pickup", near === "chest" || near === "shelf" ? near : near.startsWith("bag:") ? "bag"
+            : near.startsWith("item:") ? "item" : near ? "weapon" : "");
     }
 
     useSlot(index:number) {

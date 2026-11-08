@@ -57,6 +57,7 @@ export interface Player {
     water:number;         // вода 0..100
     stamina:number;       // выносливость для бега и рывков 0..100
     sprinting:boolean;
+    aiming:boolean;       // правая кнопка мыши: точнее, но медленнее
     dashUntil:number;
     dashReadyAt:number;
     wantedUntil:number;   // до какого времени лагеря считают игрока врагом
@@ -147,6 +148,7 @@ export interface Pickup {
     bag?:ItemStack[];
     owner?:string;
     ammo?:number;      // патронов в магазине у лежащего оружия
+    manual?:boolean;   // выброшено игроком: само не подбирается, только по E
     x:number;
     y:number;
     expiresAt:number;
@@ -305,7 +307,7 @@ export class World extends EventEmitter {
             exp: 0, level: 1, kills: 0, bestExp: 0,
             perks: new Set(), stats: computeStats([]), offers: [],
             weaponId: STARTING_WEAPON, toolId: STARTING_WEAPON, gunId: "", gunAmmo: 0, hint: "", hintUntil: 0, food: 100, water: 100,
-            stamina: 100, sprinting: false, dashUntil: 0, dashReadyAt: 0, wantedUntil: 0, got: [], quests: new Map(),
+            stamina: 100, sprinting: false, aiming: false, dashUntil: 0, dashReadyAt: 0, wantedUntil: 0, got: [], quests: new Map(),
             ammo: 0, reloadEndsAt: 0, nextShotAt: 0, spreadNow: 0, lastShotAt: 0,
             speedBoostUntil: 0, speedBoost: 0, teamId: 0,
             invitedBy: new Map(), lastInviteAt: 0, regenBuffer: 0,
@@ -835,6 +837,7 @@ export class World extends EventEmitter {
         }
         player.firing = input.f === true;
         player.sprinting = input.s === true;
+        player.aiming = input.a === true;
         if (player.dead || typeof input.x !== "number" || typeof input.y !== "number"
             || !Number.isFinite(input.x) || !Number.isFinite(input.y)) {
             return;
@@ -866,8 +869,8 @@ export class World extends EventEmitter {
     private speedOf(player:Player) {
         const now = Date.now();
         const dash = now < player.dashUntil ? WORLD.dashMul : 1;
-        const sprint = player.sprinting && player.stamina > 0 ? WORLD.sprintMul : 1;
-        return this.baseSpeedOf(player) * Math.max(dash, sprint);
+        const sprint = player.sprinting && player.stamina > 0 && !player.aiming ? WORLD.sprintMul : 1;
+        return this.baseSpeedOf(player) * Math.max(dash, sprint) * (player.aiming && dash === 1 ? WORLD.aimSpeedMul : 1);
     }
 
     /** Рывок: короткое резкое ускорение за выносливость. */
@@ -1004,7 +1007,7 @@ export class World extends EventEmitter {
         let best:Pickup | null = null;
         let bestDist = WORLD.weaponReach * WORLD.weaponReach;
         for (const item of this.pickups.values()) {
-            if (item.kind !== "weapon" && item.kind !== "bag") {
+            if (item.kind !== "weapon" && item.kind !== "bag" && !(item.kind === "item" && item.manual)) {
                 continue;
             }
             const dist = distSq(player.x, player.y, item.x, item.y);
@@ -1013,7 +1016,7 @@ export class World extends EventEmitter {
                 best = item;
             }
         }
-        if (want === "weapon" || want === "bag") {
+        if (want === "weapon" || want === "bag" || want === "item") {
             nearChest = null;
             nearShelf = null;
         } else if (want === "shelf" && nearShelf) {
@@ -1042,6 +1045,18 @@ export class World extends EventEmitter {
                 })
                 .filter(stack => stack.n > 0);
             if (best.bag.length === 0) {
+                this.pickups.delete(best.id);
+            }
+            this.addFx(["pickup", player.x, player.y]);
+            return;
+        }
+        if (best?.kind === "item" && best.itemId) {
+            const left = this.addItem(player, best.itemId, best.count || 1);
+            this.notifyGot(player, best.itemId, (best.count || 1) - left);
+            if (left > 0) {
+                best.count = left;
+                this.hint(player, "Рюкзак полон");
+            } else {
                 this.pickups.delete(best.id);
             }
             this.addFx(["pickup", player.x, player.y]);
@@ -1132,7 +1147,7 @@ export class World extends EventEmitter {
     }
 
     /** Бросает предмет на землю: оружие — как оружие, остальное — как предмет. */
-    private dropStack(id:string, count:number, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs, ammo?:number) {
+    private dropStack(id:string, count:number, x:number, y:number, lifetimeMs = WORLD.pickupLifetimeMs, ammo?:number, manual = false) {
         if (isWeaponItem(id)) {
             const weaponId = id.slice(2);
             if (WEAPONS[weaponId]) {
@@ -1144,7 +1159,7 @@ export class World extends EventEmitter {
         const spot = this.resolveMove(x + Math.cos(angle) * 22, y + Math.sin(angle) * 22, 8);
         const pickupId = this.nextId++;
         this.pickups.set(pickupId, {
-            id: pickupId, kind: "item", itemId: id, count, x: spot.x, y: spot.y,
+            id: pickupId, kind: "item", itemId: id, count, x: spot.x, y: spot.y, manual,
             expiresAt: Date.now() + lifetimeMs
         });
     }
@@ -1326,7 +1341,7 @@ export class World extends EventEmitter {
             return;
         }
         player.inventory[slotIndex] = null;
-        this.dropStack(slot.id, slot.n, player.x, player.y, WORLD.pickupLifetimeMs, slot.a);
+        this.dropStack(slot.id, slot.n, player.x, player.y, WORLD.pickupLifetimeMs, slot.a, true);
     }
 
     /** Снимает в рюкзак броню, противогаз, инструмент ("tool") или оружие ("gun"; "weapon" — то, что в руках). */
@@ -1612,7 +1627,7 @@ export class World extends EventEmitter {
             player.ammo--;
         }
 
-        const deviation = (Math.random() - 0.5) * 2 * player.spreadNow * player.stats.spread;
+        const deviation = (Math.random() - 0.5) * 2 * player.spreadNow * player.stats.spread * (player.aiming ? WORLD.aimSpreadMul : 1);
         const baseRotation = player.rotation + deviation;
         player.spreadNow = Math.min(weapon.spreadMax, player.spreadNow + weapon.spreadIncrement);
         player.lastShotAt = now;
@@ -1700,14 +1715,15 @@ export class World extends EventEmitter {
         const rate = weapon.melee?.gather?.[el.res] || 0;
         if (rate <= 0) {
             this.addFx(["spark", el.x, el.y]);
-            this.hint(player, el.kind === "wreck" ? "Машину разбирают гаечным ключом" : "Этим инструментом здесь ничего не добыть");
+            this.hint(player, el.kind === "wreck" ? "Машину разбирают гаечным ключом"
+                : el.res === "ore" || el.res === "crystal" ? "Руду и кристаллы добывают только киркой" : "Этим инструментом здесь ничего не добыть");
             return;
         }
         const gain = Math.min(el.amount, rate);
         el.amount -= gain;
         this.giveOrDrop(player, el.res, gain);
         this.addExp(player, gain);
-        this.addFx(["gather", el.x, el.y, gain, ["wood", "stone", "scrap"].indexOf(el.res)]);
+        this.addFx(["gather", el.x, el.y, gain, ["wood", "stone", "scrap", "ore", "crystal"].indexOf(el.res)]);
         if (el.amount <= 0) {
             el.respawnAt = Date.now() + (el.kind === "wreck" ? WORLD.wreckRespawnMs : WORLD.resourceRespawnMs);
             // Разобранная до конца машина исчезает, как срубленное дерево
@@ -2121,11 +2137,8 @@ export class World extends EventEmitter {
                 this.dropWeapon(rollWeapon(enemy.cfg.tier), enemy.x, enemy.y);
             }
             if (Math.random() < enemy.cfg.healChance) {
-                const id = this.nextId++;
-                this.pickups.set(id, {
-                    id, kind: "medkit", x: enemy.x, y: enemy.y,
-                    expiresAt: Date.now() + WORLD.pickupLifetimeMs
-                });
+                // Аптечка падает предметом: её подбирают в рюкзак и используют, когда нужно
+                this.dropStack(Math.random() < 0.4 ? "medkit" : "bandage", 1, enemy.x, enemy.y);
             }
             this.grantKillRewards(killer, enemy.cfg.exp, true, enemy.x, enemy.y);
             if (enemy.type === "boss") {
@@ -2727,7 +2740,7 @@ export class World extends EventEmitter {
                 this.pickups.delete(item.id);
                 continue;
             }
-            if (item.kind === "item" && item.itemId) {
+            if (item.kind === "item" && item.itemId && !item.manual) {
                 for (const player of this.players.values()) {
                     if (!player.dead && distSq(item.x, item.y, player.x, player.y) < WORLD.pickupRadius * WORLD.pickupRadius) {
                         const left = this.addItem(player, item.itemId, item.count || 1);
@@ -2814,7 +2827,7 @@ export class World extends EventEmitter {
         for (const item of this.pickups.values()) {
             if (inView(item.x, item.y)) {
                 pickups.push([
-                    item.id, item.kind, item.weaponId || item.perkId || item.itemId || item.owner || "",
+                    item.id, item.manual ? "drop" : item.kind, item.weaponId || item.perkId || item.itemId || item.owner || "",
                     Math.round(item.x), Math.round(item.y), Math.max(0, item.expiresAt - now), item.count || 0
                 ]);
             }

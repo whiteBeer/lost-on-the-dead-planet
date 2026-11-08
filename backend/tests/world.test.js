@@ -540,6 +540,45 @@ const tests = {
         world.quickUse(a, "food");
         assert.strictEqual(a.food, 55);
     },
+    "выброшенное само не подбирается, только по E; аптечка с монстра — предмет": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        place(a, 500, 500);
+        world.addItem(a, "canned", 2);
+        world.dropSlot(a, a.inventory.findIndex(el => el && el.id === "canned"));
+        world.updatePickups(Date.now());
+        assert.strictEqual(world.countItem(a, "canned"), 0, "не подобралось само");
+        world.takePickup(a, "item");
+        assert.strictEqual(world.countItem(a, "canned"), 2);
+        a.stats.drop = 1;
+        const z = world.createEnemy("hound", 520, 500);
+        z.cfg = { ...z.cfg, healChance: 1, loot: [], dropChance: 0 };
+        world.damageEnemy(z, 9999, a, "Pistol");
+        assert.ok([...world.pickups.values()].some(el => el.kind === "item" && ["medkit", "bandage"].includes(el.itemId)));
+    },
+    "руда только киркой, кристаллы — в мёртвых землях": () => {
+        const world = new World(7);
+        const ore = world.obstacles.find(el => el.res === "ore");
+        const crystal = world.obstacles.find(el => el.res === "crystal");
+        assert.ok(ore && crystal);
+        assert.ok(crystal.zone > 0.8);
+        const p = world.addPlayer("m", "Шахтёр");
+        world.enemies.clear();
+        world.spawnEnemies = () => {};
+        p.x = ore.x - ore.r - 20; p.y = ore.y; p.rotation = 0; p.protectedUntil = 0;
+        p.nextShotAt = 0; world.tryShoot(p, Date.now());
+        assert.strictEqual(world.countItem(p, "ore"), 0);
+        world.equip(p, "Pickaxe");
+        p.nextShotAt = 0; world.tryShoot(p, Date.now());
+        assert.strictEqual(world.countItem(p, "ore"), 1);
+    },
+    "прицеливание правой кнопкой уменьшает разброс и скорость": () => {
+        const world = arena();
+        const a = world.addPlayer("a", "A");
+        const walk = world.speedOf(a);
+        a.aiming = true;
+        assert.ok(world.speedOf(a) < walk * 0.8);
+    },
     "крупный монстр ломает деревья на пути": () => {
         const world = new World(3);
         const tree = world.obstacles.find(el => el.kind === "tree");

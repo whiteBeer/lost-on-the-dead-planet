@@ -258,14 +258,45 @@ export class WorldMap {
                 roof.scale.set(scale);
                 roof.position.set(x - w / 2, y - h / 2);
                 sprite = roof;
+            } else if (style === "tree_dead") {
+                // Мёртвое дерево: голый ствол и сухие ветки
+                const dead = new PIXI.Graphics();
+                for (let i = 0; i < 6; i++) {
+                    const a = rotation + i / 6 * Math.PI * 2;
+                    const len = r * (1.1 + (i % 3) * 0.25);
+                    const mx = x + Math.cos(a) * len * 0.55;
+                    const my = y + Math.sin(a) * len * 0.55;
+                    dead.moveTo(x, y).lineTo(mx, my).lineTo(x + Math.cos(a + 0.35) * len, y + Math.sin(a + 0.35) * len);
+                    dead.moveTo(mx, my).lineTo(x + Math.cos(a - 0.4) * len * 0.85, y + Math.sin(a - 0.4) * len * 0.85);
+                }
+                dead.stroke({ width: 5, color: 0x2a2018, cap: "round" });
+                dead.circle(x, y, r * 0.42).fill(0x4a3a2c).stroke({ width: 3, color: 0x1e1610 });
+                sprite = dead;
+            } else if (style === "crystal") {
+                const crystal = new PIXI.Graphics();
+                for (const [dx, dy, s] of [[0, 0, 1], [-0.6, 0.3, 0.7], [0.55, 0.35, 0.65]]) {
+                    const cx = x + dx * r;
+                    const cy = y + dy * r;
+                    const h = r * 1.3 * s;
+                    crystal.poly([cx, cy - h, cx + h * 0.38, cy - h * 0.2, cx + h * 0.25, cy + h * 0.45, cx - h * 0.25, cy + h * 0.45, cx - h * 0.38, cy - h * 0.2])
+                        .fill(0xb35cff).stroke({ width: 3, color: 0x2a0f45 });
+                    crystal.poly([cx, cy - h, cx + h * 0.12, cy - h * 0.2, cx, cy + h * 0.4, cx - h * 0.2, cy - h * 0.2]).fill({ color: 0xe8c8ff, alpha: 0.7 });
+                }
+                sprite = crystal;
             } else {
                 const image = new PIXI.Sprite(Assets.tex(`obstacle_${kind}`));
                 image.anchor.set(0.5);
                 // Крона дерева шире ствола: за ней можно спрятаться
-                const visual = r * (kind === "tree" ? 3.1 : 2.3);
+                const visual = r * (kind === "tree" ? (style === "tree_dry" ? 2.6 : 3.1) : 2.3);
                 image.scale.set(visual / Math.max(image.texture.width, image.texture.height));
                 image.position.set(x, y);
                 image.rotation = rotation;
+                // Сухое дерево — бурая крона, руда — рыжий камень
+                if (style === "tree_dry") {
+                    image.tint = 0xc2a86a;
+                } else if (style === "ore") {
+                    image.tint = 0xd98a52;
+                }
                 sprite = image;
             }
             if (goods) {

@@ -297,6 +297,7 @@ function GameView({ name }:{ name:string }) {
                         const heal = count(["medkit", "bandage"]);
                         const food = count(["canned", "meat"]);
                         const water = count(["water"]);
+                        const grenades = count(["grenade"]);
                         return (
                             <div className={styles.quick}>
                                 <button disabled={!heal} onClick={() => app?.heal()} title="Лечиться (H)">
@@ -307,6 +308,9 @@ function GameView({ name }:{ name:string }) {
                                 </button>
                                 <button disabled={!water} onClick={() => app?.quickUse("water")} title="Выпить (V)">
                                     <img src={itemImage("water")} alt="" /><span>{water}</span><b className={styles.desktopOnly}>V</b>
+                                </button>
+                                <button disabled={!grenades} onClick={() => app?.grenade()} title="Бросить гранату (G)">
+                                    <img src={itemImage("grenade")} alt="" /><span>{grenades}</span><b className={styles.desktopOnly}>G</b>
                                 </button>
                             </div>
                         );
@@ -321,6 +325,11 @@ function GameView({ name }:{ name:string }) {
                                 </>
                             ) : hud.nearPickup === "trader" ? (
                                 <span><b className={styles.desktopOnly}>E: </b>торговать</span>
+                            ) : hud.nearPickup.startsWith("item:") ? (
+                                <>
+                                    <img src={itemImage(hud.nearPickup.slice(5))} className={styles.pickupIcon} alt="" />
+                                    <span><b className={styles.desktopOnly}>E: </b>подобрать {hud.items[hud.nearPickup.slice(5)]?.name}</span>
+                                </>
                             ) : hud.nearPickup === "shelf" ? (
                                 <span><b className={styles.desktopOnly}>E: </b>обыскать полку</span>
                             ) : hud.nearPickup.startsWith("bag:") ? (
