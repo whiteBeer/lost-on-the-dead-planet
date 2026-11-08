@@ -1,13 +1,8 @@
-const path = require("node:path");
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig = {
+    basePath,
     reactStrictMode: false,
-    webpack(config) {
-        return config;
-    },
-    serverRuntimeConfig: {
-        buildDate: new Date().toISOString()
-    },
     devIndicators: false
 };
 

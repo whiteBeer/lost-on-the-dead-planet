@@ -35,6 +35,7 @@ const PERK_KEYS = [
 ];
 
 const WALK_FRAME_COUNT = 8;
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export class ResourcesLoader {
 
@@ -43,18 +44,18 @@ export class ResourcesLoader {
     public static textures:Record<string, PIXI.Texture> = {};
 
     public static async loadAssets():Promise<void> {
-        PIXI.Assets.add({ alias: "playerTex", src: "/img/player_body_sprite.png" });
-        PIXI.Assets.add({ alias: "enemyZombieTex", src: "/img/zombie_sprite.png" });
-        PIXI.Assets.add({ alias: "ground", src: "/img/ground.png" });
+        PIXI.Assets.add({ alias: "playerTex", src: `${BASE_PATH}/img/player_body_sprite.png` });
+        PIXI.Assets.add({ alias: "enemyZombieTex", src: `${BASE_PATH}/img/zombie_sprite.png` });
+        PIXI.Assets.add({ alias: "ground", src: `${BASE_PATH}/img/ground.png` });
 
         for (const key of MONSTER_KEYS) {
-            PIXI.Assets.add({ alias: key, src: `/img/${key}.png` });
+            PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
         }
         for (const key of WEAPON_KEYS) {
-            PIXI.Assets.add({ alias: key, src: `/img/${key}.png` });
+            PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
         }
         for (const key of PERK_KEYS) {
-            PIXI.Assets.add({ alias: key, src: `/img/${key}.png` });
+            PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
         }
 
         const aliases = [

@@ -37,8 +37,9 @@ class Server {
 
     start():void {
         const PORT = process.env.APP_PORT || 3000;
-        this.httpServer.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+        const HOST = process.env.APP_HOST || "127.0.0.1";
+        this.httpServer.listen(Number(PORT), HOST, () => {
+            console.log(`Server running on http://${HOST}:${PORT}`);
         });
         process.on("SIGTERM", () => this.shutdown("SIGTERM"));
         process.on("SIGINT", () => this.shutdown("SIGINT"));

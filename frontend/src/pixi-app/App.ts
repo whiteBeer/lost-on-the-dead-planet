@@ -26,6 +26,7 @@ export type PauseListener = (paused:boolean) => void;
 export class App {
 
     private readonly backendUrl:string;
+    private readonly apiBasePath:string;
     private pixiApp:PIXI.Application;
     private control:Control | null = null;
     private isInitialized = false;
@@ -48,6 +49,7 @@ export class App {
         this.$domEl = $domEl;
         this.pixiApp = new PIXI.Application();
         this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+        this.apiBasePath = process.env.NEXT_PUBLIC_API_BASE_PATH || "";
     }
 
     async init() {
@@ -64,19 +66,20 @@ export class App {
         await ResourcesLoader.loadAssets();
 
         this.socket = io(this.backendUrl, {
+            path: this.apiBasePath + "/socket.io",
             extraHeaders: { "room-id": roomId },
             autoConnect: false
         });
 
         try {
-            await axios.put(this.backendUrl + "/api/rooms/" + roomId);
+            await axios.put(this.backendUrl + this.apiBasePath + "/api/rooms/" + roomId);
         } catch (error) {
             console.log("Room was created early. Join room.");
         }
 
         // Не пускаем в уже идущую игру ещё до сокета
         try {
-            const { data } = await axios.get(`${this.backendUrl}/api/rooms/${roomId}/scene`);
+            const { data } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
             if (data?.phase === "playing") {
                 this.joinRejectedListener?.({
                     reason: "gameInProgress",
@@ -199,7 +202,7 @@ export class App {
 
     private async loadGame(roomId:string) {
         try {
-            const { data: backendScene } = await axios.get(`${this.backendUrl}/api/rooms/${roomId}/scene`);
+            const { data: backendScene } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
 
             this.scene = new Scene(this, backendScene);

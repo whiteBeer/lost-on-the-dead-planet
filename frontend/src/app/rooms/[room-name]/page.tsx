@@ -23,7 +23,9 @@ function Room() {
     const router = useRouter();
     const params = useParams();
     const roomId = String(params["room-name"] ?? "");
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+    const apiBasePath = process.env.NEXT_PUBLIC_API_BASE_PATH || "";
+    const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const appRef = useRef<PixiAPP | null>(null);
     const [perkOffer, setPerkOffer] = useState<BackendPerkOffer[] | null>(null);
     const [pauseOpen, setPauseOpen] = useState(false);
@@ -48,7 +50,7 @@ function Room() {
         setPerkOffer(null);
         setMeReady(false);
         setPhase("lobby");
-        await axios.put(backendUrl + "/api/rooms/" + roomId + "/new-game");
+        await axios.put(backendUrl + apiBasePath + "/api/rooms/" + roomId + "/new-game");
         setTimeout(() => {
             appRef.current?.meRespawn();
         }, 400);
@@ -226,7 +228,7 @@ function Room() {
                                 {card.icon ? (
                                     <img
                                         className={styles.perkIcon}
-                                        src={`/img/${card.icon}.png`}
+                                        src={`${publicBasePath}/img/${card.icon}.png`}
                                         alt=""
                                     />
                                 ) : null}

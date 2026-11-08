@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 const ROOM_KEY = "wave-arena-room";
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 function Main() {
     const router = useRouter();
@@ -27,7 +28,7 @@ function Main() {
     };
 
     return (
-        <main className={styles.menu} style={{ backgroundImage: "url(/img/menu_bg.jpg)" }}>
+        <main className={styles.menu} style={{ backgroundImage: `url(${BASE_PATH}/img/menu_bg.jpg)` }}>
             <form
                 className={styles.card}
                 onSubmit={(e) => {
