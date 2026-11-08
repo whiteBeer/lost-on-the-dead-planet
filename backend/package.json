@@ -1,6 +1,7 @@
 {
   "scripts": {
     "dev": "nodemon --ext ts -x \"tsc && node dist/app.js\"",
+    "start": "node dist/app.js",
     "lint": "eslint . --ext .ts",
     "build": "eslint . --ext .ts && tsc"
   },
@@ -15,6 +16,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "http-status-codes": "^2.3.0",
