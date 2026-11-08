@@ -106,9 +106,10 @@ export class Enemies {
         }
 
         const wave = this.scene.waveDirector.getWave();
-        if (Math.random() < dropChanceForWave(wave)) {
+        if (enemy.tier === "boss" || Math.random() < dropChanceForWave(wave)) {
             const weaponId = rollWeaponDrop(wave);
-            this.scene.pickupsCollection.addWeaponPickup(pos.x, pos.y, weaponId);
+            const weaponLevel = enemy.tier === "boss" || (wave >= 8 && Math.random() < 0.2) ? 2 : 1;
+            this.scene.pickupsCollection.addWeaponPickup(pos.x, pos.y, weaponId, weaponLevel);
         }
 
         this.removeEnemyById(enemy.id);

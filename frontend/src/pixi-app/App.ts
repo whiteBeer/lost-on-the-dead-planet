@@ -13,7 +13,7 @@ export type PerkOfferListener = (perks:BackendPerkOffer[] | null) => void;
 export type DeathListener = (info:{ level:number, exp:number }) => void;
 export type ArenaOverListener = (info:{ reason:string }) => void;
 export type LobbyListener = (state:{
-    phase:"lobby" | "playing",
+    phase:"lobby" | "playing" | "won",
     players:BackendPlayer[],
     meReady:boolean,
     isHost:boolean,
@@ -22,6 +22,8 @@ export type LobbyListener = (state:{
 }) => void;
 export type JoinRejectedListener = (info:{ reason:string, message:string }) => void;
 export type PauseListener = (paused:boolean) => void;
+export type PlayerStateListener = (player:BackendPlayer) => void;
+export type VictoryListener = (info:{ wave:number, players:BackendPlayer[] }) => void;
 
 export class App {
 
@@ -44,6 +46,11 @@ export class App {
     private lobbyListener:LobbyListener | null = null;
     private joinRejectedListener:JoinRejectedListener | null = null;
     private pauseListener:PauseListener | null = null;
+    private playerStateListener:PlayerStateListener | null = null;
+    private inventoryToggleListener:(open?:boolean) => void = () => undefined;
+    private victoryListener:VictoryListener | null = null;
+    private uiBlocked = false;
+    private lastMoveState = "";
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -80,7 +87,7 @@ export class App {
         // Не пускаем в уже идущую игру ещё до сокета
         try {
             const { data } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
-            if (data?.phase === "playing") {
+            if (data?.phase === "playing" || data?.phase === "won") {
                 this.joinRejectedListener?.({
                     reason: "gameInProgress",
                     message: "Игра уже идёт — войти нельзя"
@@ -135,6 +142,59 @@ export class App {
         this.pauseListener = listener;
     }
 
+    public onPlayerState(listener:PlayerStateListener) {
+        this.playerStateListener = listener;
+    }
+
+    public onInventoryToggle(listener:(open?:boolean) => void) {
+        this.inventoryToggleListener = listener;
+    }
+
+    public onVictory(listener:VictoryListener) {
+        this.victoryListener = listener;
+    }
+
+    public setUiBlocked(blocked:boolean) {
+        this.uiBlocked = blocked;
+    }
+
+    public setSprintToggle(on:boolean) {
+        if (this.control) this.control.sprintToggle = on;
+    }
+
+    public dash() {
+        const player = this.scene?.mePlayer;
+        if (player) this.socket?.emit("playerDash", { rotation: player.getCoords().rotation });
+    }
+
+    public reload() {
+        this.scene?.mePlayer?.reload();
+    }
+
+    public pickup() {
+        this.socket?.emit("pickup");
+    }
+
+    public equipInventory(slot:number) {
+        this.socket?.emit("inventoryEquip", { slot });
+    }
+
+    public moveInventory(from:number, to:number) {
+        this.socket?.emit("inventoryMove", { from, to });
+    }
+
+    public mergeInventory(from:number, to:number) {
+        this.socket?.emit("inventoryMerge", { from, to });
+    }
+
+    public dropInventory(slot:number) {
+        this.socket?.emit("inventoryDrop", { slot });
+    }
+
+    public getWeaponName(id:string) {
+        return this.weaponsConfig?.[id]?.name || id;
+    }
+
     public setReady(ready = true) {
         this.socket?.emit("playerReady", { ready });
     }
@@ -161,7 +221,7 @@ export class App {
     }
 
     private notifyLobby(
-        phase:"lobby" | "playing",
+        phase:"lobby" | "playing" | "won",
         players:BackendPlayer[],
         hostSocketId:string | null = null,
         canStart = false
@@ -213,8 +273,21 @@ export class App {
                 }
                 this.arenaOverListener?.({ reason: data?.reason || "allDead" });
             });
+            this.socket?.on("gameWon", (data:{ wave?:number, players?:BackendPlayer[] }) => {
+                if (this.scene) {
+                    this.scene.phase = "won";
+                    this.scene.paused = false;
+                }
+                this.victoryListener?.({ wave: data.wave || 10, players: data.players || [] });
+            });
+            this.socket?.on("playerStats", (data:{ player?:BackendPlayer }) => {
+                const player = data.player;
+                if (player && player.socketId === this.socket?.id) {
+                    this.playerStateListener?.(player);
+                }
+            });
             this.socket?.on("lobbyUpdated", (data:{
-                phase?: "lobby" | "playing",
+                phase?: "lobby" | "playing" | "won",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null,
                 canStart?:boolean
@@ -229,7 +302,7 @@ export class App {
                 );
             });
             this.socket?.on("gameStarted", (data:{
-                phase?: "lobby" | "playing",
+                phase?: "lobby" | "playing" | "won",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null
             }) => {
@@ -251,7 +324,7 @@ export class App {
                 this.pauseListener?.(paused);
             });
             this.socket?.on("sceneReset", (data: {
-                phase?: "lobby" | "playing",
+                phase?: "lobby" | "playing" | "won",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null,
                 canStart?:boolean
@@ -270,6 +343,8 @@ export class App {
             this.pixiApp.stage.addChild(this.scene.getPixiObj());
 
             this.loadPlayer();
+            const initialMe = backendScene.players?.find((p:BackendPlayer) => p.socketId === this.socket?.id);
+            if (initialMe) this.playerStateListener?.(initialMe);
             this.notifyLobby(
                 backendScene.phase === "playing" ? "playing" : "lobby",
                 backendScene.players || [],
@@ -305,22 +380,27 @@ export class App {
         const player = this.scene.mePlayer;
         const deltaSec = ticker.deltaMS / 1000;
 
-        let dx = 0;
-        let dy = 0;
+        if (this.control.consumeKey("Tab") || this.control.consumeKey("KeyI")) {
+            this.inventoryToggleListener();
+        }
+        if (!this.uiBlocked) {
+            if (this.control.consumeKey("Space")) this.dash();
+            if (this.control.consumeKey("KeyE")) this.pickup();
+            if (this.control.consumeKey("KeyR")) player.reload();
+        }
 
-        if (this.control.isKey("KeyW")) dy -= 1;
-        if (this.control.isKey("KeyS")) dy += 1;
-        if (this.control.isKey("KeyA")) dx -= 1;
-        if (this.control.isKey("KeyD")) dx += 1;
+        const movement = this.uiBlocked ? { x: 0, y: 0 } : this.control.getMoveVector();
+        const dx = movement.x;
+        const dy = movement.y;
+        const sprinting = !this.uiBlocked && this.control.sprinting && player.stamina > 0;
+        const aiming = !this.uiBlocked && this.control.aimDown;
+        const speed = player.getBaseSpeed() * (sprinting && !aiming ? 1.55 : 1) * (aiming ? 0.72 : 1);
 
         if (dx !== 0 || dy !== 0) {
             player.animationPlay();
-            const length = Math.sqrt(dx * dx + dy * dy);
-            dx /= length;
-            dy /= length;
             player.moveTo(
-                player.x + dx * player.getSpeed() * deltaSec,
-                player.y + dy * player.getSpeed() * deltaSec
+                player.x + dx * speed * deltaSec,
+                player.y + dy * speed * deltaSec
             );
             this.scene.centerScene();
         } else {
@@ -328,29 +408,35 @@ export class App {
         }
 
         const mouseCoords = this.control.getMouseCoords();
-        const isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+        let isRotationChanged = false;
+        const touchAim = this.control.getAimAngle();
+        if (!this.uiBlocked && touchAim !== null && this.control.isTouch) {
+            const oldRotation = player.getCoords().rotation;
+            player.moveTo(player.x, player.y, touchAim);
+            isRotationChanged = oldRotation !== touchAim;
+        } else if (!this.uiBlocked && !this.control.isTouch) {
+            isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+        }
 
         const mouseMovement = this.control.getAndResetMouseMovement();
-        if (this.control.isSpace()) {
-            if (mouseMovement.x !== 0 || mouseMovement.y !== 0) {
-                this.scene.incrementTxTy(mouseMovement.x, mouseMovement.y);
-            }
-        }
+        void mouseMovement;
         const scrollDelta = this.control.getAndResetScrollDelta();
         if (scrollDelta !== 0) {
             this.scene.incrementScale(scrollDelta > 0 ? -0.1 : 0.1);
         }
 
-        if (dx !== 0 || dy !== 0 || isRotationChanged) {
-            this.socket?.emit("playerMoved", player.getCoords());
+        const moveState = `${sprinting}:${aiming}`;
+        if (dx !== 0 || dy !== 0 || isRotationChanged || moveState !== this.lastMoveState) {
+            this.lastMoveState = moveState;
+            this.socket?.emit("playerMoved", {
+                ...player.getCoords(),
+                sprinting,
+                aiming
+            });
         }
 
-        if (this.control.getIsMousePressed()) {
+        if (!this.uiBlocked && this.control.isFiring) {
             player.fire();
-        }
-
-        if (this.control.isKey("KeyR")) {
-            player.reload();
         }
 
         player.weapon?.update(ticker.deltaMS);

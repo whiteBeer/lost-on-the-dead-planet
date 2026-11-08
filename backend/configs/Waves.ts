@@ -11,14 +11,16 @@ export const WAVES_CONFIG = {
     pauseBetweenWavesMs: 4500,
     firstWaveDelayMs: 2800,
     /** Длительность 1-й волны; каждая следующая +waveDurationStepMs */
-    firstWaveDurationMs: 20_000,
-    waveDurationStepMs: 10_000,
+    firstWaveDurationMs: 18_000,
+    waveDurationStepMs: 4_000,
     /** Составы ниже посчитаны на это окно; count *= duration / reference */
     referenceDurationMs: 60_000,
     /** +10% монстров за каждую волну после первой */
-    countMulPerWave: 0.1,
+    countMulPerWave: 0.06,
     /** Каждая N-я волна — босс */
     bossEveryNWaves: 5,
+    /** После этой волны матч завершён победой. */
+    finalWave: 10,
     /** Базовый шанс дропа оружия с врага */
     baseDropChance: 0.18,
     /** Прирост шанса дропа за волну */
@@ -34,6 +36,13 @@ export const WAVES_CONFIG = {
     expBase: 40,
     expStep: 28
 };
+
+/** Ускорение только для автоматического полного прогона; production = 1. */
+export function waveTimerMs(ms:number):number {
+    const raw = Number(process.env.ARENA_TIME_SCALE || "1");
+    const scale = Number.isFinite(raw) && raw > 0 ? raw : 1;
+    return Math.max(1, Math.round(ms * scale));
+}
 
 export function expForLevel(level:number):number {
     return WAVES_CONFIG.expBase + Math.max(0, level - 1) * WAVES_CONFIG.expStep;

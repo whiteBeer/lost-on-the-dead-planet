@@ -24,12 +24,32 @@ export interface PlayerJSON {
     level?:number,
     perks?:string[],
     speed?:number,
+    baseSpeed?:number,
+    stamina?:number,
+    maxStamina?:number,
+    sprinting?:boolean,
+    aiming?:boolean,
+    dashCooldownMs?:number,
+    combo?:number,
+    bestCombo?:number,
     weapon:{
         id:string,
+        level?:number,
         ammo:number,
         clipSize:number,
+        fireRate?:number,
         isReloading:boolean
     },
+    equippedSlot?:number,
+    inventory?:Array<null | {
+        slot:number,
+        id:string,
+        level:number,
+        ammo:number,
+        clipSize:number,
+        fireRate:number,
+        isReloading:boolean
+    }>,
     perkOffer?:Array<{
         id:string,
         name:string,
@@ -116,5 +136,6 @@ export interface PickupJSON {
     x:number,
     y:number,
     weaponId?:string,
+    weaponLevel?:number,
     expiresAt?:number
 }

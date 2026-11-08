@@ -15,6 +15,7 @@ export class Player {
     private app:App;
     private pixiObj:PIXI.Container;
     private speedInSecond = 150;
+    private baseSpeedInSecond = 150;
     private radius = 0;
     private rotation = 0;
 
@@ -22,6 +23,11 @@ export class Player {
     public maxHealth = 0;
     public level = 1;
     public exp = 0;
+    public stamina = 100;
+    public maxStamina = 100;
+    public inventory = paramsInventoryFallback();
+    public equippedSlot = 0;
+    public combo = 0;
 
     private bodySprite:PIXI.AnimatedSprite|null = null;
     private legsSprite:PIXI.AnimatedSprite|null = null;
@@ -66,6 +72,12 @@ export class Player {
         if (params.speed) {
             this.speedInSecond = params.speed;
         }
+        if (params.baseSpeed) this.baseSpeedInSecond = params.baseSpeed;
+        this.stamina = params.stamina ?? this.stamina;
+        this.maxStamina = params.maxStamina ?? this.maxStamina;
+        this.inventory = params.inventory || this.inventory;
+        this.equippedSlot = params.equippedSlot ?? this.equippedSlot;
+        this.combo = params.combo || 0;
         this.setHealth(this.health);
         if (params.weapon) {
             if (params.weapon.id && params.weapon.id !== this.weapon.id) {
@@ -111,6 +123,10 @@ export class Player {
 
     getSpeed() {
         return this.speedInSecond;
+    }
+
+    getBaseSpeed() {
+        return this.baseSpeedInSecond;
     }
 
     getCoords() {
@@ -188,6 +204,10 @@ export class Player {
 
         return container;
     }
+}
+
+function paramsInventoryFallback() {
+    return [] as BackendPlayer["inventory"];
 }
 
 export default Player;

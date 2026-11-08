@@ -6,6 +6,7 @@ export class Weapon {
     public config:WeaponConfig;
 
     public ammo:number;
+    public level:number;
     public isReloading = false;
 
     private currentSpread = 0;
@@ -13,8 +14,9 @@ export class Weapon {
     private nextShotAvailableTime = 0;
     private reloadTimer:NodeJS.Timeout | null = null;
     private stats:PlayerStats | null = null;
+    private aiming = false;
 
-    constructor(weaponId:string) {
+    constructor(weaponId:string, level = 1) {
         this.id = weaponId;
         this.config = WEAPONS[weaponId];
 
@@ -22,6 +24,7 @@ export class Weapon {
             throw new Error(`Weapon config not found for ID: ${weaponId}`);
         }
 
+        this.level = Math.max(1, Math.min(5, Math.floor(level)));
         this.ammo = this.getClipSize();
     }
 
@@ -29,14 +32,25 @@ export class Weapon {
         this.stats = stats;
     }
 
+    public setAiming(aiming:boolean) {
+        this.aiming = aiming;
+    }
+
+    public upgrade() {
+        this.level = Math.min(5, this.level + 1);
+        this.refill();
+    }
+
     public getClipSize() {
         const mul = this.stats?.clip ?? 1;
-        return Math.max(1, Math.round(this.config.clipSize * mul));
+        const levelMul = 1 + (this.level - 1) * 0.12;
+        return Math.max(1, Math.round(this.config.clipSize * mul * levelMul));
     }
 
     public getFireRateMs() {
         const mul = this.stats?.fireRate ?? 1;
-        return Math.max(30, this.config.fireRate / mul);
+        const levelMul = 1 + (this.level - 1) * 0.06;
+        return Math.max(30, this.config.fireRate / mul / levelMul);
     }
 
     public getReloadTime() {
@@ -46,7 +60,8 @@ export class Weapon {
 
     public getDamage() {
         const mul = (this.stats?.damage ?? 1) * (this.stats?.monsterDamage ?? 1);
-        return this.config.damage * mul;
+        const levelMul = 1 + (this.level - 1) * 0.3;
+        return this.config.damage * mul * levelMul;
     }
 
     public getPierce() {
@@ -58,7 +73,8 @@ export class Weapon {
     }
 
     public getSpreadMul() {
-        return this.stats?.spread ?? 1;
+        const aimMul = this.aiming ? 0.45 : 1;
+        return (this.stats?.spread ?? 1) * aimMul;
     }
 
     public getBulletSpeed() {
@@ -150,6 +166,7 @@ export class Weapon {
         }
         this.cancelReload();
         this.id = weaponId;
+        this.level = 1;
         this.config = WEAPONS[weaponId];
         this.currentSpread = this.config.spreadBase;
         this.ammo = this.getClipSize();
@@ -159,8 +176,10 @@ export class Weapon {
     public toJSON() {
         return {
             id: this.id,
+            level: this.level,
             ammo: this.ammo,
             clipSize: this.getClipSize(),
+            fireRate: this.getFireRateMs(),
             isReloading: this.isReloading
         };
     }

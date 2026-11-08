@@ -39,7 +39,7 @@ export class Scene {
 
     wave = 0;
     waveAnnouncing = false;
-    phase:"lobby" | "playing" = "lobby";
+    phase:"lobby" | "playing" | "won" = "lobby";
     paused = false;
 
     constructor(app:App, backendScene:BackendScene) {
@@ -51,7 +51,9 @@ export class Scene {
         this.edgePadY = backendScene.edgePadY ?? 100;
         this.wave = backendScene.wave || 0;
         this.waveAnnouncing = !!backendScene.waveAnnouncing;
-        this.phase = backendScene.phase === "playing" ? "playing" : "lobby";
+        this.phase = backendScene.phase === "playing" || backendScene.phase === "won"
+            ? backendScene.phase
+            : "lobby";
         this.paused = !!backendScene.paused;
 
         this.groundLayer = new PIXI.Container();
@@ -87,7 +89,9 @@ export class Scene {
             this.enemiesCollection.enemiesFromBackendScene(newScene);
             this.pickupsCollection.fromBackendScene(newScene);
             this.wave = newScene.wave || 0;
-            this.phase = newScene.phase === "playing" ? "playing" : "lobby";
+            this.phase = newScene.phase === "playing" || newScene.phase === "won"
+                ? newScene.phase
+                : "lobby";
             this.paused = false;
         });
 

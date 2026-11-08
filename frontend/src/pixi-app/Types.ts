@@ -19,9 +19,15 @@ export interface BackendWeaponsConfig {
 
 export interface BackendWeaponState {
     id:string;
+    level:number;
     ammo:number;
     clipSize:number;
+    fireRate?:number;
     isReloading:boolean;
+}
+
+export interface BackendInventoryWeapon extends BackendWeaponState {
+    slot:number;
 }
 
 export interface BackendPerkOffer {
@@ -47,7 +53,17 @@ export interface BackendPlayer {
     level?:number;
     perks?:string[];
     speed?:number;
+    baseSpeed?:number;
+    stamina?:number;
+    maxStamina?:number;
+    sprinting?:boolean;
+    aiming?:boolean;
+    dashCooldownMs?:number;
+    combo?:number;
+    bestCombo?:number;
     weapon:BackendWeaponState;
+    equippedSlot?:number;
+    inventory?:Array<BackendInventoryWeapon | null>;
     perkOffer?:BackendPerkOffer[];
 }
 
@@ -95,6 +111,7 @@ export interface BackendPickup {
     x:number;
     y:number;
     weaponId?:string;
+    weaponLevel?:number;
 }
 
 export interface BackendScene {
@@ -103,7 +120,7 @@ export interface BackendScene {
     height:number,
     edgePadX?:number,
     edgePadY?:number,
-    phase?: "lobby" | "playing",
+    phase?: "lobby" | "playing" | "won",
     hostSocketId?:string | null,
     canStart?:boolean,
     paused?:boolean,

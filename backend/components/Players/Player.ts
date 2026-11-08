@@ -26,16 +26,28 @@ export class Player {
     public isReady = false;
 
     public weapon:Weapon;
+    public inventory:Array<Weapon | null>;
+    public equippedSlot = 0;
+    public stamina = PLAYER_CONFIG.maxStamina;
+    public maxStamina = PLAYER_CONFIG.maxStamina;
+    public sprinting = false;
+    public aiming = false;
     public exp = 0;
     public level = 1;
     public perks:string[] = [];
     public stats:PlayerStats = { ...BASE_STATS };
     public perkOffer:Perk[] = [];
+    public combo = 0;
+    public bestCombo = 0;
 
     private scene:Scene | null = null;
     private regenAcc = 0;
     private lastStillAt = Date.now();
     private spawnProtectedUntil = 0;
+    private staminaSpentAt = 0;
+    private dashReadyAt = 0;
+    private lastResourceEmitAt = 0;
+    private comboExpiresAt = 0;
 
     constructor(socketId:string, color:string, startX:number, startY:number, scene?:Scene) {
         this.socketId = socketId;
@@ -47,6 +59,8 @@ export class Player {
         this.scene = scene || null;
 
         this.weapon = new Weapon(STARTING_WEAPON);
+        this.inventory = Array.from({ length: PLAYER_CONFIG.inventorySize }, () => null);
+        this.inventory[0] = this.weapon;
         this.refreshStats();
         this.health = this.maxHealth;
         this.grantSpawnProtection();
@@ -57,7 +71,44 @@ export class Player {
     }
 
     public getSpeed() {
+        const sprintMul = this.sprinting && !this.aiming && this.stamina > 0
+            ? PLAYER_CONFIG.sprintMultiplier
+            : 1;
+        const aimMul = this.aiming ? PLAYER_CONFIG.aimSpeedMultiplier : 1;
+        return PLAYER_CONFIG.baseSpeed * this.stats.speed * sprintMul * aimMul;
+    }
+
+    public getBaseSpeed() {
         return PLAYER_CONFIG.baseSpeed * this.stats.speed;
+    }
+
+    public setMovementState(sprinting:boolean, aiming:boolean) {
+        this.aiming = !!aiming;
+        this.sprinting = !!sprinting && !this.aiming && this.stamina > 0;
+        this.weapon.setAiming(this.aiming);
+    }
+
+    public tryDash(rotation:number):boolean {
+        const now = Date.now();
+        if (this.isDead || now < this.dashReadyAt || this.stamina < PLAYER_CONFIG.dashCost) {
+            return false;
+        }
+        this.stamina -= PLAYER_CONFIG.dashCost;
+        this.staminaSpentAt = now;
+        this.dashReadyAt = now + PLAYER_CONFIG.dashCooldownMs;
+        const scene = this.scene;
+        if (scene) {
+            const minX = scene.getEdgePadX() + this.radius;
+            const maxX = scene.getWidth() - scene.getEdgePadX() - this.radius;
+            const minY = scene.getEdgePadY() + this.radius;
+            const maxY = scene.getHeight() - scene.getEdgePadY() - this.radius;
+            this.pageX = Math.max(minX, Math.min(maxX,
+                this.pageX + Math.cos(rotation) * PLAYER_CONFIG.dashDistance));
+            this.pageY = Math.max(minY, Math.min(maxY,
+                this.pageY + Math.sin(rotation) * PLAYER_CONFIG.dashDistance));
+        }
+        this.emitStats();
+        return true;
     }
 
     public grantSpawnProtection() {
@@ -100,7 +151,18 @@ export class Player {
             this.weapon.refill();
         }
 
-        const gained = Math.round(baseExp * this.stats.exp);
+        const now = Date.now();
+        this.combo = now <= this.comboExpiresAt ? this.combo + 1 : 1;
+        this.comboExpiresAt = now + 3500;
+        this.bestCombo = Math.max(this.bestCombo, this.combo);
+        if (this.combo > 1 && this.combo % 5 === 0) {
+            this.heal(4);
+            this.stamina = Math.min(this.maxStamina, this.stamina + 12);
+            this.scene?.emit("comboBurst", { socketId: this.socketId, combo: this.combo });
+        }
+
+        const comboExp = 1 + Math.min(0.5, Math.max(0, this.combo - 1) * 0.03);
+        const gained = Math.round(baseExp * this.stats.exp * comboExp);
         this.exp += gained;
         this.checkLevelUp();
         this.emitStats();
@@ -124,6 +186,29 @@ export class Player {
                 this.heal(heal);
                 this.emitStats();
             }
+        }
+
+
+        const oldStamina = this.stamina;
+        const now = Date.now();
+        if (this.sprinting && !this.aiming) {
+            this.stamina = Math.max(0,
+                this.stamina - PLAYER_CONFIG.sprintDrainPerSecond * deltaSec);
+            this.staminaSpentAt = now;
+            if (this.stamina <= 0) {
+                this.sprinting = false;
+            }
+        } else if (now - this.staminaSpentAt >= PLAYER_CONFIG.staminaRegenDelayMs) {
+            this.stamina = Math.min(this.maxStamina,
+                this.stamina + PLAYER_CONFIG.staminaRegenPerSecond * deltaSec);
+        }
+        if (Math.abs(this.stamina - oldStamina) >= 0.01 && now - this.lastResourceEmitAt >= 100) {
+            this.lastResourceEmitAt = now;
+            this.emitStats();
+        }
+        if (this.combo > 0 && now > this.comboExpiresAt) {
+            this.combo = 0;
+            this.emitStats();
         }
     }
 
@@ -177,15 +262,95 @@ export class Player {
         return true;
     }
 
-    public equipWeapon(weaponId:string) {
-        this.weapon.switchTo(weaponId);
+    public addWeapon(weaponId:string, level = 1):boolean {
+        const slot = this.inventory.findIndex(item => item === null);
+        if (slot === -1) return false;
+        const weapon = new Weapon(weaponId, level);
+        weapon.setStats(this.stats);
+        this.inventory[slot] = weapon;
+        this.emitStats();
+        return true;
+    }
+
+    public equipInventorySlot(slot:number):boolean {
+        const weapon = this.inventory[slot];
+        if (!weapon) return false;
+        this.weapon.cancelReload();
+        this.weapon = weapon;
+        this.equippedSlot = slot;
         this.weapon.setStats(this.stats);
+        this.weapon.setAiming(this.aiming);
+        this.emitStats();
+        return true;
+    }
+
+    public moveInventoryItem(from:number, to:number):boolean {
+        if (from === to || from < 0 || to < 0 ||
+            from >= this.inventory.length || to >= this.inventory.length || !this.inventory[from]) {
+            return false;
+        }
+        const equippedWeapon = this.weapon;
+        [this.inventory[from], this.inventory[to]] = [this.inventory[to], this.inventory[from]];
+        this.equippedSlot = this.inventory.findIndex(item => item === equippedWeapon);
+        this.emitStats();
+        return true;
+    }
+
+    public mergeInventoryItems(from:number, to:number):boolean {
+        if (from === to || from < 0 || to < 0 ||
+            from >= this.inventory.length || to >= this.inventory.length) return false;
+        const source = this.inventory[from];
+        const target = this.inventory[to];
+        if (!source || !target || source.id !== target.id || source.level !== target.level ||
+            target.level >= PLAYER_CONFIG.maxWeaponLevel) return false;
+        source.cancelReload();
+        target.upgrade();
+        this.inventory[from] = null;
+        if (this.weapon === source) {
+            this.weapon = target;
+            this.equippedSlot = to;
+        }
+        this.emitStats();
+        return true;
+    }
+
+    public dropInventoryItem(slot:number):boolean {
+        if (slot < 0 || slot >= this.inventory.length || !this.inventory[slot]) return false;
+        const weapons = this.inventory.filter(Boolean);
+        if (weapons.length <= 1) return false;
+        const dropped = this.inventory[slot];
+        if (!dropped) return false;
+        dropped.cancelReload();
+        this.inventory[slot] = null;
+        if (this.weapon === dropped) {
+            const nextSlot = this.inventory.findIndex(Boolean);
+            const next = this.inventory[nextSlot];
+            if (!next) return false;
+            this.weapon = next;
+            this.equippedSlot = nextSlot;
+        }
+        this.scene?.pickupsCollection.addWeaponPickup(
+            this.pageX + Math.cos(this.rotation) * 38,
+            this.pageY + Math.sin(this.rotation) * 38,
+            dropped.id,
+            dropped.level
+        );
+        this.emitStats();
+        return true;
+    }
+
+    public rewardWaveClear() {
+        if (this.isDead) return;
+        this.heal(Math.max(12, Math.round(this.maxHealth * 0.18)));
+        this.stamina = this.maxStamina;
+        this.weapon.refill();
+        this.emitStats();
     }
 
     public refreshStats() {
         this.stats = computeStats(this.perks);
         this.maxHealth = Math.round(this.stats.maxHp);
-        this.weapon.setStats(this.stats);
+        this.inventory.forEach(weapon => weapon?.setStats(this.stats));
         if (this.health > this.maxHealth) {
             this.health = this.maxHealth;
         }
@@ -200,18 +365,28 @@ export class Player {
         this.level = 1;
         this.perks = [];
         this.perkOffer = [];
+        this.inventory.forEach(weapon => weapon?.cancelReload());
+        this.weapon = new Weapon(STARTING_WEAPON);
+        this.inventory = Array.from({ length: PLAYER_CONFIG.inventorySize }, () => null);
+        this.inventory[0] = this.weapon;
+        this.equippedSlot = 0;
+        this.stamina = this.maxStamina;
+        this.sprinting = false;
+        this.aiming = false;
+        this.dashReadyAt = 0;
+        this.combo = 0;
+        this.bestCombo = 0;
+        this.comboExpiresAt = 0;
         this.refreshStats();
         this.health = this.maxHealth;
         this.isDead = false;
         this.isReady = false;
         this.grantSpawnProtection();
-        this.weapon.switchTo(STARTING_WEAPON);
-        this.weapon.setStats(this.stats);
         this.emitStats();
     }
 
     public destroy() {
-        this.weapon.cancelReload();
+        this.inventory.forEach(weapon => weapon?.cancelReload());
     }
 
     private emitStats() {
@@ -236,7 +411,19 @@ export class Player {
             level: this.level,
             perks: [...this.perks],
             speed: this.getSpeed(),
+            baseSpeed: this.getBaseSpeed(),
+            stamina: Math.round(this.stamina * 10) / 10,
+            maxStamina: this.maxStamina,
+            sprinting: this.sprinting,
+            aiming: this.aiming,
+            dashCooldownMs: Math.max(0, this.dashReadyAt - Date.now()),
+            combo: this.combo,
+            bestCombo: this.bestCombo,
             weapon: this.weapon.toJSON(),
+            equippedSlot: this.equippedSlot,
+            inventory: this.inventory.map((weapon, slot) => weapon
+                ? { slot, ...weapon.toJSON() }
+                : null),
             perkOffer: this.perkOffer.map(p => ({
                 id: p.id,
                 name: p.name,

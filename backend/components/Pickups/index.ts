@@ -10,8 +10,8 @@ export class Pickups {
         this.scene = scene;
     }
 
-    addWeaponPickup(x:number, y:number, weaponId:string) {
-        const pickup = new Pickup("weapon", x, y, weaponId);
+    addWeaponPickup(x:number, y:number, weaponId:string, weaponLevel = 1) {
+        const pickup = new Pickup("weapon", x, y, weaponId, weaponLevel);
         this.items.push(pickup);
         this.scene.emit("pickupAdded", { pickup: pickup.toJSON() });
         return pickup;
@@ -37,32 +37,9 @@ export class Pickups {
         }
     }
 
-    /** Автоподбор: любой живой игрок в радиусе сразу берёт оружие */
+    /** Оставлено для совместимости; оружие теперь подбирается явно в инвентарь. */
     autoPickupNearPlayers() {
-        if (this.items.length === 0) {
-            return;
-        }
-        const players = this.scene.playersCollection.getLivePlayers();
-        const reachSq = PLAYER_CONFIG.pickupRadius * PLAYER_CONFIG.pickupRadius;
-
-        for (const player of players) {
-            let best:Pickup | null = null;
-            let bestDist = reachSq;
-            for (const item of this.items) {
-                const dx = item.x - player.pageX;
-                const dy = item.y - player.pageY;
-                const distSq = dx * dx + dy * dy;
-                if (distSq <= bestDist) {
-                    best = item;
-                    bestDist = distSq;
-                }
-            }
-            if (best?.weaponId) {
-                player.equipWeapon(best.weaponId);
-                this.removeById(best.id);
-                this.scene.emit("playerStats", { player: player.toJSON() });
-            }
-        }
+        return;
     }
 
     tryPickup(socketId:string):boolean {
@@ -89,7 +66,9 @@ export class Pickups {
             return false;
         }
 
-        player.equipWeapon(best.weaponId);
+        if (!player.addWeapon(best.weaponId, best.weaponLevel)) {
+            return false;
+        }
         this.removeById(best.id);
         this.scene.emit("playerStats", { player: player.toJSON() });
         return true;

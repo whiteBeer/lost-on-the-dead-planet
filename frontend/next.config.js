@@ -9,9 +9,6 @@ const nextConfig = {
     // Small VPS OOM-killer hits during `next build` typecheck.
     typescript: {
         ignoreBuildErrors: dockerBuild
-    },
-    eslint: {
-        ignoreDuringBuilds: dockerBuild
     }
 };
 

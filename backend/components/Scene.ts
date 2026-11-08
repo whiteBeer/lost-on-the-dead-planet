@@ -23,7 +23,7 @@ interface CachedEnemy {
     y:number;
 }
 
-export type ScenePhase = "lobby" | "playing";
+export type ScenePhase = "lobby" | "playing" | "won";
 
 export class Scene extends EventEmitter {
 
@@ -70,6 +70,19 @@ export class Scene extends EventEmitter {
 
     isJoinable() {
         return this.phase === "lobby";
+    }
+
+    finishVictory(wave:number) {
+        if (this.phase !== "playing") return false;
+        this.phase = "won";
+        this.paused = false;
+        this.missilesCollection.removeAll();
+        this.emit("gameWon", {
+            wave,
+            players: this.playersCollection.getPlayersJSON()
+        });
+        this.emit("sceneReset", this.getScene());
+        return true;
     }
 
     setPaused(paused:boolean) {
@@ -186,7 +199,6 @@ export class Scene extends EventEmitter {
         }
         this.playersCollection.tick(0.02);
         this.pickupsCollection.removeExpired();
-        this.pickupsCollection.autoPickupNearPlayers();
         const enemies = this.enemiesCollection.getEnemies();
         const cachedEnemies:CachedEnemy[] = enemies.map(enemy => {
             const pos = calcTimedPoint(

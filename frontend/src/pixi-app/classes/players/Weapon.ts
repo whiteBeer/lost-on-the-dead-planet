@@ -14,6 +14,8 @@ export class Weapon {
     ammo = 0;
     clipSize = 0;
     isReloading = false;
+    level = 1;
+    serverFireRate:number | null = null;
 
     currentSpread = 0;
     lastShotTime = 0;
@@ -30,9 +32,11 @@ export class Weapon {
 
     updateState(state:BackendWeaponState) {
         this.id = state.id;
+        this.level = state.level || 1;
         this.ammo = state.ammo;
         this.clipSize = state.clipSize;
         this.isReloading = state.isReloading;
+        this.serverFireRate = state.fireRate || null;
     }
 
     switchConfig(weaponId:string, config:BackendWeaponConfig) {
@@ -64,7 +68,7 @@ export class Weapon {
 
     fire() {
         const now = Date.now();
-        const fireRateDelay = Math.max(15, this.config.fireRate);
+        const fireRateDelay = Math.max(15, this.serverFireRate || this.config.fireRate);
 
         if (this.isReloading || this.ammo <= 0 || now - this.lastFire < fireRateDelay) {
             if (this.ammo <= 0 && !this.isReloading) {

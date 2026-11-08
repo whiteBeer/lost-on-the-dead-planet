@@ -8,6 +8,7 @@ export class Players {
     private readonly scene:Scene;
     private playerColors:string[] = PLAYER_COLORS || [];
     private players:Player[] = [];
+    private lastMovementAt:Map<string, number> = new Map();
 
     constructor(scene:Scene) {
         this.scene = scene;
@@ -63,6 +64,7 @@ export class Players {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             const player = this.players[index];
+            player.setMovementState(!!params.sprinting, !!params.aiming);
             const margin = player.radius || 13;
             const edgePadX = this.scene.getEdgePadX();
             const edgePadY = this.scene.getEdgePadY();
@@ -70,9 +72,23 @@ export class Players {
             const maxX = Math.max(minX, this.scene.getWidth() - margin - edgePadX);
             const minY = margin + edgePadY;
             const maxY = Math.max(minY, this.scene.getHeight() - margin - edgePadY);
-            player.pageX = Math.min(maxX, Math.max(minX, params.pageX));
-            player.pageY = Math.min(maxY, Math.max(minY, params.pageY));
-            player.rotation = params.rotation;
+            const now = Date.now();
+            const previousAt = this.lastMovementAt.get(socketId) || now - 20;
+            this.lastMovementAt.set(socketId, now);
+            const elapsed = Math.max(0.01, Math.min(0.25, (now - previousAt) / 1000));
+            const requestedX = Math.min(maxX, Math.max(minX, Number(params.pageX) || player.pageX));
+            const requestedY = Math.min(maxY, Math.max(minY, Number(params.pageY) || player.pageY));
+            const dx = requestedX - player.pageX;
+            const dy = requestedY - player.pageY;
+            const distance = Math.hypot(dx, dy);
+            // Небольшой сетевой запас, но телепортировать себя клиент больше не может.
+            const allowed = player.getSpeed() * elapsed + 12;
+            const k = distance > allowed ? allowed / distance : 1;
+            player.pageX += dx * k;
+            player.pageY += dy * k;
+            if (Number.isFinite(params.rotation)) {
+                player.rotation = params.rotation;
+            }
             return index;
         }
         return -1;
@@ -82,6 +98,7 @@ export class Players {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             this.players[index].destroy();
+            this.lastMovementAt.delete(socketId);
             this.players.splice(index, 1);
             if (this.scene.isLobby()) {
                 this.scene.reassignHostIfNeeded();

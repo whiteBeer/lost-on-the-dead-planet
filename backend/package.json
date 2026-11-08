@@ -3,7 +3,8 @@
     "dev": "nodemon --ext ts -x \"tsc && node dist/app.js\"",
     "start": "node dist/app.js",
     "lint": "eslint . --ext .ts",
-    "build": "eslint . --ext .ts && tsc"
+    "build": "eslint . --ext .ts && tsc",
+    "test:gameplay": "npm run build && node tests/full-playthrough.js"
   },
   "name": "game",
   "version": "1.0.0",

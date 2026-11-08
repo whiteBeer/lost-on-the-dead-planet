@@ -8,6 +8,9 @@ interface PickupView {
     id:string;
     weaponId:string;
     pixiObj:PIXI.Container;
+    x:number;
+    y:number;
+    weaponLevel:number;
 }
 
 export class PickupsCollection {
@@ -56,11 +59,23 @@ export class PickupsCollection {
             container.addChild(g);
         }
         container.position.set(data.x, data.y);
+        if ((data.weaponLevel || 1) > 1) {
+            const level = new PIXI.Text({
+                text: `II`,
+                style: { fill: 0xffdc73, fontSize: 14, fontWeight: "800", stroke: { color: 0x000000, width: 3 } }
+            });
+            level.anchor.set(0.5);
+            level.y = -28;
+            container.addChild(level);
+        }
         this.scene.addToScene(container);
         this.pickups.push({
             id: data.id,
             weaponId: data.weaponId || "",
-            pixiObj: container
+            pixiObj: container,
+            x: data.x,
+            y: data.y,
+            weaponLevel: data.weaponLevel || 1
         });
     }
 
@@ -71,5 +86,18 @@ export class PickupsCollection {
         this.scene.removeFromScene(pickup.pixiObj);
         pickup.pixiObj.destroy({ children: true });
         this.pickups.splice(index, 1);
+    }
+
+    nearestTo(x:number, y:number, maxDistance = 70) {
+        let nearest:PickupView | null = null;
+        let best = maxDistance * maxDistance;
+        for (const pickup of this.pickups) {
+            const distance = (pickup.x - x) ** 2 + (pickup.y - y) ** 2;
+            if (distance <= best) {
+                nearest = pickup;
+                best = distance;
+            }
+        }
+        return nearest;
     }
 }

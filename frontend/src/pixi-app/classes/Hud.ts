@@ -40,13 +40,14 @@ export class Hud {
                 }
             }
         });
-        this.waveText.position.set(16, 12);
+        this.waveText.anchor.set(0.5, 0);
+        this.waveText.position.set(this.app.getScreenWidth() / 2, 12);
 
         this.statusText = new PIXI.Text({
             text: "",
             style: {
                 fill: 0xffffff,
-                fontSize: 18,
+                fontSize: 14,
                 fontFamily: "Segoe UI, Arial",
                 align: "left",
                 dropShadow: {
@@ -57,17 +58,17 @@ export class Hud {
                 }
             }
         });
-        this.statusText.position.set(16, 48);
+        this.statusText.position.set(16, 96);
 
         this.hintText = new PIXI.Text({
-            text: "WASD · ЛКМ · Esc меню",
+            text: "WASD · Shift бег · Space рывок · E поднять · I рюкзак",
             style: {
                 fill: 0xdddddd,
-                fontSize: 13,
+                fontSize: 11,
                 fontFamily: "Segoe UI, Arial"
             }
         });
-        this.hintText.position.set(16, 112);
+        this.hintText.position.set(16, 136);
 
         this.pixiObj = new PIXI.Container();
         this.pixiObj.addChild(this.waveText);
@@ -162,16 +163,28 @@ export class Hud {
             this.waveText.text = `ВОЛНА ${this.wave}`;
         }
 
-        const hp = Math.max(0, Math.round(this.mePlayer.health));
-        const maxHp = Math.max(1, Math.round(this.mePlayer.maxHealth));
         const weaponId = this.mePlayer.weapon.id || "?";
+        const weaponName = this.app.getWeaponName(weaponId);
         const level = this.mePlayer.level;
         const exp = this.mePlayer.exp;
         const ammo = Math.max(0, this.mePlayer.weapon.ammo);
         const clip = Math.max(1, this.mePlayer.weapon.clipSize || 1);
         const reloading = this.mePlayer.weapon.isReloading ? " · перезарядка" : "";
         this.statusText.text =
-            `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}`;
+            `${weaponName} ${"I".repeat(this.mePlayer.weapon.level)}: ${ammo}/${clip}${reloading} · ` +
+            `Lv ${level} · xp ${exp}` +
+            (this.mePlayer.combo > 1 ? ` · COMBO ×${this.mePlayer.combo}` : "");
+
+        const nearby = this.app.scene?.pickupsCollection.nearestTo(this.mePlayer.x, this.mePlayer.y, 70);
+        if (nearby) {
+            this.hintText.text = `E · подобрать ${this.app.getWeaponName(nearby.weaponId)} ${"I".repeat(nearby.weaponLevel)}`;
+            this.hintText.style.fill = 0xffdc73;
+        } else {
+            this.hintText.text = this.app.scene?.phase === "playing"
+                ? "WASD · Shift бег · Space рывок · I рюкзак"
+                : "";
+            this.hintText.style.fill = 0xdddddd;
+        }
 
         this.updateBanner(deltaMS / 1000);
     }

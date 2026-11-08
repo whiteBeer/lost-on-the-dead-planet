@@ -7,7 +7,8 @@ import {
     waveDurationMs,
     waveHpMul,
     waveDamageMul,
-    waveSpeedMul
+    waveSpeedMul,
+    waveTimerMs
 } from "../configs/Waves";
 import { EnemyTier } from "../configs/Enemies";
 
@@ -148,7 +149,12 @@ export class WaveDirector {
         }
         this.active = false;
         this.scene.emit("waveCleared", { wave: this.wave });
+        this.scene.playersCollection.getLivePlayers().forEach(player => player.rewardWaveClear());
         if (this.scene.playersCollection.getLivePlayers().length === 0) {
+            return;
+        }
+        if (this.wave >= WAVES_CONFIG.finalWave) {
+            this.scene.finishVictory(this.wave);
             return;
         }
         this.scheduleNext(WAVES_CONFIG.pauseBetweenWavesMs);
@@ -175,7 +181,7 @@ export class WaveDirector {
             announcing: true,
             isBoss: isBossWave(upcoming)
         });
-        this.armBetweenTimer(delayMs);
+        this.armBetweenTimer(waveTimerMs(delayMs));
     }
 
     private armBetweenTimer(delayMs:number) {
@@ -203,11 +209,11 @@ export class WaveDirector {
         const dmgMul = waveDamageMul(this.wave);
         const speedMul = waveSpeedMul(this.wave);
         this.pendingSpawns = tiers.length;
-        // Равномерно растягиваем спавн: 20с + 10с × (wave - 1)
+        // Равномерно растягиваем спавн на длительность текущей волны.
         const durationMs = waveDurationMs(this.wave);
         const spawnGapMs = tiers.length <= 1
             ? 0
-            : Math.max(400, Math.floor(durationMs / tiers.length));
+            : waveTimerMs(Math.max(400, Math.floor(durationMs / tiers.length)));
 
         tiers.forEach((tier, index) => {
             // Босс жирнее обычного waveHpMul — особенно поздние циклы

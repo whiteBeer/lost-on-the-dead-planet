@@ -83,6 +83,15 @@ export class AppSocketServer {
                 }
             });
 
+            socket.on("playerDash", (params:{ rotation?:number } = {}) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                const rotation = Number(params.rotation);
+                if (player && Number.isFinite(rotation) && player.tryDash(rotation)) {
+                    this.emitToRoom(roomId, "playerDashed", { player: player.toJSON() });
+                }
+            });
+
             socket.on("playerReload", () => {
                 if (roomScene.isLobby() || roomScene.isPaused()) return;
                 const player = roomScene.playersCollection.getPlayerById(socket.id);
@@ -99,6 +108,30 @@ export class AppSocketServer {
             socket.on("pickup", () => {
                 if (roomScene.isLobby() || roomScene.isPaused()) return;
                 roomScene.pickupsCollection.tryPickup(socket.id);
+            });
+
+            socket.on("inventoryEquip", (params:{ slot?:number } = {}) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                if (player) player.equipInventorySlot(Number(params.slot));
+            });
+
+            socket.on("inventoryMove", (params:{ from?:number, to?:number } = {}) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                if (player) player.moveInventoryItem(Number(params.from), Number(params.to));
+            });
+
+            socket.on("inventoryMerge", (params:{ from?:number, to?:number } = {}) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                if (player) player.mergeInventoryItems(Number(params.from), Number(params.to));
+            });
+
+            socket.on("inventoryDrop", (params:{ slot?:number } = {}) => {
+                if (roomScene.isLobby() || roomScene.isPaused()) return;
+                const player = roomScene.playersCollection.getPlayerById(socket.id);
+                if (player) player.dropInventoryItem(Number(params.slot));
             });
 
             socket.on("pickPerk", (params:{ perkId?:string }) => {

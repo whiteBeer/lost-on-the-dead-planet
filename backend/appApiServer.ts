@@ -68,8 +68,10 @@ export class AppApiServer {
                 "hitFx",
                 "perkOffer",
                 "playerStats",
+                "comboBurst",
                 "sceneReset",
                 "gameOver",
+                "gameWon",
                 "lobbyUpdated",
                 "gameStarted",
                 "gamePaused"

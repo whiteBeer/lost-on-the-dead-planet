@@ -65,6 +65,15 @@ export class PlayersCollection {
             }
         });
 
+        this.app.socket?.on("playerDashed", (params:{ player:BackendPlayer }) => {
+            const player = this.findPlayer(params.player.socketId);
+            if (player) {
+                player.moveTo(params.player.pageX, params.player.pageY, params.player.rotation);
+                player.update(params.player);
+                if (params.player.socketId === this.app.socket?.id) this.scene.centerScene();
+            }
+        });
+
         this.app.socket?.on("playersDamaged", (params:IPlayerDamagedEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player) {
