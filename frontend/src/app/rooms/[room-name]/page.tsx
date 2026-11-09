@@ -19,6 +19,38 @@ interface DeathInfo {
     exp:number;
 }
 
+function isFullscreenActive() {
+    const doc = document as Document & { webkitFullscreenElement?:Element };
+    return !!(document.fullscreenElement || doc.webkitFullscreenElement);
+}
+
+function toggleFullscreen() {
+    const el = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?:() => void;
+    };
+    const doc = document as Document & {
+        webkitFullscreenElement?:Element;
+        webkitExitFullscreen?:() => void;
+    };
+    try {
+        if (isFullscreenActive()) {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            } else {
+                doc.webkitExitFullscreen?.();
+            }
+            return;
+        }
+        if (el.requestFullscreen) {
+            el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+        } else {
+            el.webkitRequestFullscreen?.();
+        }
+    } catch {
+        // iPhone / старый браузер — fullscreen недоступен
+    }
+}
+
 function Room() {
     const router = useRouter();
     const params = useParams();
@@ -38,6 +70,8 @@ function Room() {
     const [canStart, setCanStart] = useState(false);
     const [hostSocketId, setHostSocketId] = useState<string | null>(null);
     const [joinError, setJoinError] = useState<string | null>(null);
+    const [isTouch, setIsTouch] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
 
     const mainMenu = () => {
         router.push("/");
@@ -66,6 +100,18 @@ function Room() {
         setMeReady(next);
         appRef.current?.setReady(next);
     };
+
+    useEffect(() => {
+        setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+        const sync = () => setFullscreen(isFullscreenActive());
+        sync();
+        document.addEventListener("fullscreenchange", sync);
+        document.addEventListener("webkitfullscreenchange", sync);
+        return () => {
+            document.removeEventListener("fullscreenchange", sync);
+            document.removeEventListener("webkitfullscreenchange", sync);
+        };
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -288,6 +334,28 @@ function Room() {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {isTouch && !dead && !joinError && phase === "playing" && !pauseOpen && (
+                <div className={styles.touchButtons}>
+                    <button type="button" onClick={() => appRef.current?.reloadWeapon()}>
+                        Перезарядка
+                    </button>
+                    <button type="button" onClick={togglePause}>
+                        Пауза
+                    </button>
+                </div>
+            )}
+
+            {!joinError && (
+                <button
+                    type="button"
+                    className={styles.fullscreenButton}
+                    onClick={toggleFullscreen}
+                    title={fullscreen ? "Выйти из полного экрана" : "Полный экран"}
+                >
+                    {fullscreen ? "Exit FS" : "Fullscreen"}
+                </button>
             )}
         </div>
     );

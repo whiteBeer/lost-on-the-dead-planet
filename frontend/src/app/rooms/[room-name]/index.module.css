@@ -2,6 +2,8 @@
   position: fixed;
   inset: 0;
   background: #3d4a2e;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .game {
@@ -9,6 +11,33 @@
   height: 100%;
   position: absolute;
   inset: 0;
+}
+
+.game canvas {
+  touch-action: none;
+}
+
+.touchButtons {
+  display: none;
+}
+
+.fullscreenButton {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 5;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f0e6;
+  background: rgba(12, 15, 10, 0.72);
+  border: 1px solid #39442b;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.fullscreenButton:hover {
+  border-color: #a8e05f;
 }
 
 /* Перки внизу — как в open-world */
@@ -261,4 +290,100 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Телефоны и маленькие окна: компактный интерфейс и большие кнопки */
+@media (pointer: coarse), (max-width: 820px), (max-height: 480px) {
+  .touchButtons {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 3;
+  }
+
+  .touchButtons button {
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #f1f0e6;
+    background: rgba(12, 15, 10, 0.72);
+    border: 1px solid #39442b;
+    border-radius: 7px;
+    white-space: nowrap;
+  }
+
+  .perks {
+    left: auto;
+    right: 6px;
+    top: 6px;
+    bottom: auto;
+    width: min(148px, 42vw);
+    transform: none;
+    z-index: 4;
+  }
+
+  .perksTitle {
+    font-size: 10px;
+    margin-bottom: 3px;
+    text-align: right;
+  }
+
+  .perksTitle small {
+    display: none;
+  }
+
+  .perkRow {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .perkCard {
+    flex: none;
+    min-height: 0;
+    padding: 4px 5px;
+    gap: 0;
+    border-width: 1px;
+    border-radius: 6px;
+  }
+
+  .perkKey {
+    display: none;
+  }
+
+  .perkRarity {
+    font-size: 8px;
+  }
+
+  .perkIcon {
+    width: 22px;
+    height: 22px;
+    margin: 0 auto;
+  }
+
+  .perkName {
+    padding-right: 0;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .perkText {
+    font-size: 9px;
+    line-height: 1.15;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .overlay h2 {
+    font-size: 26px;
+  }
+
+  .pauseCard {
+    width: min(92vw, 420px);
+    max-height: 86vh;
+    overflow-y: auto;
+  }
 }

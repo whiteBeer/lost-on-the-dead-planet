@@ -5,7 +5,7 @@ services:
     environment:
       NODE_ENV: production
       APP_HOST: 0.0.0.0
-      APP_PORT: 7789
+      APP_PORT: ${APP_PORT:-7789}
       FAST_TEST: ${FAST_TEST:-0}
       FAST_TEST_SCALE: ${FAST_TEST_SCALE:-10}
     restart: unless-stopped
@@ -17,6 +17,7 @@ services:
       context: ./frontend
       args:
         # Same-origin via nginx inside frontend — browser uses one public port.
+        # Не берём из локального .env (там localhost для npm run dev).
         NEXT_PUBLIC_BACKEND_URL: ""
         NEXT_PUBLIC_BASE_PATH: ""
         NEXT_PUBLIC_API_BASE_PATH: ""

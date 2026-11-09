@@ -1,21 +1,26 @@
 ## A little multiplayer game.
 
 **Run local:**
-BACKEND:
-1. create .env file
-```
- APP_PORT=7789
-```
-2. npm i
-3. npm start
 
-FRONTEND:
-1. create .env file
+1. Create one `.env` in the repo root (copy from `.env.example`):
+```env
+APP_PORT=7789
+NEXT_PUBLIC_BACKEND_URL=http://localhost:7789
 ```
-  NEXT_PUBLIC_BACKEND_URL=http://localhost:7789
+
+2. Backend:
 ```
-2. npm i
-3. npm run dev
+cd backend
+npm i
+npm start
+```
+
+3. Frontend:
+```
+cd frontend
+npm i
+npm run dev
+```
 
 **Client:** http://localhost:7790/
 
@@ -27,7 +32,7 @@ FRONTEND:
 
 ### Hosting below a URL prefix
 
-The frontend and Socket.IO/API routes can be placed below separate prefixes:
+The frontend and Socket.IO/API routes can be placed below separate prefixes in the same root `.env`:
 
 ```env
 NEXT_PUBLIC_BASE_PATH=/wave-arena

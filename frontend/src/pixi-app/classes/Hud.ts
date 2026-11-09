@@ -59,8 +59,11 @@ export class Hud {
         });
         this.statusText.position.set(16, 48);
 
+        const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
         this.hintText = new PIXI.Text({
-            text: "WASD · ЛКМ · Esc меню",
+            text: isTouch
+                ? "Левая половина — бег · правая — прицел и огонь"
+                : "WASD · ЛКМ · Esc меню",
             style: {
                 fill: 0xdddddd,
                 fontSize: 13,

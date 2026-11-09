@@ -155,6 +155,14 @@ export class App {
         return !!this.scene?.paused;
     }
 
+    public getControl() {
+        return this.control;
+    }
+
+    public reloadWeapon() {
+        this.scene?.mePlayer?.reload();
+    }
+
     public pickPerk(perkId:string) {
         this.socket?.emit("pickPerk", { perkId });
         this.notifyPerkOffer(null);
@@ -304,20 +312,12 @@ export class App {
 
         const player = this.scene.mePlayer;
         const deltaSec = ticker.deltaMS / 1000;
-
-        let dx = 0;
-        let dy = 0;
-
-        if (this.control.isKey("KeyW")) dy -= 1;
-        if (this.control.isKey("KeyS")) dy += 1;
-        if (this.control.isKey("KeyA")) dx -= 1;
-        if (this.control.isKey("KeyD")) dx += 1;
+        const move = this.control.moveVector();
+        const dx = move.x;
+        const dy = move.y;
 
         if (dx !== 0 || dy !== 0) {
             player.animationPlay();
-            const length = Math.sqrt(dx * dx + dy * dy);
-            dx /= length;
-            dy /= length;
             player.moveTo(
                 player.x + dx * player.getSpeed() * deltaSec,
                 player.y + dy * player.getSpeed() * deltaSec
@@ -328,16 +328,24 @@ export class App {
         }
 
         const mouseCoords = this.control.getMouseCoords();
-        const isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+        let isRotationChanged = false;
+        if (this.control.isTouch) {
+            const aim = this.control.aimAngle;
+            if (aim !== null) {
+                isRotationChanged = player.setRotation(aim);
+            }
+        } else {
+            isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+        }
 
         const mouseMovement = this.control.getAndResetMouseMovement();
-        if (this.control.isSpace()) {
+        if (!this.control.isTouch && this.control.isSpace()) {
             if (mouseMovement.x !== 0 || mouseMovement.y !== 0) {
                 this.scene.incrementTxTy(mouseMovement.x, mouseMovement.y);
             }
         }
         const scrollDelta = this.control.getAndResetScrollDelta();
-        if (scrollDelta !== 0) {
+        if (!this.control.isTouch && scrollDelta !== 0) {
             this.scene.incrementScale(scrollDelta > 0 ? -0.1 : 0.1);
         }
 
@@ -345,7 +353,7 @@ export class App {
             this.socket?.emit("playerMoved", player.getCoords());
         }
 
-        if (this.control.getIsMousePressed()) {
+        if (this.control.isFiring) {
             player.fire();
         }
 

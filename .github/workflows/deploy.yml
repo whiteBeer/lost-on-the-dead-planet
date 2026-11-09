@@ -19,5 +19,5 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /var/www/lost-on-the-dead-planet
+            cd /var/www/zeloda
             ./deploy.sh

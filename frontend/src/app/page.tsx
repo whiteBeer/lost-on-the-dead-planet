@@ -11,9 +11,11 @@ function Main() {
     const router = useRouter();
     const [room, setRoom] = useState("");
     const [error, setError] = useState("");
+    const [isTouch, setIsTouch] = useState(false);
 
     useEffect(() => {
         setRoom(localStorage.getItem(ROOM_KEY) || "");
+        setIsTouch(window.matchMedia("(pointer: coarse)").matches);
     }, []);
 
     const go = (mode:"join" | "create") => {
@@ -36,7 +38,7 @@ function Main() {
                     go("join");
                 }}
             >
-                <h1 className={styles.title}>Lost on the Dead Planet</h1>
+                <h1 className={styles.title}>Zero Eliya: Lost On the Dead Asteroid</h1>
                 <p className={styles.subtitle}>Wave-арена. Держись вместе, чисти волны, бери перки.</p>
 
                 <label className={styles.label} htmlFor="room">Имя комнаты</label>
@@ -64,12 +66,21 @@ function Main() {
 
                 {error ? <p className={styles.error}>{error}</p> : null}
 
-                <ul className={styles.help}>
-                    <li><b>Создать</b> комнату → друзья жмут <b>Войти</b></li>
-                    <li>Все — <b>Я готов</b>, хост жмёт <b>Поехали</b>. В уже идущую игру не пустят</li>
-                    <li><b>WASD</b> бежать, <b>мышь</b> целиться · <b>R</b> перезарядка</li>
-                    <li><b>Ctrl+1 2 3</b> перк · <b>Esc</b> пауза</li>
-                </ul>
+                {isTouch ? (
+                    <ul className={styles.help}>
+                        <li><b>Левая половина экрана</b>: бежать</li>
+                        <li><b>Правая половина</b>: целиться и стрелять</li>
+                        <li>Кнопки внизу: перезарядка и пауза</li>
+                        <li>Удобнее держать телефон горизонтально</li>
+                    </ul>
+                ) : (
+                    <ul className={styles.help}>
+                        <li><b>Создать</b> комнату → друзья жмут <b>Войти</b></li>
+                        <li>Все — <b>Я готов</b>, хост жмёт <b>Поехали</b>. В уже идущую игру не пустят</li>
+                        <li><b>WASD</b> бежать, <b>мышь</b> целиться · <b>R</b> перезарядка</li>
+                        <li><b>Ctrl+1 2 3</b> перк · <b>Esc</b> пауза</li>
+                    </ul>
+                )}
                 <p className={styles.note}>
                     Волны нарастают сами. Зелёные слабее, жёлтые быстрее, красные толще.
                 </p>

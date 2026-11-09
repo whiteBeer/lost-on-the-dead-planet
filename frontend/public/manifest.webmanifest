@@ -1,0 +1,11 @@
+{
+  "name": "Zero Eliya: Lost On the Dead Asteroid",
+  "short_name": "LPT Arena",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#151a12",
+  "theme_color": "#151a12",
+  "icons": [{ "src": "img/chest.png", "sizes": "256x256", "type": "image/png" }]
+}

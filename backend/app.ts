@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 import { createServer } from "http";
 import express, { Express } from "express";
 import { Server as SocketIOServer } from "socket.io";
@@ -7,7 +9,14 @@ import { AppSocketServer } from "./appSocketServer";
 import { RoomsManager } from "./classes/RoomsManager";
 import { EmitManager } from "./classes/EmitManager";
 
-dotenv.config();
+// Один общий .env в корне репозитория (frontend + backend)
+const rootEnv = [
+    path.resolve(__dirname, "../../.env"),
+    path.resolve(__dirname, "../.env"),
+    path.resolve(process.cwd(), "../.env"),
+    path.resolve(process.cwd(), ".env")
+].find(candidate => fs.existsSync(candidate));
+dotenv.config(rootEnv ? { path: rootEnv } : undefined);
 
 class Server {
     private readonly httpServer:ReturnType<typeof createServer>;

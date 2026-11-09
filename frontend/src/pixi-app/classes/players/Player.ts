@@ -165,18 +165,21 @@ export class Player {
         }
     }
 
+    setRotation(rotation:number) {
+        const oldRotation = this.rotation;
+        this.rotation = rotation;
+        if (this.pixiObj) {
+            this.pixiObj.rotation = rotation;
+        }
+        return oldRotation !== rotation;
+    }
+
     refreshRotationAngleToMouse(mouseCoords:IMouseCoords) {
         try {
             const stageCoords = this.getStageCoords();
-            const oldRotation = this.rotation;
             const diffX = mouseCoords.pageX - stageCoords.pageX;
             const diffY = mouseCoords.pageY - stageCoords.pageY;
-            const rotation = Math.atan2(diffY, diffX);
-            this.rotation = rotation;
-            if (this.pixiObj) {
-                this.pixiObj.rotation = rotation;
-            }
-            return oldRotation !== rotation;
+            return this.setRotation(Math.atan2(diffY, diffX));
         } catch (e) {
             console.error(e);
             return false;

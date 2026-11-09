@@ -1,3 +1,9 @@
+const path = require("path");
+const { loadEnvConfig } = require("@next/env");
+
+// Один общий .env в корне репозитория (frontend + backend)
+loadEnvConfig(path.join(__dirname, ".."));
+
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const dockerBuild = process.env.DOCKER_BUILD === "1";
 
