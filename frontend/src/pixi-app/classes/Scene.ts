@@ -85,7 +85,8 @@ export class Scene {
 
         this.app.socket?.on("sceneReset", (newScene:BackendScene) => {
             this.clearCorpses();
-            this.playersCollection.updatePlayers(newScene.players);
+            // Респаун / вайп — единственный момент, когда сервер задаёт позицию локальному игроку.
+            this.playersCollection.updatePlayers(newScene.players, { syncTransform: true });
             this.enemiesCollection.enemiesFromBackendScene(newScene);
             this.pickupsCollection.fromBackendScene(newScene);
             this.wave = newScene.wave || 0;
@@ -93,6 +94,9 @@ export class Scene {
                 ? newScene.phase
                 : "lobby";
             this.paused = false;
+            if (this.mePlayer) {
+                this.centerScene();
+            }
         });
 
         this.app.socket?.on("gamePaused", (data:{ paused?:boolean }) => {

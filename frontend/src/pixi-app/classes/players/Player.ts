@@ -60,13 +60,26 @@ export class Player {
         }
     }
 
-    update(params:BackendPlayer) {
-        this.x = params.pageX;
-        this.y = params.pageY;
+    update(params:BackendPlayer, opts:{ syncTransform?:boolean } = {}) {
+        // Локальный игрок двигается на клиенте; серверные stats/scene не должны откатывать позицию.
+        const isMe = this.socketId === this.app.socket?.id;
+        const syncTransform = opts.syncTransform === true
+            || !isMe
+            || this.x < 0
+            || this.y < 0;
+        if (syncTransform) {
+            this.x = params.pageX;
+            this.y = params.pageY;
+            this.rotation = params.rotation;
+            if (this.pixiObj) {
+                this.pixiObj.x = this.x;
+                this.pixiObj.y = this.y;
+                this.pixiObj.rotation = this.rotation;
+            }
+        }
         this.health = params.health;
         this.maxHealth = params.maxHealth;
         this.radius = params.radius;
-        this.rotation = params.rotation;
         this.level = params.level || this.level;
         this.exp = params.exp || 0;
         if (params.speed) {

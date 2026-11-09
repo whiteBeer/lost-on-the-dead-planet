@@ -133,11 +133,11 @@ export class PlayersCollection {
         return player;
     }
 
-    updatePlayers(backendPlayers:BackendPlayer[]) {
+    updatePlayers(backendPlayers:BackendPlayer[], opts:{ syncTransform?:boolean } = {}) {
         backendPlayers.forEach((backendPlayer:BackendPlayer) => {
             const player = this.findPlayer(backendPlayer.socketId);
             if (player) {
-                player.update(backendPlayer);
+                player.update(backendPlayer, opts);
             } else {
                 const newPlayer = this.addPlayer(backendPlayer);
                 if (newPlayer.socketId === this.app.socket?.id) {
