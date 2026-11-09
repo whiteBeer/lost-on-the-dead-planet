@@ -247,6 +247,31 @@
   margin-bottom: 4px;
 }
 
+.nameLabel {
+  display: block;
+  margin: 6px 0 4px;
+  font-size: 12px;
+  color: #a9ae9b;
+  text-align: left;
+}
+
+.nameInput {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: #fff;
+  background: #1c2117;
+  border: 1px solid #4b573a;
+  border-radius: 8px;
+  outline: none;
+}
+
+.nameInput:focus {
+  border-color: #a8e05f;
+}
+
 .lobbyList {
   list-style: none;
   margin: 4px 0 8px;
@@ -267,6 +292,14 @@
   color: #eceadf;
   font-size: 14px;
   font-weight: 600;
+}
+
+.lobbyName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .lobbyDot {

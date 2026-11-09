@@ -44,6 +44,8 @@ export class App {
     private lobbyListener:LobbyListener | null = null;
     private joinRejectedListener:JoinRejectedListener | null = null;
     private pauseListener:PauseListener | null = null;
+    private pendingName:string | null = null;
+    private nameSentForSocket:string | null = null;
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -104,6 +106,8 @@ export class App {
 
         this.socket.on("connect", async () => {
             await this.loadGame(roomId);
+            // Игрок уже в комнате — сразу шлём имя из localStorage / лобби
+            await this.flushPlayerName();
         });
 
         this.socket.connect();
@@ -140,6 +144,33 @@ export class App {
 
     public setReady(ready = true) {
         this.socket?.emit("playerReady", { ready });
+    }
+
+    public setPlayerName(name:string) {
+        this.pendingName = String(name || "").trim().slice(0, 16);
+        void this.flushPlayerName();
+    }
+
+    private async flushPlayerName() {
+        const name = this.pendingName;
+        const socketId = this.socket?.id;
+        if (!socketId || name === null) {
+            return;
+        }
+        // Не дублируем тот же PUT для того же сокета
+        if (this.nameSentForSocket === `${socketId}:${name}`) {
+            return;
+        }
+        const roomId = getRoomId();
+        try {
+            await axios.put(
+                `${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/players/${encodeURIComponent(socketId)}/name`,
+                { name }
+            );
+            this.nameSentForSocket = `${socketId}:${name}`;
+        } catch (e) {
+            console.error("Failed to set player name:", e);
+        }
     }
 
     public startGame() {

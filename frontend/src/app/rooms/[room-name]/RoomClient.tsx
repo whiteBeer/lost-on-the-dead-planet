@@ -14,6 +14,8 @@ const RARITY_TEXT:Record<string, string> = {
     epic: "эпический"
 };
 
+const NAME_KEY = "wave-arena-name";
+
 interface DeathInfo {
     level:number;
     exp:number;
@@ -72,6 +74,7 @@ export default function RoomClient() {
     const [joinError, setJoinError] = useState<string | null>(null);
     const [isTouch, setIsTouch] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
+    const [playerName, setPlayerName] = useState("");
 
     const mainMenu = () => {
         // Явный выход: рвём сокет сразу, чтобы сервер убрал игрока (и комнату, если он был последним)
@@ -106,6 +109,11 @@ export default function RoomClient() {
 
     useEffect(() => {
         setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+        const stored = (localStorage.getItem(NAME_KEY) || "").trim();
+        if (!stored) {
+            localStorage.removeItem(NAME_KEY);
+        }
+        setPlayerName(stored);
         const sync = () => setFullscreen(isFullscreenActive());
         sync();
         document.addEventListener("fullscreenchange", sync);
@@ -116,11 +124,33 @@ export default function RoomClient() {
         };
     }, []);
 
+    const applyPlayerName = (value:string) => {
+        const cleaned = value.trim().slice(0, 16);
+        // Пустое имя никогда не пишем в storage и не шлём как сброс
+        if (!cleaned) {
+            return;
+        }
+        setPlayerName(cleaned);
+        // Автоимя «Игрок N» в storage тоже не пишем — только своё имя
+        if (!/^Игрок\s+\d+$/i.test(cleaned)) {
+            localStorage.setItem(NAME_KEY, cleaned);
+        }
+        appRef.current?.setPlayerName(cleaned);
+    };
+
     useEffect(() => {
         (async () => {
             const $el = document?.getElementById("game");
             if ($el) {
+                const savedName = (localStorage.getItem(NAME_KEY) || "").trim();
+                setPlayerName(savedName);
+
                 appRef.current = new PixiAPP($el);
+                // Если имя уже было — шлём на бек сразу после входа; иначе сервер даст «Игрок N»
+                if (savedName) {
+                    appRef.current.setPlayerName(savedName);
+                }
+
                 appRef.current.onPerkOffer(setPerkOffer);
                 appRef.current.onDeath((info) => {
                     setDead(info);
@@ -142,6 +172,17 @@ export default function RoomClient() {
                         setDead(null);
                         setArenaOver(false);
                     }
+                    const saved = (localStorage.getItem(NAME_KEY) || "").trim();
+                    if (saved) {
+                        appRef.current?.setPlayerName(saved);
+                    } else {
+                        // Показать серверное «Игрок N» в инпуте, не сохраняя в localStorage
+                        const meId = appRef.current?.socket?.id;
+                        const me = state.players.find(p => p.socketId === meId);
+                        if (me?.name) {
+                            setPlayerName(me.name);
+                        }
+                    }
                 });
                 appRef.current.onJoinRejected((info) => {
                     setJoinError(info.message);
@@ -150,7 +191,10 @@ export default function RoomClient() {
                     setPauseOpen(paused);
                 });
                 await appRef.current.init();
-                $el.appendChild(appRef.current.getView());
+                const view = appRef.current.getView();
+                if (view) {
+                    $el.appendChild(view);
+                }
             }
         })();
 
@@ -210,15 +254,35 @@ export default function RoomClient() {
                                 ? "Ты один — можно сразу жать «Поехали»"
                                 : `Готовы: ${readyCount}/${lobbyPlayers.length}`}
                         </p>
+                        <label className={styles.nameLabel} htmlFor="player-name">Твоё имя</label>
+                        <input
+                            id="player-name"
+                            className={styles.nameInput}
+                            value={playerName}
+                            maxLength={16}
+                            autoComplete="off"
+                            placeholder="Выживший"
+                            onChange={(e) => setPlayerName(e.target.value)}
+                            onBlur={() => applyPlayerName(playerName)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    applyPlayerName(playerName);
+                                    (e.target as HTMLInputElement).blur();
+                                }
+                            }}
+                        />
                         <ul className={styles.lobbyList}>
-                            {lobbyPlayers.map((p, i) => (
+                            {lobbyPlayers.map((p) => (
                                 <li key={p.socketId} className={styles.lobbyItem}>
                                     <span
                                         className={styles.lobbyDot}
                                         style={{ background: p.color || "#888" }}
                                     />
-                                    Игрок {i + 1}
-                                    {p.socketId === hostSocketId ? " · хост" : ""}
+                                    <span className={styles.lobbyName}>
+                                        {p.name || "Игрок"}
+                                        {p.socketId === hostSocketId ? " · хост" : ""}
+                                    </span>
                                     <span className={p.isReady ? styles.readyYes : styles.readyNo}>
                                         {lobbyPlayers.length === 1
                                             ? "хост"

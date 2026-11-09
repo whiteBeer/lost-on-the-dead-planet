@@ -34,6 +34,7 @@ export class AppApiServer {
         this.app.put("/api/rooms/:roomId", this.createRoom.bind(this));
         this.app.get("/api/rooms/:roomId/scene", this.getScene.bind(this));
         this.app.put("/api/rooms/:roomId/new-game", this.newGame.bind(this));
+        this.app.put("/api/rooms/:roomId/players/:socketId/name", this.setPlayerName.bind(this));
         this.app.put("/api/sandbox/rooms/:roomId/add-zombie", this.addZombie.bind(this));
         this.app.put("/api/sandbox/rooms/:roomId/add-spider", this.addSpider.bind(this));
     }
@@ -107,6 +108,24 @@ export class AppApiServer {
             this.emitManager.emitSceneChanged(roomId, roomScene.getScene());
             res.json({});
         }
+    }
+
+    private async setPlayerName(req:Request, res:Response):Promise<void> {
+        await roomIdValidator.validateAsync({ roomId: req.params.roomId });
+        const roomId = req.params.roomId;
+        const socketId = String(req.params.socketId || "");
+        const roomScene = this.roomsManager.getRoomScene(roomId);
+        if (!roomScene) {
+            throw new NotFoundError("Scene not found");
+        }
+        const player = roomScene.playersCollection.getPlayerById(socketId);
+        if (!player) {
+            throw new NotFoundError("Player not found");
+        }
+        player.setName(req.body?.name || "");
+        this.emitManager.emit(roomId, "playersUpdated", roomScene.playersCollection.getPlayersJSON());
+        roomScene.emitLobbyState();
+        res.json({ name: player.name });
     }
 
     private addZombie(req:Request, res:Response):void {

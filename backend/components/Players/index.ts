@@ -50,6 +50,8 @@ export class Players {
             const newPlayer = new Player(socketId, color, startX, startY, this.scene);
             newPlayer.rotation = Math.random() * 6;
             newPlayer.setReady(false);
+            // Временное имя по номеру входа; клиент без localStorage его не перезаписывает
+            newPlayer.setName(`Игрок ${this.players.length + 1}`);
             this.players.push(newPlayer);
             this.scene.ensureHost(socketId);
             return newPlayer;

@@ -50,7 +50,8 @@ export function createEnemyForTier(
     startY:number,
     hpMul:number,
     damageMul:number,
-    speedMul = 1
+    speedMul = 1,
+    fireRateMul = 1
 ):BaseEnemy {
     const enemyId = pickEnemyForTier(tier);
     return createEnemyById(scene, enemyId, {
@@ -59,6 +60,7 @@ export function createEnemyForTier(
         startY,
         hpMul,
         damageMul,
-        speedMul
+        speedMul,
+        fireRateMul
     });
 }

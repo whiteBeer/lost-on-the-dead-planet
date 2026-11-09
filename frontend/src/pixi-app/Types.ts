@@ -35,6 +35,7 @@ export interface BackendPerkOffer {
 export interface BackendPlayer {
     socketId:string;
     color:string;
+    name?:string;
     radius:number,
     health:number;
     maxHealth:number;

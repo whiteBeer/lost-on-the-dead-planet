@@ -18,6 +18,7 @@ interface PendingSpawn {
     hpMul:number;
     dmgMul:number;
     speedMul:number;
+    fireRateMul:number;
 }
 
 interface FrozenSpawn {
@@ -26,6 +27,7 @@ interface FrozenSpawn {
     hpMul:number;
     dmgMul:number;
     speedMul:number;
+    fireRateMul:number;
 }
 
 export class WaveDirector {
@@ -109,7 +111,8 @@ export class WaveDirector {
             tier: spawn.tier,
             hpMul: spawn.hpMul,
             dmgMul: spawn.dmgMul,
-            speedMul: spawn.speedMul
+            speedMul: spawn.speedMul,
+            fireRateMul: spawn.fireRateMul
         }));
         this.spawnTimeouts.forEach((spawn) => clearTimeout(spawn.timeout));
         this.spawnTimeouts = [];
@@ -210,17 +213,21 @@ export class WaveDirector {
             : Math.max(400, Math.floor(durationMs / tiers.length));
 
         tiers.forEach((tier, index) => {
-            // Босс жирнее обычного waveHpMul — особенно поздние циклы
+            // Босс жирнее и злее с каждым циклом (5 → 10 → 15…)
             const bossIndex = Math.max(0, Math.floor(this.wave / WAVES_CONFIG.bossEveryNWaves) - 1);
             const tierHpMul = tier === "boss"
                 ? hpMul * (1.4 + bossIndex * 0.35)
                 : hpMul;
+            const fireRateMul = tier === "boss"
+                ? 1 + bossIndex * 0.25
+                : 1;
             this.armSpawn({
                 remainingMs: index * spawnGapMs,
                 tier,
                 hpMul: tierHpMul,
                 dmgMul,
-                speedMul: tier === "boss" ? Math.min(speedMul, 1.15) : speedMul
+                speedMul: tier === "boss" ? Math.min(speedMul, 1.15) : speedMul,
+                fireRateMul
             }, generation);
         });
     }
@@ -232,7 +239,7 @@ export class WaveDirector {
             if (generation !== this.generation) {
                 return;
             }
-            this.spawnAtEdge(spawn.tier, spawn.hpMul, spawn.dmgMul, spawn.speedMul);
+            this.spawnAtEdge(spawn.tier, spawn.hpMul, spawn.dmgMul, spawn.speedMul, spawn.fireRateMul);
             this.pendingSpawns = Math.max(0, this.pendingSpawns - 1);
             if (this.pendingSpawns === 0 && this.scene.enemiesCollection.getAliveCount() === 0) {
                 this.onEnemiesCleared();
@@ -244,7 +251,8 @@ export class WaveDirector {
             tier: spawn.tier,
             hpMul: spawn.hpMul,
             dmgMul: spawn.dmgMul,
-            speedMul: spawn.speedMul
+            speedMul: spawn.speedMul,
+            fireRateMul: spawn.fireRateMul
         });
     }
 
@@ -255,7 +263,13 @@ export class WaveDirector {
         this.frozenSpawns = [];
     }
 
-    private spawnAtEdge(tier:EnemyTier, hpMul:number, dmgMul:number, speedMul:number) {
+    private spawnAtEdge(
+        tier:EnemyTier,
+        hpMul:number,
+        dmgMul:number,
+        speedMul:number,
+        fireRateMul = 1
+    ) {
         const w = this.scene.getWidth();
         const h = this.scene.getHeight();
         // Спавн чуть за краем видимой арены, но не слишком далеко от центра
@@ -287,7 +301,7 @@ export class WaveDirector {
             y = cy + (Math.random() - 0.5) * 2 * ry;
             break;
         }
-        this.scene.enemiesCollection.spawnTier(tier, x, y, hpMul, dmgMul, speedMul);
+        this.scene.enemiesCollection.spawnTier(tier, x, y, hpMul, dmgMul, speedMul, fireRateMul);
     }
 
     private clearTimer() {

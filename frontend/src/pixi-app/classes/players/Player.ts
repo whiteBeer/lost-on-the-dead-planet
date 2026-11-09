@@ -9,11 +9,13 @@ export class Player {
     public x = -1;
     public y = -1;
     public socketId = "";
+    public name = "Игрок";
     public weapon:Weapon;
     public movementStopTimer:NodeJS.Timeout | null = null;
 
     private app:App;
     private pixiObj:PIXI.Container;
+    private bodyContainer:PIXI.Container | null = null;
     private speedInSecond = 150;
     private radius = 0;
     private rotation = 0;
@@ -25,6 +27,7 @@ export class Player {
 
     private bodySprite:PIXI.AnimatedSprite|null = null;
     private legsSprite:PIXI.AnimatedSprite|null = null;
+    private nameLabel:PIXI.Text|null = null;
 
     constructor(app:App, params:BackendPlayer) {
         this.app = app;
@@ -40,6 +43,8 @@ export class Player {
         this.update(params);
 
         this.pixiObj = this.initGraphics();
+        this.setDisplayName(params.name);
+        this.applyTransform();
     }
 
     public animationPlay():void {
@@ -65,11 +70,7 @@ export class Player {
             this.x = params.pageX;
             this.y = params.pageY;
             this.rotation = params.rotation;
-            if (this.pixiObj) {
-                this.pixiObj.x = this.x;
-                this.pixiObj.y = this.y;
-                this.pixiObj.rotation = this.rotation;
-            }
+            this.applyTransform();
         }
         this.health = params.health;
         this.maxHealth = params.maxHealth;
@@ -80,6 +81,9 @@ export class Player {
             this.speedInSecond = params.speed;
         }
         this.setHealth(this.health);
+        if (params.name !== undefined) {
+            this.setDisplayName(params.name);
+        }
         if (params.weapon) {
             if (params.weapon.id && params.weapon.id !== this.weapon.id) {
                 const cfg = this.app.weaponsConfig?.[params.weapon.id];
@@ -88,6 +92,9 @@ export class Player {
                 }
             }
             this.weapon.updateState(params.weapon);
+        }
+        if (this.nameLabel) {
+            this.nameLabel.y = -(this.radius || 13) - 12;
         }
     }
 
@@ -156,21 +163,17 @@ export class Player {
             const maxY = Math.max(minY, this.app.scene.height - margin - edgePadY);
             this.x = Math.min(maxX, Math.max(minX, x));
             this.y = Math.min(maxY, Math.max(minY, y));
-            this.pixiObj.x = this.x;
-            this.pixiObj.y = this.y;
             if (rotation !== null) {
                 this.rotation = rotation;
-                this.pixiObj.rotation = rotation;
             }
+            this.applyTransform();
         }
     }
 
     setRotation(rotation:number) {
         const oldRotation = this.rotation;
         this.rotation = rotation;
-        if (this.pixiObj) {
-            this.pixiObj.rotation = rotation;
-        }
+        this.applyTransform();
         return oldRotation !== rotation;
     }
 
@@ -186,21 +189,59 @@ export class Player {
         }
     }
 
+    private setDisplayName(name?:string) {
+        const next = (name || "Игрок").trim().slice(0, 16) || "Игрок";
+        this.name = next;
+        if (this.nameLabel) {
+            this.nameLabel.text = next;
+        }
+    }
+
+    /** Корень не крутится — только тело. Имя остаётся горизонтальным над игроком. */
+    private applyTransform() {
+        if (!this.pixiObj) {
+            return;
+        }
+        this.pixiObj.x = this.x;
+        this.pixiObj.y = this.y;
+        this.pixiObj.rotation = 0;
+        if (this.bodyContainer) {
+            this.bodyContainer.rotation = this.rotation;
+        }
+    }
+
     private initGraphics() {
         const container = new PIXI.Container();
+        this.bodyContainer = new PIXI.Container();
+
         const playerFrames = ResourcesLoader.getPlayerTextures();
         this.bodySprite = new PIXI.AnimatedSprite(playerFrames);
         this.bodySprite.animationSpeed = 0.5;
         this.bodySprite.anchor.set(0.5);
         this.bodySprite.width = this.radius * 2.5;
         this.bodySprite.height = this.radius * 3;
-
         this.bodySprite.rotation = -Math.PI / 2;
+        this.bodyContainer.addChild(this.bodySprite);
+        container.addChild(this.bodyContainer);
 
-        container.addChild(this.bodySprite);
+        this.nameLabel = new PIXI.Text({
+            text: this.name,
+            style: {
+                fill: 0xffffff,
+                fontSize: 11,
+                fontFamily: "Segoe UI, Arial",
+                fontWeight: "600",
+                align: "center"
+            }
+        });
+        this.nameLabel.anchor.set(0.5, 1);
+        this.nameLabel.alpha = 0.55;
+        this.nameLabel.x = 0;
+        this.nameLabel.y = -(this.radius || 13) - 12;
+        container.addChild(this.nameLabel);
 
         container.position.set(this.x, this.y);
-        container.rotation = this.rotation;
+        this.bodyContainer.rotation = this.rotation;
 
         return container;
     }

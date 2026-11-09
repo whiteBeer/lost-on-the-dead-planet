@@ -16,8 +16,16 @@ export class Enemies {
         this.scene = scene;
     }
 
-    spawnTier(tier:EnemyTier, x:number, y:number, hpMul = 1, damageMul = 1, speedMul = 1) {
-        const enemy = createEnemyForTier(this.scene, tier, x, y, hpMul, damageMul, speedMul);
+    spawnTier(
+        tier:EnemyTier,
+        x:number,
+        y:number,
+        hpMul = 1,
+        damageMul = 1,
+        speedMul = 1,
+        fireRateMul = 1
+    ) {
+        const enemy = createEnemyForTier(this.scene, tier, x, y, hpMul, damageMul, speedMul, fireRateMul);
         this.enemies.push(enemy);
         this.scene.emit("enemiesAdded", { enemy: enemy.toJSON() });
         return enemy;

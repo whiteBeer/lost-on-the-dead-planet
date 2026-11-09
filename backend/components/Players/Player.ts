@@ -15,6 +15,7 @@ import { Scene } from "../Scene";
 export class Player {
     public socketId:string;
     public color:string;
+    public name = "Игрок";
     public pageX:number;
     public pageY:number;
     public rotation:number;
@@ -195,6 +196,17 @@ export class Player {
         this.isReady = ready;
     }
 
+    public setName(raw:string) {
+        const cleaned = String(raw || "")
+            .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+            .trim()
+            .slice(0, 16);
+        if (!cleaned) {
+            return;
+        }
+        this.name = cleaned;
+    }
+
     public respawn() {
         this.exp = 0;
         this.level = 1;
@@ -224,6 +236,7 @@ export class Player {
         return {
             socketId: this.socketId,
             color: this.color,
+            name: this.name,
             pageX: this.pageX,
             pageY: this.pageY,
             rotation: this.rotation,

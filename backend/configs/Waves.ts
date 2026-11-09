@@ -10,9 +10,10 @@ export interface WaveComposition {
 export const WAVES_CONFIG = {
     pauseBetweenWavesMs: 4500,
     firstWaveDelayMs: 2800,
-    /** Длительность 1-й волны; каждая следующая +waveDurationStepMs */
+    /** Длительность 1-й волны; каждая следующая +waveDurationStepMs (потолок maxWaveDurationMs) */
     firstWaveDurationMs: 20_000,
-    waveDurationStepMs: 10_000,
+    waveDurationStepMs: 5_000,
+    maxWaveDurationMs: 90_000,
     /** Составы ниже посчитаны на это окно; count *= duration / reference */
     referenceDurationMs: 60_000,
     /** +10% монстров за каждую волну после первой */
@@ -61,10 +62,11 @@ export function dropChanceForWave(wave:number):number {
     );
 }
 
-/** Волна 1 = 20с, каждая следующая +10с */
+/** Волна 1 = 20с, каждая следующая +5с, максимум 90с */
 export function waveDurationMs(wave:number):number {
-    return WAVES_CONFIG.firstWaveDurationMs
+    const raw = WAVES_CONFIG.firstWaveDurationMs
         + Math.max(0, wave - 1) * WAVES_CONFIG.waveDurationStepMs;
+    return Math.min(WAVES_CONFIG.maxWaveDurationMs, raw);
 }
 
 export function isBossWave(wave:number):boolean {

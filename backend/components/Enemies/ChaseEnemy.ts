@@ -9,6 +9,8 @@ export interface ChaseSpawnParams extends EnemyParams {
     hpMul?:number;
     damageMul?:number;
     speedMul?:number;
+    /** >1 = быстрее стреляет (короче attackInterval) */
+    fireRateMul?:number;
 }
 
 /**
@@ -70,7 +72,9 @@ export abstract class ChaseEnemy extends BaseEnemy {
         this.health = Math.max(1, Math.round(cfg.health * hpMul * sizeScale));
         this.maxHealth = this.health;
         this.damageValue = Math.round(cfg.damage * damageMul);
-        this.attackInterval = cfg.attackInterval;
+        const fireRateMul = Math.max(0.25, params.fireRateMul ?? 1);
+        // Потолок скорострельности — не ниже 350мс между выстрелами
+        this.attackInterval = Math.max(350, Math.round(cfg.attackInterval / fireRateMul));
     }
 
     protected getSizeScale(cfg:EnemyConfig) {
