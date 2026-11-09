@@ -39,7 +39,7 @@ export class Player {
 
         this.update(params);
 
-        this.pixiObj = this.initGraphics(params);
+        this.pixiObj = this.initGraphics();
     }
 
     public animationPlay():void {
@@ -186,7 +186,7 @@ export class Player {
         }
     }
 
-    private initGraphics(params:BackendPlayer) {
+    private initGraphics() {
         const container = new PIXI.Container();
         const playerFrames = ResourcesLoader.getPlayerTextures();
         this.bodySprite = new PIXI.AnimatedSprite(playerFrames);

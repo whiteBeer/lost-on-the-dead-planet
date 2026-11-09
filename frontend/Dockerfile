@@ -14,7 +14,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=1
-# На маленьком VPS большой heap только ускоряет OOM; держим скромно + swap.
+# На 15G диске временный swap-файл внутри build только забивает место (ENOSPC).
 ENV NODE_OPTIONS=--max-old-space-size=512
 ARG NEXT_PUBLIC_BACKEND_URL=
 ARG NEXT_PUBLIC_BASE_PATH=
@@ -23,17 +23,7 @@ ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_API_BASE_PATH=$NEXT_PUBLIC_API_BASE_PATH
 
-# Temporary swap helps on low-RAM hosts (ignored if Docker blocks swapon).
-RUN set -eux; \
-  ( \
-    dd if=/dev/zero of=/swapfile bs=1M count=4096; \
-    chmod 600 /swapfile; \
-    mkswap /swapfile; \
-    swapon /swapfile; \
-  ) || true; \
-  npm run build; \
-  (swapoff /swapfile || true); \
-  rm -f /swapfile
+RUN npm run build
 
 FROM node:22-alpine AS runner
 

@@ -192,14 +192,10 @@ export class AppSocketServer {
         this.emitToRoom(roomId, "playersDisconnected", { socketId: socket.id });
         console.log("Disconnected ", socket.id);
 
+        // Последний игрок ушёл — комнату закрываем сразу
         if (scenePlayers.getPlayers().length === 0) {
-            setTimeout(() => {
-                const room = this.roomsManager.getRoomScene(roomId);
-                if (room && room.playersCollection.getPlayers().length === 0) {
-                    console.log("Room removed: ", roomId);
-                    this.roomsManager.removeRoom(roomId);
-                }
-            }, 60000);
+            console.log("Room removed (empty): ", roomId);
+            this.roomsManager.removeRoom(roomId);
         }
     }
 

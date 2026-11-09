@@ -35,14 +35,14 @@ function toggleFullscreen() {
     try {
         if (isFullscreenActive()) {
             if (document.exitFullscreen) {
-                document.exitFullscreen().catch(() => {});
+                document.exitFullscreen().catch(() => undefined);
             } else {
                 doc.webkitExitFullscreen?.();
             }
             return;
         }
         if (el.requestFullscreen) {
-            el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+            el.requestFullscreen({ navigationUI: "hide" }).catch(() => undefined);
         } else {
             el.webkitRequestFullscreen?.();
         }
@@ -74,6 +74,9 @@ export default function RoomClient() {
     const [fullscreen, setFullscreen] = useState(false);
 
     const mainMenu = () => {
+        // Явный выход: рвём сокет сразу, чтобы сервер убрал игрока (и комнату, если он был последним)
+        appRef.current?.destroy();
+        appRef.current = null;
         router.push("/");
     };
 

@@ -15,11 +15,9 @@ const nextConfig = {
     // Не тянуть pixi в server/page-data worker на слабом VPS
     serverExternalPackages: ["pixi.js"],
     // Small VPS OOM-killer hits during `next build` typecheck.
+    // eslint-ключ в next.config убран: Next 16 его больше не принимает.
     typescript: {
         ignoreBuildErrors: dockerBuild
-    },
-    eslint: {
-        ignoreDuringBuilds: dockerBuild
     }
 };
 

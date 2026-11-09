@@ -27,7 +27,7 @@ export class App {
 
     private readonly backendUrl:string;
     private readonly apiBasePath:string;
-    private pixiApp:PIXI.Application;
+    private pixiApp:PIXI.Application | null;
     private control:Control | null = null;
     private isInitialized = false;
 
@@ -57,6 +57,9 @@ export class App {
             return;
         }
         const roomId = getRoomId();
+        if (!this.pixiApp) {
+            this.pixiApp = new PIXI.Application();
+        }
         await this.pixiApp.init({
             background: "#3d4a2e",
             resizeTo: window,
@@ -222,7 +225,7 @@ export class App {
                 this.arenaOverListener?.({ reason: data?.reason || "allDead" });
             });
             this.socket?.on("lobbyUpdated", (data:{
-                phase?: "lobby" | "playing",
+                phase?:"lobby" | "playing",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null,
                 canStart?:boolean
@@ -237,7 +240,7 @@ export class App {
                 );
             });
             this.socket?.on("gameStarted", (data:{
-                phase?: "lobby" | "playing",
+                phase?:"lobby" | "playing",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null
             }) => {
@@ -258,8 +261,8 @@ export class App {
                 if (this.scene) this.scene.paused = paused;
                 this.pauseListener?.(paused);
             });
-            this.socket?.on("sceneReset", (data: {
-                phase?: "lobby" | "playing",
+            this.socket?.on("sceneReset", (data:{
+                phase?:"lobby" | "playing",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null,
                 canStart?:boolean
@@ -275,7 +278,7 @@ export class App {
                     );
                 }
             });
-            this.pixiApp.stage.addChild(this.scene.getPixiObj());
+            this.pixiApp?.stage.addChild(this.scene.getPixiObj());
 
             this.loadPlayer();
             this.notifyLobby(
@@ -285,7 +288,7 @@ export class App {
                 !!backendScene.canStart
             );
 
-            this.pixiApp.ticker.add(this.gameLoop.bind(this));
+            this.pixiApp?.ticker.add(this.gameLoop.bind(this));
         } catch (e) {
             console.error("Failed to load scene:", e);
         }
@@ -297,9 +300,9 @@ export class App {
         if (mePlayer) {
             this.scene?.mePlayer?.show();
             this.cursor = new Cursor(this, mePlayer);
-            this.pixiApp.stage.addChild(this.cursor.getPixiObj());
+            this.pixiApp?.stage.addChild(this.cursor.getPixiObj());
             this.hud = new Hud(this, mePlayer);
-            this.pixiApp.stage.addChild(this.hud.getPixiObj());
+            this.pixiApp?.stage.addChild(this.hud.getPixiObj());
         }
     }
 
@@ -366,30 +369,34 @@ export class App {
     }
 
     addTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
-        this.pixiApp.ticker.add(tickerFunc);
+        this.pixiApp?.ticker.add(tickerFunc);
     }
 
     removeTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {
-        this.pixiApp.ticker.remove(tickerFunc);
+        this.pixiApp?.ticker.remove(tickerFunc);
     }
 
     getScreenWidth() {
-        return this.pixiApp.screen.width;
+        return this.pixiApp?.screen.width || 0;
     }
 
     getView() {
-        return this?.pixiApp.canvas;
+        return this.pixiApp?.canvas as HTMLCanvasElement;
     }
 
     destroy() {
         this.control?.destroy();
+        this.control = null;
         if (this.socket) {
             this.socket.disconnect();
             this.socket = null;
         }
-        // 3. Останавливаем Pixi (освобождаем WebGL контекст)
-        // true = удалить canvas из DOM
-        // { children: true } = удалить все спрайты и текстуры
+        if (!this.pixiApp) {
+            return;
+        }
+        // true = удалить canvas из DOM; { children: true } = спрайты и текстуры
         this.pixiApp.destroy(true, { children: true, texture: true });
+        this.pixiApp = null;
+        this.isInitialized = false;
     }
 }
