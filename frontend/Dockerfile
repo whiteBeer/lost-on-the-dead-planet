@@ -14,7 +14,8 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=1
-ENV NODE_OPTIONS=--max-old-space-size=768
+# На маленьком VPS большой heap только ускоряет OOM; держим скромно + swap.
+ENV NODE_OPTIONS=--max-old-space-size=512
 ARG NEXT_PUBLIC_BACKEND_URL=
 ARG NEXT_PUBLIC_BASE_PATH=
 ARG NEXT_PUBLIC_API_BASE_PATH=
@@ -25,7 +26,7 @@ ENV NEXT_PUBLIC_API_BASE_PATH=$NEXT_PUBLIC_API_BASE_PATH
 # Temporary swap helps on low-RAM hosts (ignored if Docker blocks swapon).
 RUN set -eux; \
   ( \
-    dd if=/dev/zero of=/swapfile bs=1M count=2048; \
+    dd if=/dev/zero of=/swapfile bs=1M count=4096; \
     chmod 600 /swapfile; \
     mkswap /swapfile; \
     swapon /swapfile; \

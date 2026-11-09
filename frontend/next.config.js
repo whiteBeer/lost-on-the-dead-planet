@@ -12,6 +12,8 @@ const nextConfig = {
     output: "standalone",
     reactStrictMode: false,
     devIndicators: false,
+    // Не тянуть pixi в server/page-data worker на слабом VPS
+    serverExternalPackages: ["pixi.js"],
     // Small VPS OOM-killer hits during `next build` typecheck.
     typescript: {
         ignoreBuildErrors: dockerBuild
