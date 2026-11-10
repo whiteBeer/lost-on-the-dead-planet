@@ -49,6 +49,7 @@ export class App {
     private spectating = false;
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
+    private destroyed = false;
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -58,7 +59,7 @@ export class App {
     }
 
     async init() {
-        if (this.isInitialized) {
+        if (this.isInitialized || this.destroyed) {
             return;
         }
         const roomId = getRoomId();
@@ -70,8 +71,14 @@ export class App {
             resizeTo: window,
             antialias: true
         });
+        if (this.destroyed) {
+            return;
+        }
 
         await ResourcesLoader.loadAssets();
+        if (this.destroyed) {
+            return;
+        }
 
         this.socket = io(this.backendUrl, {
             path: this.apiBasePath + "/socket.io",
@@ -84,6 +91,11 @@ export class App {
         } catch (error) {
             console.log("Room was created early. Join room.");
         }
+        if (this.destroyed) {
+            this.socket?.disconnect();
+            this.socket = null;
+            return;
+        }
 
         this.socket.on("joinRejected", (data:{ reason?:string, message?:string }) => {
             this.joinRejectedListener?.({
@@ -93,7 +105,14 @@ export class App {
         });
 
         this.socket.on("connect", async () => {
+            if (this.destroyed) {
+                this.socket?.disconnect();
+                return;
+            }
             await this.loadGame(roomId);
+            if (this.destroyed) {
+                return;
+            }
             // Игрок уже в комнате — сразу шлём имя из localStorage / лобби
             await this.flushPlayerName();
         });
@@ -241,6 +260,9 @@ export class App {
     }
 
     private async loadGame(roomId:string) {
+        if (this.destroyed || !this.socket) {
+            return;
+        }
         try {
             const { data: backendScene } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
@@ -430,6 +452,7 @@ export class App {
     }
 
     destroy() {
+        this.destroyed = true;
         this.control?.destroy();
         this.control = null;
         if (this.socket) {
@@ -439,8 +462,12 @@ export class App {
         if (!this.pixiApp) {
             return;
         }
-        // true = удалить canvas из DOM; { children: true } = спрайты и текстуры
-        this.pixiApp.destroy(true, { children: true, texture: true });
+        try {
+            // true = удалить canvas из DOM; { children: true } = спрайты и текстуры
+            this.pixiApp.destroy(true, { children: true, texture: true });
+        } catch (e) {
+            console.error("Failed to destroy pixi:", e);
+        }
         this.pixiApp = null;
         this.isInitialized = false;
     }

@@ -108,9 +108,10 @@ export class AppSocketServer {
                 }
             });
 
-            socket.on("disconnect", () => {
-                this.handlePlayerDisconnect(socket, roomId, scenePlayers);
-            });
+        const socketId = socket.id;
+        socket.on("disconnect", () => {
+            this.handlePlayerDisconnect(socketId, roomId, scenePlayers);
+        });
 
             this.emitToRoom(roomId, "playersUpdated", scenePlayers.getPlayersJSON());
             roomScene.emitLobbyState();
@@ -186,10 +187,10 @@ export class AppSocketServer {
         }
     }
 
-    private handlePlayerDisconnect(socket:Socket, roomId:string, scenePlayers:any):void {
-        scenePlayers.deletePlayer(socket.id);
-        this.emitToRoom(roomId, "playersDisconnected", { socketId: socket.id });
-        console.log("Disconnected ", socket.id);
+    private handlePlayerDisconnect(socketId:string, roomId:string, scenePlayers:any):void {
+        scenePlayers.deletePlayer(socketId);
+        this.emitToRoom(roomId, "playersDisconnected", { socketId });
+        console.log("Disconnected ", socketId);
 
         // Последний игрок ушёл — комнату закрываем сразу, зрителей тоже
         if (scenePlayers.getPlayers().length === 0) {
