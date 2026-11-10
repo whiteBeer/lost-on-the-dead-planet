@@ -38,7 +38,7 @@ function Main() {
                     go("join");
                 }}
             >
-                <h1 className={styles.title}>Zero Eliya: Lost On the Dead Asteroid</h1>
+                <h1 className={styles.title}>Zero Eliya: Lost on the Dead Asteroid</h1>
                 <p className={styles.subtitle}>Wave-арена. Держись вместе, чисти волны, бери перки.</p>
 
                 <label className={styles.label} htmlFor="room">Имя комнаты</label>

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import "../../styles/globals.css";
 
 export const metadata:Metadata = {
-    title: "Zero Eliya: Lost On the Dead Asteroid",
+    title: "Zero Eliya: Lost on the Dead Asteroid",
     description: "Кооперативная браузерная арена: отражайте волны монстров, выбирайте перки и побеждайте боссов.",
     // Добавленная на главный экран игра открывается без адресной строки (в т.ч. на iPhone)
     manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/manifest.webmanifest`,
