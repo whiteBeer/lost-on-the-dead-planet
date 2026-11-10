@@ -45,8 +45,27 @@ export class AppSocketServer {
         }
     }
 
+    // Клиент шлёт heartbeat каждые 3с. Тишина дольше 30с — рвём сокет.
+    private watchHeartbeat(socket:Socket):void {
+        const limitMs = 30000;
+        let timer:NodeJS.Timeout | undefined;
+        const arm = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => {
+                console.log("Heartbeat lost ", socket.id);
+                socket.disconnect(true);
+            }, limitMs);
+        };
+        socket.on("heartbeat", arm);
+        socket.on("disconnect", () => {
+            if (timer) clearTimeout(timer);
+        });
+        arm();
+    }
+
     private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
         socket.join(roomId);
+        this.watchHeartbeat(socket);
 
         if (!roomScene.isJoinable()) {
             roomScene.addSpectator(socket.id);

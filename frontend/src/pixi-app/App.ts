@@ -49,6 +49,7 @@ export class App {
     private spectating = false;
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
+    private heartbeatTimer:ReturnType<typeof setInterval> | null = null;
     private destroyed = false;
 
     constructor($domEl:HTMLElement) {
@@ -109,6 +110,7 @@ export class App {
                 this.socket?.disconnect();
                 return;
             }
+            this.startHeartbeat();
             await this.loadGame(roomId);
             if (this.destroyed) {
                 return;
@@ -116,6 +118,8 @@ export class App {
             // Игрок уже в комнате — сразу шлём имя из localStorage / лобби
             await this.flushPlayerName();
         });
+
+        this.socket.on("disconnect", () => this.stopHeartbeat());
 
         this.socket.connect();
         this.isInitialized = true;
@@ -451,8 +455,24 @@ export class App {
         return this.pixiApp?.canvas as HTMLCanvasElement;
     }
 
+    // Сервер рвёт сокет, если тишина дольше 30с
+    private startHeartbeat() {
+        this.stopHeartbeat();
+        const beat = () => this.socket?.emit("heartbeat");
+        beat();
+        this.heartbeatTimer = setInterval(beat, 3000);
+    }
+
+    private stopHeartbeat() {
+        if (this.heartbeatTimer) {
+            clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+        }
+    }
+
     destroy() {
         this.destroyed = true;
+        this.stopHeartbeat();
         this.control?.destroy();
         this.control = null;
         if (this.socket) {
