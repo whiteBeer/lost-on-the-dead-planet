@@ -30,14 +30,12 @@ export const WAVES_CONFIG = {
     damageMulPerWave: 0.12,
     speedMulPerWave: 0.08,
     /** Потолок скорости, чтобы не улетали */
-    maxSpeedMul: 2.2,
-    /** Опыт до следующего уровня: base + (level-1)*step */
-    expBase: 40,
-    expStep: 28
+    maxSpeedMul: 2.2
 };
 
 export function expForLevel(level:number):number {
-    return WAVES_CONFIG.expBase + Math.max(0, level - 1) * WAVES_CONFIG.expStep;
+    const n = Math.max(1, level);
+    return 40 + n * 20;
 }
 
 export function waveHpMul(wave:number):number {

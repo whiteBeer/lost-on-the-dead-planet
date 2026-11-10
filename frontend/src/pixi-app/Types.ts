@@ -22,6 +22,7 @@ export interface BackendWeaponState {
     ammo:number;
     clipSize:number;
     isReloading:boolean;
+    damage?:number;
 }
 
 export interface BackendPerkOffer {

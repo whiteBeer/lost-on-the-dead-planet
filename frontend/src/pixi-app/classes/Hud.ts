@@ -70,7 +70,7 @@ export class Hud {
                 fontFamily: "Segoe UI, Arial"
             }
         });
-        this.hintText.position.set(16, 112);
+        this.hintText.position.set(16, 136);
 
         this.pixiObj = new PIXI.Container();
         this.pixiObj.addChild(this.waveText);
@@ -173,8 +173,10 @@ export class Hud {
         const ammo = Math.max(0, this.mePlayer.weapon.ammo);
         const clip = Math.max(1, this.mePlayer.weapon.clipSize || 1);
         const reloading = this.mePlayer.weapon.isReloading ? " · перезарядка" : "";
+        const attack = Math.max(0, Math.round(this.mePlayer.weapon.damage));
+        const speed = Math.max(0, Math.round(this.mePlayer.getSpeed()));
         this.statusText.text =
-            `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}`;
+            `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}\nАтака ${attack} · Бег ${speed}`;
 
         this.updateBanner(deltaMS / 1000);
     }

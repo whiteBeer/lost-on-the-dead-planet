@@ -161,7 +161,8 @@ export class Weapon {
             id: this.id,
             ammo: this.ammo,
             clipSize: this.getClipSize(),
-            isReloading: this.isReloading
+            isReloading: this.isReloading,
+            damage: Math.round(this.getDamage())
         };
     }
 }

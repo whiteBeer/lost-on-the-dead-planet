@@ -68,7 +68,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 900,
         tint: 0xffffff,
         spriteKey: "monster_crawler",
-        exp: 10
+        exp: 30
     },
     "Runner": {
         id: "Runner",
@@ -102,7 +102,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 650,
         tint: 0xffffff,
         spriteKey: "monster_hound",
-        exp: 22
+        exp: 66
     },
     "Spitter": {
         id: "Spitter",
@@ -119,7 +119,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 900,
         tint: 0xffffff,
         spriteKey: "monster_spitter",
-        exp: 24
+        exp: 48
     },
     "Bloater": {
         id: "Bloater",
@@ -136,7 +136,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 1000,
         tint: 0xffffff,
         spriteKey: "monster_bloater",
-        exp: 26
+        exp: 78
     },
     "Screamer": {
         id: "Screamer",
@@ -187,7 +187,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 700,
         tint: 0xffffff,
         spriteKey: "monster_stalker",
-        exp: 48
+        exp: 144
     },
     "Brute": {
         id: "Brute",
@@ -204,7 +204,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 820,
         tint: 0xffffff,
         spriteKey: "monster_brute",
-        exp: 55
+        exp: 110
     },
     "Behemoth": {
         id: "Behemoth",
@@ -221,7 +221,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 1000,
         tint: 0xffffff,
         spriteKey: "monster_behemoth",
-        exp: 70
+        exp: 210
     },
     "Boss": {
         id: "Boss",
@@ -239,7 +239,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         attackInterval: 1100,
         tint: 0x111111,
         spriteKey: "monster_boss",
-        exp: 220
+        exp: 660
     }
 };
 

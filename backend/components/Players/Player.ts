@@ -156,7 +156,12 @@ export class Player {
     private checkLevelUp() {
         while (this.exp >= expForLevel(this.level)) {
             this.exp -= expForLevel(this.level);
+            const oldMax = this.maxHealth;
             this.level += 1;
+            this.refreshStats();
+            if (this.maxHealth > oldMax) {
+                this.health += this.maxHealth - oldMax;
+            }
             this.offerPerks();
         }
     }
@@ -210,6 +215,9 @@ export class Player {
 
     public refreshStats() {
         this.stats = computeStats(this.perks);
+        const levelMul = 1 + Math.max(0, this.level - 1) * 0.01;
+        this.stats.damage *= levelMul;
+        this.stats.maxHp *= levelMul;
         this.maxHealth = Math.round(this.stats.maxHp);
         this.weapon.setStats(this.stats);
         if (this.health > this.maxHealth) {

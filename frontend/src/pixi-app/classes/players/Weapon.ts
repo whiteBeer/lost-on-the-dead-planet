@@ -14,6 +14,7 @@ export class Weapon {
     ammo = 0;
     clipSize = 0;
     isReloading = false;
+    damage = 0;
 
     currentSpread = 0;
     lastShotTime = 0;
@@ -33,6 +34,9 @@ export class Weapon {
         this.ammo = state.ammo;
         this.clipSize = state.clipSize;
         this.isReloading = state.isReloading;
+        if (state.damage) {
+            this.damage = state.damage;
+        }
     }
 
     switchConfig(weaponId:string, config:BackendWeaponConfig) {
