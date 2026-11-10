@@ -237,7 +237,7 @@ export default function RoomClient() {
 
     const readyCount = lobbyPlayers.filter(p => p.isReady).length;
     const living = roster.players.filter(p => p.health > 0);
-    const dead = roster.players.filter(p => p.health <= 0);
+    const fallen = roster.players.filter(p => p.health <= 0);
 
     return (
         <div className={styles.wrap}>
@@ -265,10 +265,10 @@ export default function RoomClient() {
                             })}
                         </>
                     )}
-                    {(dead.length > 0 || roster.spectators.length > 0) && (
+                    {(fallen.length > 0 || roster.spectators.length > 0) && (
                         <>
                             <h3>Наблюдатели</h3>
-                            {dead.map((p) => (
+                            {fallen.map((p) => (
                                 <div key={p.socketId} className={styles.rosterRow}>
                                     <span className={styles.rosterName}>{p.name || "Игрок"}</span>
                                 </div>
