@@ -178,10 +178,6 @@ export default function RoomClient() {
                         setWatching(false);
                         setArenaOver(false);
                     }
-                    if (state.phase === "playing") {
-                        setDead(null);
-                        setArenaOver(false);
-                    }
                     const saved = (localStorage.getItem(NAME_KEY) || "").trim();
                     if (saved) {
                         appRef.current?.setPlayerName(saved);

@@ -127,7 +127,10 @@ export class PlayersCollection {
 
     updatePlayers(backendPlayers:BackendPlayer[], opts:{ syncTransform?:boolean } = {}) {
         backendPlayers.forEach((backendPlayer:BackendPlayer) => {
-            const player = this.findPlayer(backendPlayer.socketId);
+            const player = this.findPlayer(backendPlayer.socketId)
+                || (backendPlayer.clientId
+                    ? this.players.find(el => el.clientId === backendPlayer.clientId)
+                    : undefined);
             if (player) {
                 player.update(backendPlayer, opts);
             } else {

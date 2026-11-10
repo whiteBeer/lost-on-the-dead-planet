@@ -29,6 +29,11 @@ export class Players {
         return this.players.find(player => player.socketId === socketId);
     }
 
+    getPlayerByClientId(clientId:string):Player | undefined {
+        if (!clientId) return undefined;
+        return this.players.find(player => player.clientId === clientId);
+    }
+
     areAllReady() {
         return this.players.length > 0 && this.players.every(p => p.isReady);
     }
@@ -83,20 +88,20 @@ export class Players {
         return -1;
     }
 
-    deletePlayer(socketId:string):void {
+    deletePlayer(socketId:string):boolean {
         const index = this.players.findIndex(p => p.socketId === socketId);
-        if (index !== -1) {
-            this.players[index].destroy();
-            this.players.splice(index, 1);
-            if (this.scene.isLobby()) {
-                this.scene.reassignHostIfNeeded();
-                this.scene.emitLobbyState();
-            } else {
-                this.scene.wipeIfNoSurvivors(
-                    this.players.length === 0 ? "empty" : "allDead"
-                );
-            }
+        if (index === -1) return false;
+        this.players[index].destroy();
+        this.players.splice(index, 1);
+        if (this.scene.isLobby()) {
+            this.scene.reassignHostIfNeeded();
+            this.scene.emitLobbyState();
+        } else {
+            this.scene.wipeIfNoSurvivors(
+                this.players.length === 0 ? "empty" : "allDead"
+            );
         }
+        return true;
     }
 
     tick(deltaSec:number) {

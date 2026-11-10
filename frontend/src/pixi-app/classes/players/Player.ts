@@ -9,6 +9,7 @@ export class Player {
     public x = -1;
     public y = -1;
     public socketId = "";
+    public clientId = "";
     public name = "Игрок";
     public weapon:Weapon;
     public movementStopTimer:NodeJS.Timeout | null = null;
@@ -60,6 +61,8 @@ export class Player {
     }
 
     update(params:BackendPlayer, opts:{ syncTransform?:boolean } = {}) {
+        if (params.clientId) this.clientId = params.clientId;
+        if (params.socketId) this.socketId = params.socketId;
         // Локальный игрок двигается на клиенте; серверные stats/scene не должны откатывать позицию.
         const isMe = this.socketId === this.app.socket?.id;
         const syncTransform = opts.syncTransform === true
@@ -81,6 +84,8 @@ export class Player {
             this.speedInSecond = params.speed;
         }
         this.setHealth(this.health);
+        if (params.isDead) this.hide();
+        else this.show();
         if (params.name !== undefined) {
             this.setDisplayName(params.name);
         }

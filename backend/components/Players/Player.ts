@@ -14,6 +14,7 @@ import { Scene } from "../Scene";
 
 export class Player {
     public socketId:string;
+    public clientId = "";
     public color:string;
     public name = "Игрок";
     public pageX:number;
@@ -270,6 +271,7 @@ export class Player {
     public toJSON() {
         return {
             socketId: this.socketId,
+            clientId: this.clientId,
             color: this.color,
             name: this.name,
             pageX: this.pageX,

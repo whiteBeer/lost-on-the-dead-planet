@@ -155,6 +155,12 @@ export class Scene extends EventEmitter {
         }
     }
 
+    retargetHost(fromId:string, toId:string) {
+        if (this.hostSocketId === fromId) {
+            this.hostSocketId = toId;
+        }
+    }
+
     reassignHostIfNeeded() {
         const players = this.playersCollection.getPlayers();
         if (players.length === 0) {

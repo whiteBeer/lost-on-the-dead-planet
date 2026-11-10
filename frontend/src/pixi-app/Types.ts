@@ -39,6 +39,7 @@ export interface BackendPerkOffer {
 
 export interface BackendPlayer {
     socketId:string;
+    clientId?:string;
     color:string;
     name?:string;
     radius:number,

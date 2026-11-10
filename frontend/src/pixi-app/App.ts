@@ -9,6 +9,20 @@ import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
 import { ResourcesLoader } from "./classes/ResourcesLoader";
 
+const CLIENT_KEY = "wave-arena-client";
+
+function storedClientId():string {
+    try {
+        const saved = localStorage.getItem(CLIENT_KEY) || "";
+        if (/^[a-zA-Z0-9-]{8,64}$/.test(saved)) return saved;
+        const id = crypto.randomUUID();
+        localStorage.setItem(CLIENT_KEY, id);
+        return id;
+    } catch {
+        return crypto.randomUUID();
+    }
+}
+
 export type PerkOfferListener = (perks:BackendPerkOffer[] | null) => void;
 export type DeathListener = (info:{ level:number, exp:number }) => void;
 export type ArenaOverListener = (info:{ reason:string }) => void;
@@ -57,6 +71,8 @@ export class App {
     private nameSentForSocket:string | null = null;
     private heartbeatTimer:ReturnType<typeof setInterval> | null = null;
     private destroyed = false;
+    private loading:Promise<void> | null = null;
+    private readonly clientId = storedClientId();
 
     constructor($domEl:HTMLElement) {
         this.$domEl = $domEl;
@@ -90,6 +106,7 @@ export class App {
         this.socket = io(this.backendUrl, {
             path: this.apiBasePath + "/socket.io",
             extraHeaders: { "room-id": roomId },
+            auth: { clientId: this.clientId },
             autoConnect: false
         });
 
@@ -117,7 +134,14 @@ export class App {
                 return;
             }
             this.startHeartbeat();
-            await this.loadGame(roomId);
+            const first = !this.scene && !this.loading;
+            if (first) {
+                this.loading = this.loadGame(roomId).finally(() => {
+                    this.loading = null;
+                });
+            }
+            if (this.loading) await this.loading;
+            if (!first && this.scene) await this.resync(roomId);
             if (this.destroyed) {
                 return;
             }
@@ -270,6 +294,24 @@ export class App {
         this.scene?.mePlayer?.show();
         if (!this.control) {
             this.loadPlayer();
+        }
+    }
+
+    private async resync(roomId:string) {
+        try {
+            const { data } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
+            if (this.destroyed || !this.scene) return;
+            this.scene.phase = data.phase === "playing" ? "playing" : "lobby";
+            this.scene.playersCollection.updatePlayers(data.players || []);
+            if (data.spectators) this.scene.spectators = data.spectators;
+            this.notifyLobby(
+                this.scene.phase,
+                data.players || [],
+                data.hostSocketId ?? null,
+                !!data.canStart
+            );
+        } catch (e) {
+            console.error("Failed to resync scene:", e);
         }
     }
 

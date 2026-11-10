@@ -63,84 +63,104 @@ export class AppSocketServer {
         arm();
     }
 
+    private clientToken(socket:Socket):string {
+        const raw = String(socket.handshake.auth?.clientId || "");
+        const clean = raw.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 64);
+        return clean.length >= 8 ? clean : "";
+    }
+
+    /** Тот же таб переподключился, пока старый сокет ещё жив — не заводим второго игрока. */
+    private retargetPlayer(socket:Socket, roomScene:any, player:any):void {
+        const oldId = player.socketId;
+        if (!oldId || oldId === socket.id) return;
+        player.socketId = socket.id;
+        roomScene.retargetHost(oldId, socket.id);
+        this.io.sockets.sockets.get(oldId)?.disconnect(true);
+    }
+
     private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
         socket.join(roomId);
         this.watchHeartbeat(socket);
 
-        if (!roomScene.isJoinable()) {
+        const scenePlayers = roomScene.playersCollection;
+        const clientId = this.clientToken(socket);
+        const existing = scenePlayers.getPlayerByClientId(clientId);
+        if (existing) {
+            this.retargetPlayer(socket, roomScene, existing);
+        } else if (!roomScene.isJoinable()) {
             roomScene.addSpectator(socket.id);
             socket.on("disconnect", () => {
                 roomScene.removeSpectator(socket.id);
             });
             return;
-        }
-        const scenePlayers = roomScene.playersCollection;
-        const newPlayer = scenePlayers.addPlayer(socket.id);
-
-        if (newPlayer) {
+        } else {
+            const newPlayer = scenePlayers.addPlayer(socket.id);
+            if (!newPlayer) {
+                socket.emit("joinRejected", {
+                    reason: "roomFull",
+                    message: "Комната заполнена"
+                });
+                socket.disconnect(true);
+                return;
+            }
+            newPlayer.clientId = clientId;
             console.log("Connected: " + socket.id, newPlayer.toJSON());
+        }
 
-            socket.on("playerReady", (params:{ ready?:boolean } = {}) => {
-                const ready = params?.ready !== false;
-                roomScene.setPlayerReady(socket.id, ready);
-            });
+        socket.on("playerReady", (params:{ ready?:boolean } = {}) => {
+            const ready = params?.ready !== false;
+            roomScene.setPlayerReady(socket.id, ready);
+        });
 
-            socket.on("startGame", () => {
-                roomScene.startGameByHost(socket.id);
-            });
+        socket.on("startGame", () => {
+            roomScene.startGameByHost(socket.id);
+        });
 
-            socket.on("togglePause", () => {
-                if (!roomScene.isLobby()) {
-                    roomScene.togglePause();
-                }
-            });
+        socket.on("togglePause", () => {
+            if (!roomScene.isLobby()) {
+                roomScene.togglePause();
+            }
+        });
 
-            socket.on("playerMoved", (params:PlayerJSON) => {
-                if (!roomScene.isLobby() && !roomScene.isPaused()) {
-                    this.handlePlayerMoved(socket, roomId, scenePlayers, params);
-                }
-            });
+        socket.on("playerMoved", (params:PlayerJSON) => {
+            if (!roomScene.isLobby() && !roomScene.isPaused()) {
+                this.handlePlayerMoved(socket, roomId, scenePlayers, params);
+            }
+        });
 
-            socket.on("playerReload", () => {
-                if (roomScene.isLobby() || roomScene.isPaused()) return;
-                const player = roomScene.playersCollection.getPlayerById(socket.id);
-                if (player) {
-                    this.triggerReload(player, roomId, socket.id);
-                }
-            });
+        socket.on("playerReload", () => {
+            if (roomScene.isLobby() || roomScene.isPaused()) return;
+            const player = roomScene.playersCollection.getPlayerById(socket.id);
+            if (player) {
+                this.triggerReload(player, roomId, socket.id);
+            }
+        });
 
-            socket.on("missileCreate", (params:any) => {
-                if (roomScene.isLobby() || roomScene.isPaused()) return;
-                this.handleMissileCreate(roomScene, params, socket.id);
-            });
+        socket.on("missileCreate", (params:any) => {
+            if (roomScene.isLobby() || roomScene.isPaused()) return;
+            this.handleMissileCreate(roomScene, params, socket.id);
+        });
 
-            socket.on("pickup", () => {
-                if (roomScene.isLobby() || roomScene.isPaused()) return;
-                roomScene.pickupsCollection.tryPickup(socket.id);
-            });
+        socket.on("pickup", () => {
+            if (roomScene.isLobby() || roomScene.isPaused()) return;
+            roomScene.pickupsCollection.tryPickup(socket.id);
+        });
 
-            socket.on("pickPerk", (params:{ perkId?:string }) => {
-                if (roomScene.isLobby() || roomScene.isPaused()) return;
-                const player = roomScene.playersCollection.getPlayerById(socket.id);
-                if (player && params?.perkId) {
-                    player.pickPerk(params.perkId);
-                }
-            });
+        socket.on("pickPerk", (params:{ perkId?:string }) => {
+            if (roomScene.isLobby() || roomScene.isPaused()) return;
+            const player = roomScene.playersCollection.getPlayerById(socket.id);
+            if (player && params?.perkId) {
+                player.pickPerk(params.perkId);
+            }
+        });
 
         const socketId = socket.id;
         socket.on("disconnect", () => {
             this.handlePlayerDisconnect(socketId, roomId, scenePlayers);
         });
 
-            this.emitToRoom(roomId, "playersUpdated", scenePlayers.getPlayersJSON());
-            roomScene.emitLobbyState();
-        } else {
-            socket.emit("joinRejected", {
-                reason: "roomFull",
-                message: "Комната заполнена"
-            });
-            socket.disconnect(true);
-        }
+        this.emitToRoom(roomId, "playersUpdated", scenePlayers.getPlayersJSON());
+        roomScene.emitLobbyState();
     }
 
     private handlePlayerMoved(socket:Socket, roomId:string, scenePlayers:any, params:PlayerJSON):void {
@@ -207,7 +227,7 @@ export class AppSocketServer {
     }
 
     private handlePlayerDisconnect(socketId:string, roomId:string, scenePlayers:any):void {
-        scenePlayers.deletePlayer(socketId);
+        if (!scenePlayers.deletePlayer(socketId)) return;
         this.emitToRoom(roomId, "playersDisconnected", { socketId });
         console.log("Disconnected ", socketId);
 

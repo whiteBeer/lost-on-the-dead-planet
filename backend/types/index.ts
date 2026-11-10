@@ -11,6 +11,7 @@ export interface Rectangle {
 
 export interface PlayerJSON {
     socketId:string,
+    clientId?:string,
     color:string,
     name?:string,
     radius:number,
