@@ -40,6 +40,35 @@
   border-color: #a8e05f;
 }
 
+.spectateBadge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f0e6;
+  background: rgba(12, 15, 10, 0.72);
+  border: 1px solid #39442b;
+  border-radius: 7px;
+}
+
+.spectateBadge button {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f0e6;
+  background: transparent;
+  border: 1px solid #39442b;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 /* Перки внизу — как в open-world */
 .perks {
   position: fixed;

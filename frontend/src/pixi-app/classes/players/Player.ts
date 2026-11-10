@@ -113,6 +113,10 @@ export class Player {
         this.pixiObj.visible = false;
     }
 
+    isVisible() {
+        return this.pixiObj.visible;
+    }
+
     show() {
         this.pixiObj.visible = true;
     }

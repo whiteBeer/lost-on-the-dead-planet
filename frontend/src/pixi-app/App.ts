@@ -22,6 +22,7 @@ export type LobbyListener = (state:{
 }) => void;
 export type JoinRejectedListener = (info:{ reason:string, message:string }) => void;
 export type PauseListener = (paused:boolean) => void;
+export type SpectatorListener = (watching:boolean) => void;
 
 export class App {
 
@@ -44,6 +45,8 @@ export class App {
     private lobbyListener:LobbyListener | null = null;
     private joinRejectedListener:JoinRejectedListener | null = null;
     private pauseListener:PauseListener | null = null;
+    private spectatorListener:SpectatorListener | null = null;
+    private spectating = false;
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
 
@@ -80,21 +83,6 @@ export class App {
             await axios.put(this.backendUrl + this.apiBasePath + "/api/rooms/" + roomId);
         } catch (error) {
             console.log("Room was created early. Join room.");
-        }
-
-        // Не пускаем в уже идущую игру ещё до сокета
-        try {
-            const { data } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
-            if (data?.phase === "playing") {
-                this.joinRejectedListener?.({
-                    reason: "gameInProgress",
-                    message: "Игра уже идёт — войти нельзя"
-                });
-                this.isInitialized = true;
-                return;
-            }
-        } catch (e) {
-            console.error("Failed to check room phase:", e);
         }
 
         this.socket.on("joinRejected", (data:{ reason?:string, message?:string }) => {
@@ -140,6 +128,16 @@ export class App {
 
     public onPause(listener:PauseListener) {
         this.pauseListener = listener;
+    }
+
+    public onSpectator(listener:SpectatorListener) {
+        this.spectatorListener = listener;
+    }
+
+    public watch() {
+        this.spectating = true;
+        this.spectatorListener?.(true);
+        this.scene?.followLive();
     }
 
     public setReady(ready = true) {
@@ -301,17 +299,27 @@ export class App {
                 if (this.scene) this.scene.paused = false;
                 this.pauseListener?.(false);
                 if (data.phase === "lobby") {
+                    this.spectating = false;
+                    this.spectatorListener?.(false);
                     this.notifyLobby(
                         "lobby",
                         data.players || [],
                         data.hostSocketId ?? null,
                         !!data.canStart
                     );
+                    if (this.scene?.mePlayer && !this.control) {
+                        this.meRespawn();
+                    }
                 }
             });
             this.pixiApp?.stage.addChild(this.scene.getPixiObj());
 
             this.loadPlayer();
+            if (!this.scene.mePlayer && backendScene.phase === "playing") {
+                this.spectating = true;
+                this.spectatorListener?.(true);
+                this.scene.followLive();
+            }
             this.notifyLobby(
                 backendScene.phase === "playing" ? "playing" : "lobby",
                 backendScene.players || [],
@@ -326,20 +334,26 @@ export class App {
     }
 
     private loadPlayer() {
-        this.control = new Control(this);
-        const mePlayer = this.scene?.getMePlayer();
-        if (mePlayer) {
-            this.scene?.mePlayer?.show();
-            this.cursor = new Cursor(this, mePlayer);
-            this.pixiApp?.stage.addChild(this.cursor.getPixiObj());
-            this.hud = new Hud(this, mePlayer);
-            this.pixiApp?.stage.addChild(this.hud.getPixiObj());
+        const mePlayer = this.scene?.mePlayer;
+        if (!mePlayer) {
+            return;
         }
+        this.control = new Control(this);
+        mePlayer.show();
+        this.cursor = new Cursor(this, mePlayer);
+        this.pixiApp?.stage.addChild(this.cursor.getPixiObj());
+        this.hud = new Hud(this, mePlayer);
+        this.pixiApp?.stage.addChild(this.hud.getPixiObj());
     }
 
     private gameLoop(ticker:PIXI.Ticker) {
         // HUD/баннер живут даже без Control (смерть / пауза)
         this.hud?.update(ticker.deltaMS);
+
+        if (this.spectating) {
+            this.scene?.followLive();
+            return;
+        }
 
         if (!this.scene || !this.control || !this.scene.mePlayer) return;
         if (this.scene.phase !== "playing" || this.scene.paused) return;

@@ -64,6 +64,7 @@ export default function RoomClient() {
     const [perkOffer, setPerkOffer] = useState<BackendPerkOffer[] | null>(null);
     const [pauseOpen, setPauseOpen] = useState(false);
     const [dead, setDead] = useState<DeathInfo | null>(null);
+    const [watching, setWatching] = useState(false);
     const [arenaOver, setArenaOver] = useState(false);
     const [phase, setPhase] = useState<"lobby" | "playing">("lobby");
     const [lobbyPlayers, setLobbyPlayers] = useState<BackendPlayer[]>([]);
@@ -168,6 +169,11 @@ export default function RoomClient() {
                     setIsHost(state.isHost);
                     setCanStart(state.canStart);
                     setHostSocketId(state.hostSocketId);
+                    if (state.phase === "lobby") {
+                        setDead(null);
+                        setWatching(false);
+                        setArenaOver(false);
+                    }
                     if (state.phase === "playing") {
                         setDead(null);
                         setArenaOver(false);
@@ -187,6 +193,7 @@ export default function RoomClient() {
                 appRef.current.onJoinRejected((info) => {
                     setJoinError(info.message);
                 });
+                appRef.current.onSpectator(setWatching);
                 appRef.current.onPause((paused) => {
                     setPauseOpen(paused);
                 });
@@ -212,7 +219,7 @@ export default function RoomClient() {
         const onKey = (e:KeyboardEvent) => {
             if (e.code === "Escape") {
                 e.preventDefault();
-                if (dead || phase === "lobby" || joinError) return;
+                if (dead || watching || phase === "lobby" || joinError) return;
                 togglePause();
                 return;
             }
@@ -225,7 +232,7 @@ export default function RoomClient() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [perkOffer, dead, phase, joinError]);
+    }, [perkOffer, dead, watching, phase, joinError]);
 
     const readyCount = lobbyPlayers.filter(p => p.isReady).length;
 
@@ -353,7 +360,7 @@ export default function RoomClient() {
                 </section>
             )}
 
-            {dead && (
+            {dead && !watching && (
                 <div className={styles.overlay}>
                     <h2>Ты погиб</h2>
                     <p>Опыт за эту жизнь: {dead.exp}, уровень {dead.level}</p>
@@ -365,7 +372,12 @@ export default function RoomClient() {
                             </button>
                         </>
                     ) : (
-                        <p className={styles.deathHint}>Жди команду… бой ещё идёт.</p>
+                        <>
+                            <p className={styles.deathHint}>Жди команду… бой ещё идёт.</p>
+                            <button className={styles.primary} onClick={() => appRef.current?.watch()}>
+                                Смотреть
+                            </button>
+                        </>
                     )}
                     <button className={styles.secondary} onClick={mainMenu}>
                         В меню
@@ -373,7 +385,7 @@ export default function RoomClient() {
                 </div>
             )}
 
-            {!dead && arenaOver && (
+            {arenaOver && (watching || !dead) && (
                 <div className={styles.overlay}>
                     <h2>Арена очищена</h2>
                     <p className={styles.deathHint}>Все игроки вышли. Волны сброшены.</p>
@@ -386,7 +398,7 @@ export default function RoomClient() {
                 </div>
             )}
 
-            {pauseOpen && !dead && phase === "playing" && (
+            {pauseOpen && !dead && !watching && phase === "playing" && (
                 <div className={`${styles.overlay} ${styles.pauseOverlay}`}>
                     <div className={styles.pauseCard}>
                         <h2>Пауза</h2>
@@ -403,7 +415,7 @@ export default function RoomClient() {
                 </div>
             )}
 
-            {isTouch && !dead && !joinError && phase === "playing" && !pauseOpen && (
+            {isTouch && !dead && !watching && !joinError && phase === "playing" && !pauseOpen && (
                 <div className={styles.touchButtons}>
                     <button type="button" onClick={() => appRef.current?.reloadWeapon()}>
                         Перезарядка
@@ -411,6 +423,13 @@ export default function RoomClient() {
                     <button type="button" onClick={togglePause}>
                         Пауза
                     </button>
+                </div>
+            )}
+
+            {watching && !arenaOver && !joinError && phase === "playing" && (
+                <div className={styles.spectateBadge}>
+                    <span>Наблюдение</span>
+                    <button type="button" onClick={mainMenu}>В меню</button>
                 </div>
             )}
 

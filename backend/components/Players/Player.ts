@@ -37,6 +37,9 @@ export class Player {
     private regenAcc = 0;
     private lastStillAt = Date.now();
     private spawnProtectedUntil = 0;
+    /** Доля замедления от укусов, 0…0.5 */
+    private biteSlow = 0;
+    private sentBiteSlow = 0;
 
     constructor(socketId:string, color:string, startX:number, startY:number, scene?:Scene) {
         this.socketId = socketId;
@@ -58,7 +61,21 @@ export class Player {
     }
 
     public getSpeed() {
-        return PLAYER_CONFIG.baseSpeed * this.stats.speed;
+        return PLAYER_CONFIG.baseSpeed * this.stats.speed * (1 - this.biteSlow);
+    }
+
+    /** Укус в ближнем бою. Попавший укус замедляет на 12%, но не больше чем на 50%. */
+    public takeBite(amount:number):boolean {
+        const before = this.health;
+        const died = this.takeDamage(amount);
+        if (this.health < before) {
+            this.biteSlow = Math.min(0.5, this.biteSlow + 0.12);
+            this.sentBiteSlow = this.biteSlow;
+            if (!died) {
+                this.emitStats();
+            }
+        }
+        return died;
     }
 
     public grantSpawnProtection() {
@@ -123,6 +140,14 @@ export class Player {
                 const heal = Math.floor(this.regenAcc);
                 this.regenAcc -= heal;
                 this.heal(heal);
+                this.emitStats();
+            }
+        }
+
+        if (this.biteSlow > 0) {
+            this.biteSlow = Math.max(0, this.biteSlow - 0.12 * deltaSec);
+            if (this.sentBiteSlow - this.biteSlow >= 0.04 || this.biteSlow === 0) {
+                this.sentBiteSlow = this.biteSlow;
                 this.emitStats();
             }
         }
@@ -215,6 +240,8 @@ export class Player {
         this.refreshStats();
         this.health = this.maxHealth;
         this.isDead = false;
+        this.biteSlow = 0;
+        this.sentBiteSlow = 0;
         this.isReady = false;
         this.grantSpawnProtection();
         this.weapon.switchTo(STARTING_WEAPON);

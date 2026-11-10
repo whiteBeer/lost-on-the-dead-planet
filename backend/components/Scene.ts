@@ -36,6 +36,7 @@ export class Scene extends EventEmitter {
     private phase:ScenePhase = "lobby";
     private hostSocketId:string | null = null;
     private paused = false;
+    private spectators = new Set<string>();
 
     enemiesCollection:Enemies;
     missilesCollection:Missiles;
@@ -70,6 +71,18 @@ export class Scene extends EventEmitter {
 
     isJoinable() {
         return this.phase === "lobby";
+    }
+
+    addSpectator(socketId:string) {
+        this.spectators.add(socketId);
+    }
+
+    removeSpectator(socketId:string) {
+        this.spectators.delete(socketId);
+    }
+
+    isSpectator(socketId:string) {
+        return this.spectators.has(socketId);
     }
 
     setPaused(paused:boolean) {
@@ -235,6 +248,11 @@ export class Scene extends EventEmitter {
         this.phase = "lobby";
         this.paused = false;
         this.waveDirector.reset();
+        for (const id of [...this.spectators]) {
+            if (this.playersCollection.addPlayer(id)) {
+                this.spectators.delete(id);
+            }
+        }
         this.playersCollection.getPlayers().forEach((player) => {
             player.respawn();
             player.pageX = this.width / 2 + (Math.random() - 0.5) * 200;
@@ -486,7 +504,7 @@ export class Scene extends EventEmitter {
                 );
                 if (isHit) {
                     const damage = enemy.damageValue;
-                    const died = player.takeDamage(damage);
+                    const died = player.takeBite(damage);
 
                     enemy.attack();
 

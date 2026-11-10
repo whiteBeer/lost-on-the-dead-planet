@@ -26,6 +26,7 @@ export class Scene {
     edgePadY = 100;
 
     mePlayer:Player | null = null;
+    private cameraTarget:Player | null = null;
     playersCollection:PlayersCollection;
     enemiesCollection:EnemiesCollection;
     missilesCollection:MissilesCollection;
@@ -70,8 +71,6 @@ export class Scene {
         const mePlayer = this.playersCollection.initPlayers(backendScene.players);
         if (mePlayer) {
             this.setMePlayer(mePlayer);
-        } else {
-            throw new Error("Me player not found");
         }
 
         this.app.socket?.on("sceneChanged", (newScene:BackendScene) => {
@@ -156,22 +155,38 @@ export class Scene {
 
     centerScene() {
         if (this.mePlayer) {
-            this.tx = (window.innerWidth / 2) - this.mePlayer.x * this.scale;
-            this.ty = (window.innerHeight / 2) - this.mePlayer.y * this.scale;
-
-            const maxTx = this.marginX * this.scale;
-            const minTx = window.innerWidth - this.width * this.scale - this.marginX * this.scale;
-            const maxTy = this.marginY * this.scale;
-            const minTy = window.innerHeight - this.height * this.scale - this.marginY * this.scale;
-
-            if (this.width * this.scale > window.innerWidth) {
-                this.tx = Math.min(maxTx, Math.max(minTx, this.tx));
-            }
-            if (this.height * this.scale > window.innerHeight) {
-                this.ty = Math.min(maxTy, Math.max(minTy, this.ty));
-            }
-            this.updateScene();
+            this.centerOn(this.mePlayer);
         }
+    }
+
+    /** Камера на живом игроке. Текущая цель держится, пока её видно. */
+    followLive() {
+        const live = this.playersCollection.getPlayers().filter((player) => player.isVisible());
+        const current = this.cameraTarget;
+        const target = current && live.includes(current) ? current : live[0];
+        if (!target) {
+            return;
+        }
+        this.cameraTarget = target;
+        this.centerOn(target);
+    }
+
+    private centerOn(player:Player) {
+        this.tx = (window.innerWidth / 2) - player.x * this.scale;
+        this.ty = (window.innerHeight / 2) - player.y * this.scale;
+
+        const maxTx = this.marginX * this.scale;
+        const minTx = window.innerWidth - this.width * this.scale - this.marginX * this.scale;
+        const maxTy = this.marginY * this.scale;
+        const minTy = window.innerHeight - this.height * this.scale - this.marginY * this.scale;
+
+        if (this.width * this.scale > window.innerWidth) {
+            this.tx = Math.min(maxTx, Math.max(minTx, this.tx));
+        }
+        if (this.height * this.scale > window.innerHeight) {
+            this.ty = Math.min(maxTy, Math.max(minTy, this.ty));
+        }
+        this.updateScene();
     }
 
     updateScene() {

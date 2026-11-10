@@ -46,16 +46,15 @@ export class AppSocketServer {
     }
 
     private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
+        socket.join(roomId);
+
         if (!roomScene.isJoinable()) {
-            socket.emit("joinRejected", {
-                reason: "gameInProgress",
-                message: "Игра уже идёт — войти нельзя"
+            roomScene.addSpectator(socket.id);
+            socket.on("disconnect", () => {
+                roomScene.removeSpectator(socket.id);
             });
-            socket.disconnect(true);
             return;
         }
-
-        socket.join(roomId);
         const scenePlayers = roomScene.playersCollection;
         const newPlayer = scenePlayers.addPlayer(socket.id);
 
@@ -192,9 +191,14 @@ export class AppSocketServer {
         this.emitToRoom(roomId, "playersDisconnected", { socketId: socket.id });
         console.log("Disconnected ", socket.id);
 
-        // Последний игрок ушёл — комнату закрываем сразу
+        // Последний игрок ушёл — комнату закрываем сразу, зрителей тоже
         if (scenePlayers.getPlayers().length === 0) {
             console.log("Room removed (empty): ", roomId);
+            this.io.to(roomId).emit("joinRejected", {
+                reason: "roomClosed",
+                message: "Комната закрыта"
+            });
+            this.io.in(roomId).disconnectSockets(true);
             this.roomsManager.removeRoom(roomId);
         }
     }
