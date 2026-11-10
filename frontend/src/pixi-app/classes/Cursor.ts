@@ -47,8 +47,9 @@ export class Cursor {
 
         this.pixiObj.position.set(mouseCoords.pageX, mouseCoords.pageY);
 
-        // Кольцо только пока разброс выше базы — иначе у пистолета/SMG
-        // при далёком курсоре tan(spreadBase) * distance > 4 и «залипает»
+        // Натуральную базу оружия не рисуем: у пистолета/SMG на дальней дистанции
+        // tan(spreadBase) * distance > 4 и кольцо «залипает».
+        // Пол, поднятый перком, выше этой базы — его показываем, иначе круг меньше пуль.
         if (spreadAngle <= baseSpread + 0.0005) {
             return;
         }

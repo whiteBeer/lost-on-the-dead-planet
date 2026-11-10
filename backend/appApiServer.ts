@@ -73,7 +73,8 @@ export class AppApiServer {
                 "gameOver",
                 "lobbyUpdated",
                 "gameStarted",
-                "gamePaused"
+                "gamePaused",
+                "spectatorsUpdated"
             ];
             sceneEvents.forEach((sceneEvent) => {
                 scene.on(sceneEvent, (data) => {
@@ -118,14 +119,20 @@ export class AppApiServer {
         if (!roomScene) {
             throw new NotFoundError("Scene not found");
         }
+        const name = req.body?.name || "";
         const player = roomScene.playersCollection.getPlayerById(socketId);
-        if (!player) {
+        if (player) {
+            player.setName(name);
+            this.emitManager.emit(roomId, "playersUpdated", roomScene.playersCollection.getPlayersJSON());
+            roomScene.emitLobbyState();
+            res.json({ name: player.name });
+            return;
+        }
+        const specName = roomScene.setSpectatorName(socketId, name);
+        if (!specName) {
             throw new NotFoundError("Player not found");
         }
-        player.setName(req.body?.name || "");
-        this.emitManager.emit(roomId, "playersUpdated", roomScene.playersCollection.getPlayersJSON());
-        roomScene.emitLobbyState();
-        res.json({ name: player.name });
+        res.json({ name: specName });
     }
 
     private addZombie(req:Request, res:Response):void {

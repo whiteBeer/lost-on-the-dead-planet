@@ -29,7 +29,9 @@ export interface PlayerJSON {
         id:string,
         ammo:number,
         clipSize:number,
-        isReloading:boolean
+        isReloading:boolean,
+        spread?:number,
+        fireRate?:number
     },
     perkOffer?:Array<{
         id:string,

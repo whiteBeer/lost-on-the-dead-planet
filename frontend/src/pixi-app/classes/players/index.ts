@@ -75,6 +75,7 @@ export class PlayersCollection {
         this.app.socket?.on("playersDied", (params:IPlayerDiedEvent) => {
             const player = this.findPlayer(params.socketId);
             if (player) {
+                player.setHealth(0);
                 player.hide();
                 if (params.socketId === this.app.socket?.id) {
                     this.app.meDied();

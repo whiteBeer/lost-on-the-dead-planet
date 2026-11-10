@@ -5,7 +5,7 @@ import { EnemiesCollection } from "./enemies";
 import { MissilesCollection } from "./missiles";
 import { PickupsCollection } from "./pickups";
 import { App } from "../App";
-import { BackendScene } from "../Types";
+import { BackendScene, BackendSpectator } from "../Types";
 import { ResourcesLoader } from "./ResourcesLoader";
 import { Effects } from "./Effects";
 
@@ -42,6 +42,7 @@ export class Scene {
     waveAnnouncing = false;
     phase:"lobby" | "playing" = "lobby";
     paused = false;
+    spectators:BackendSpectator[] = [];
 
     constructor(app:App, backendScene:BackendScene) {
         this.app = app;
@@ -54,6 +55,7 @@ export class Scene {
         this.waveAnnouncing = !!backendScene.waveAnnouncing;
         this.phase = backendScene.phase === "playing" ? "playing" : "lobby";
         this.paused = !!backendScene.paused;
+        this.spectators = backendScene.spectators || [];
 
         this.groundLayer = new PIXI.Container();
         this.corpsesLayer = new PIXI.Container();
@@ -78,6 +80,9 @@ export class Scene {
             this.enemiesCollection.enemiesFromBackendScene(newScene);
             this.pickupsCollection.fromBackendScene(newScene);
             this.wave = newScene.wave || this.wave;
+            if (newScene.spectators) {
+                this.spectators = newScene.spectators;
+            }
         });
 
         this.app.socket?.on("sceneReset", (newScene:BackendScene) => {
@@ -89,6 +94,9 @@ export class Scene {
             this.wave = newScene.wave || 0;
             this.phase = newScene.phase === "playing" ? "playing" : "lobby";
             this.paused = false;
+            if (newScene.spectators) {
+                this.spectators = newScene.spectators;
+            }
             if (this.mePlayer) {
                 this.centerScene();
             }
@@ -96,6 +104,10 @@ export class Scene {
 
         this.app.socket?.on("gamePaused", (data:{ paused?:boolean }) => {
             this.paused = !!data.paused;
+        });
+
+        this.app.socket?.on("spectatorsUpdated", (data:{ spectators?:BackendSpectator[] }) => {
+            this.spectators = data?.spectators || [];
         });
 
         this.app.socket?.on("waveStarted", (data:{ wave:number, announcing?:boolean }) => {

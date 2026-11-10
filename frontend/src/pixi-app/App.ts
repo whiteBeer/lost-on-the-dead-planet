@@ -3,7 +3,7 @@ import axios from "axios";
 import { Scene } from "./classes/Scene";
 import { Control } from "./classes/Control";
 import { io, Socket } from "socket.io-client";
-import { BackendPerkOffer, BackendPlayer, BackendWeaponsConfig } from "./Types";
+import { BackendPerkOffer, BackendPlayer, BackendSpectator, BackendWeaponsConfig } from "./Types";
 import { getRoomId } from "../utils/getRoomId";
 import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
@@ -23,6 +23,10 @@ export type LobbyListener = (state:{
 export type JoinRejectedListener = (info:{ reason:string, message:string }) => void;
 export type PauseListener = (paused:boolean) => void;
 export type SpectatorListener = (watching:boolean) => void;
+export type RosterListener = (state:{
+    players:{ socketId:string, name:string, health:number, maxHealth:number }[],
+    spectators:BackendSpectator[]
+}) => void;
 
 export class App {
 
@@ -46,6 +50,8 @@ export class App {
     private joinRejectedListener:JoinRejectedListener | null = null;
     private pauseListener:PauseListener | null = null;
     private spectatorListener:SpectatorListener | null = null;
+    private rosterListener:RosterListener | null = null;
+    private rosterKey = "";
     private spectating = false;
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
@@ -155,6 +161,10 @@ export class App {
 
     public onSpectator(listener:SpectatorListener) {
         this.spectatorListener = listener;
+    }
+
+    public onRoster(listener:RosterListener) {
+        this.rosterListener = listener;
     }
 
     public watch() {
@@ -372,7 +382,29 @@ export class App {
         this.pixiApp?.stage.addChild(this.hud.getPixiObj());
     }
 
+    private publishRoster() {
+        const players = this.scene?.playersCollection.getPlayers() || [];
+        const spectators = this.scene?.spectators || [];
+        const key = players.map(p =>
+            `${p.socketId}:${p.name}:${Math.round(p.health)}:${Math.round(p.maxHealth)}`
+        ).join("|") + "#" + spectators.map(s => `${s.socketId}:${s.name}`).join("|");
+        if (key === this.rosterKey) {
+            return;
+        }
+        this.rosterKey = key;
+        this.rosterListener?.({
+            players: players.map(p => ({
+                socketId: p.socketId,
+                name: p.name,
+                health: p.health,
+                maxHealth: p.maxHealth
+            })),
+            spectators
+        });
+    }
+
     private gameLoop(ticker:PIXI.Ticker) {
+        this.publishRoster();
         // HUD/баннер живут даже без Control (смерть / пауза)
         this.hud?.update(ticker.deltaMS);
 

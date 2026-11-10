@@ -76,6 +76,10 @@ export default function RoomClient() {
     const [isTouch, setIsTouch] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
     const [playerName, setPlayerName] = useState("");
+    const [roster, setRoster] = useState<{
+        players:{ socketId:string, name:string, health:number, maxHealth:number }[],
+        spectators:{ socketId:string, name:string }[]
+    }>({ players: [], spectators: [] });
 
     const mainMenu = () => {
         // Явный выход: рвём сокет сразу, чтобы сервер убрал игрока (и комнату, если он был последним)
@@ -194,6 +198,7 @@ export default function RoomClient() {
                     setJoinError(info.message);
                 });
                 appRef.current.onSpectator(setWatching);
+                appRef.current.onRoster(setRoster);
                 appRef.current.onPause((paused) => {
                     setPauseOpen(paused);
                 });
@@ -235,10 +240,57 @@ export default function RoomClient() {
     }, [perkOffer, dead, watching, phase, joinError]);
 
     const readyCount = lobbyPlayers.filter(p => p.isReady).length;
+    const living = roster.players.filter(p => p.health > 0);
+    const dead = roster.players.filter(p => p.health <= 0);
 
     return (
         <div className={styles.wrap}>
             <div id="game" className={styles.game}></div>
+
+            {phase === "playing" && !joinError && (roster.players.length > 0 || roster.spectators.length > 0) && (
+                <aside className={styles.roster}>
+                    {living.length > 0 && (
+                        <>
+                            <h3>Игроки</h3>
+                            {living.map((p) => {
+                                const hp = Math.max(0, Math.round(p.health));
+                                const maxHp = Math.max(1, Math.round(p.maxHealth));
+                                const pct = Math.min(100, (hp / maxHp) * 100);
+                                const fill = pct > 55 ? "#b6d96a" : pct > 28 ? "#e2c15a" : "#e06a4a";
+                                return (
+                                    <div key={p.socketId} className={styles.rosterRow}>
+                                        <span className={styles.rosterName}>{p.name || "Игрок"}</span>
+                                        <span className={styles.rosterHp}>{hp}/{maxHp}</span>
+                                        <span className={styles.rosterBar}>
+                                            <span style={{ width: `${pct}%`, background: fill }} />
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
+                    {(dead.length > 0 || roster.spectators.length > 0) && (
+                        <>
+                            <h3>Наблюдатели</h3>
+                            {dead.map((p) => (
+                                <div key={p.socketId} className={styles.rosterRow}>
+                                    <span className={styles.rosterName}>{p.name || "Игрок"}</span>
+                                </div>
+                            ))}
+                            {roster.spectators.map((s) => {
+                                const mine = s.socketId === appRef.current?.socket?.id;
+                                const saved = mine ? playerName.trim() : "";
+                                const label = saved || s.name || "Наблюдатель";
+                                return (
+                                    <div key={s.socketId} className={styles.rosterRow}>
+                                        <span className={styles.rosterName}>{label}</span>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
+                </aside>
+            )}
 
             {joinError && (
                 <div className={styles.overlay}>

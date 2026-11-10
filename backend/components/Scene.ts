@@ -36,7 +36,8 @@ export class Scene extends EventEmitter {
     private phase:ScenePhase = "lobby";
     private hostSocketId:string | null = null;
     private paused = false;
-    private spectators = new Set<string>();
+    private spectators:{ socketId:string, name:string }[] = [];
+    private spectatorN = 0;
 
     enemiesCollection:Enemies;
     missilesCollection:Missiles;
@@ -74,15 +75,51 @@ export class Scene extends EventEmitter {
     }
 
     addSpectator(socketId:string) {
-        this.spectators.add(socketId);
+        if (this.spectators.some(s => s.socketId === socketId)) {
+            return;
+        }
+        this.spectatorN += 1;
+        this.spectators.push({ socketId, name: `Наблюдатель ${this.spectatorN}` });
+        this.emitSpectators();
+    }
+
+    /** Имя из localStorage клиента. Пустое не затирает «Наблюдатель N». */
+    setSpectatorName(socketId:string, raw:string):string | null {
+        const spec = this.spectators.find(s => s.socketId === socketId);
+        if (!spec) {
+            return null;
+        }
+        const cleaned = String(raw || "")
+            .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+            .trim()
+            .slice(0, 16);
+        if (!cleaned) {
+            return spec.name;
+        }
+        spec.name = cleaned;
+        this.emitSpectators();
+        return spec.name;
     }
 
     removeSpectator(socketId:string) {
-        this.spectators.delete(socketId);
+        const next = this.spectators.filter(s => s.socketId !== socketId);
+        if (next.length === this.spectators.length) {
+            return;
+        }
+        this.spectators = next;
+        this.emitSpectators();
     }
 
     isSpectator(socketId:string) {
-        return this.spectators.has(socketId);
+        return this.spectators.some(s => s.socketId === socketId);
+    }
+
+    getSpectatorsJSON() {
+        return this.spectators.map(s => ({ socketId: s.socketId, name: s.name }));
+    }
+
+    private emitSpectators() {
+        this.emit("spectatorsUpdated", { spectators: this.getSpectatorsJSON() });
     }
 
     setPaused(paused:boolean) {
@@ -248,11 +285,17 @@ export class Scene extends EventEmitter {
         this.phase = "lobby";
         this.paused = false;
         this.waveDirector.reset();
-        for (const id of [...this.spectators]) {
-            if (this.playersCollection.addPlayer(id)) {
-                this.spectators.delete(id);
+        for (const spec of [...this.spectators]) {
+            const player = this.playersCollection.addPlayer(spec.socketId);
+            if (!player) {
+                continue;
             }
+            if (!/^Наблюдатель\s+\d+$/u.test(spec.name)) {
+                player.setName(spec.name);
+            }
+            this.spectators = this.spectators.filter(s => s.socketId !== spec.socketId);
         }
+        this.emitSpectators();
         this.playersCollection.getPlayers().forEach((player) => {
             player.respawn();
             player.pageX = this.width / 2 + (Math.random() - 0.5) * 200;
@@ -280,6 +323,7 @@ export class Scene extends EventEmitter {
             wave: this.waveDirector.getDisplayWave(),
             waveAnnouncing: this.waveDirector.isAnnouncing(),
             players: this.playersCollection.getPlayersJSON(),
+            spectators: this.getSpectatorsJSON(),
             enemies: this.enemiesCollection.getEnemiesJSON(),
             missiles: this.missilesCollection.getMissilesJSON(),
             pickups: this.pickupsCollection.getPickupsJSON()

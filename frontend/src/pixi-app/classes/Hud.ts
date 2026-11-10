@@ -61,9 +61,7 @@ export class Hud {
 
         const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
         this.hintText = new PIXI.Text({
-            text: isTouch
-                ? "Левая половина — бег · правая — прицел и огонь"
-                : "WASD · ЛКМ · Esc меню",
+            text: isTouch ? "" : "WASD · ЛКМ · Esc меню",
             style: {
                 fill: 0xdddddd,
                 fontSize: 13,
@@ -175,8 +173,10 @@ export class Hud {
         const reloading = this.mePlayer.weapon.isReloading ? " · перезарядка" : "";
         const attack = Math.max(0, Math.round(this.mePlayer.weapon.damage));
         const speed = Math.max(0, Math.round(this.mePlayer.getSpeed()));
+        const fireMs = this.mePlayer.weapon.fireRate || this.mePlayer.weapon.config.fireRate || 1;
+        const shotsPerSec = Math.round(1000 / fireMs * 10) / 10;
         this.statusText.text =
-            `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}\nАтака ${attack} · Бег ${speed}`;
+            `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}\nАтака ${attack} · Бег ${speed} · Скорострел ${shotsPerSec}`;
 
         this.updateBanner(deltaMS / 1000);
     }

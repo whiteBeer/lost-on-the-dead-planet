@@ -129,7 +129,7 @@ interface StatText {
 
 const STATS:StatText[] = [
     { stat: "damage", label: "Урон", unit: "%", category: "attack", gain: [0.1, 0.18, 0.28], tradeGain: 0.4, tradeLoss: -0.2, gainWord: "Свирепый", lossWord: "слабак", baseName: "Тяжёлая рука" },
-    { stat: "fireRate", label: "Скорострельность", unit: "%", category: "weapon", gain: [0.1, 0.18, 0.28], tradeGain: 0.4, tradeLoss: -0.2, gainWord: "Скорострельный", lossWord: "тугодум", baseName: "Быстрый палец" },
+    { stat: "fireRate", label: "Скорострельность", unit: "%", category: "weapon", gain: [0.05, 0.09, 0.14], tradeGain: 0.2, tradeLoss: -0.2, gainWord: "Скорострельный", lossWord: "тугодум", baseName: "Быстрый палец" },
     { stat: "speed", label: "Скорость бега", unit: "%", category: "mobility", gain: [0.06, 0.11, 0.17], tradeGain: 0.25, tradeLoss: -0.14, gainWord: "Быстроногий", lossWord: "увалень", baseName: "Лёгкий шаг" },
     { stat: "maxHp", label: "Макс. здоровье", unit: "", category: "defense", gain: [15, 30, 50], tradeGain: 70, tradeLoss: -25, gainWord: "Живучий", lossWord: "доходяга", baseName: "Крепкое тело" },
     { stat: "regen", label: "Восстановление здоровья в секунду", unit: "", category: "defense", gain: [0.5, 1, 2], tradeGain: 3, tradeLoss: -0.5, gainWord: "Заживающий", lossWord: "анемик", baseName: "Быстрое заживление" },
@@ -138,7 +138,7 @@ const STATS:StatText[] = [
     { stat: "reload", label: "Скорость перезарядки", unit: "%", category: "weapon", gain: [0.12, 0.22, 0.35], tradeGain: 0.5, tradeLoss: -0.25, gainWord: "Проворный", lossWord: "копуша", baseName: "Ловкие руки" },
     { stat: "clip", label: "Размер магазина", unit: "%", category: "weapon", gain: [0.15, 0.3, 0.5], tradeGain: 0.7, tradeLoss: -0.3, gainWord: "Запасливый", lossWord: "скряга", baseName: "Удлинённый магазин" },
     { stat: "spread", label: "Разброс", unit: "%", category: "weapon", gain: [-0.12, -0.22, -0.35], tradeGain: -0.5, tradeLoss: 0.4, gainWord: "Меткий", lossWord: "косоглазый", baseName: "Твёрдая рука" },
-    { stat: "bulletSpeed", label: "Скорость пули", unit: "%", category: "weapon", gain: [0.1, 0.2, 0.35], tradeGain: 0.5, tradeLoss: -0.25, gainWord: "Реактивный", lossWord: "лентяй", baseName: "Усиленный заряд" },
+    { stat: "bulletSpeed", label: "Скорость пули", unit: "%", category: "weapon", gain: [0.05, 0.1, 0.2], tradeGain: 0.25, tradeLoss: -0.25, gainWord: "Реактивный", lossWord: "лентяй", baseName: "Плотный огонь" },
     { stat: "range", label: "Дальность стрельбы", unit: "%", category: "weapon", gain: [0.1, 0.2, 0.35], tradeGain: 0.5, tradeLoss: -0.3, gainWord: "Дальнобойный", lossWord: "очкарик", baseName: "Длинный ствол" },
     { stat: "exp", label: "Получаемый опыт", unit: "%", category: "fortune", gain: [0.08, 0.15, 0.25], tradeGain: 0.4, tradeLoss: -0.2, gainWord: "Прилежный", lossWord: "двоечник", baseName: "Быстрый ум" },
     { stat: "crit", label: "Шанс критического попадания", unit: "%", category: "attack", gain: [0.04, 0.08, 0.13], tradeGain: 0.2, tradeLoss: 0, gainWord: "Смертоносный", baseName: "Слабое место" },
@@ -160,19 +160,35 @@ function formatEffect(entry:StatText, value:number):string {
     return `${entry.label} ${sign}${shown}`;
 }
 
+/** Плюс к скорости пули больше не нужен: тот же бонус идёт в скорострельность. Штраф остаётся. */
+function asFireRate(entry:StatText, value:number):StatText {
+    if (entry.stat === "bulletSpeed" && value > 0) {
+        return STATS.find(s => s.stat === "fireRate") || entry;
+    }
+    return entry;
+}
+
+function putMod(mods:Partial<PlayerStats>, entry:StatText, value:number) {
+    const stat = asFireRate(entry, value).stat;
+    mods[stat] = (mods[stat] || 0) + value;
+}
+
 function generatePerks():Perk[] {
     const perks:Perk[] = [];
 
     // Чистые бонусы: три уровня на каждую характеристику
     for (const entry of STATS) {
         entry.gain.forEach((value, tier) => {
+            const effect = asFireRate(entry, value);
+            const mods:Partial<PlayerStats> = {};
+            putMod(mods, entry, value);
             perks.push({
                 id: `pure_${entry.stat}_${tier + 1}`,
                 name: `${entry.baseName} ${ROMAN[tier]}`,
-                description: `${formatEffect(entry, value)}.`,
+                description: `${formatEffect(effect, value)}.`,
                 rarity: RARITY_BY_TIER[tier],
                 category: entry.category,
-                mods: { [entry.stat]: value },
+                mods,
                 positive: true
             });
         });
@@ -188,13 +204,20 @@ function generatePerks():Perk[] {
             if (gain.stat === "damage" && loss.stat === "monsterDamage") {
                 continue;
             }
+            // Плюс к скорости пули стал скорострельностью — не складывать его со штрафом к ней же
+            if (gain.stat === "bulletSpeed" && loss.stat === "fireRate") {
+                continue;
+            }
+            const mods:Partial<PlayerStats> = {};
+            putMod(mods, gain, gain.tradeGain);
+            putMod(mods, loss, loss.tradeLoss);
             perks.push({
                 id: `deal_${gain.stat}_${loss.stat}`,
                 name: `${gain.gainWord} ${loss.lossWord}`,
-                description: `${formatEffect(gain, gain.tradeGain)}. ${formatEffect(loss, loss.tradeLoss)}.`,
+                description: `${formatEffect(asFireRate(gain, gain.tradeGain), gain.tradeGain)}. ${formatEffect(asFireRate(loss, loss.tradeLoss), loss.tradeLoss)}.`,
                 rarity: "rare",
                 category: gain.category,
-                mods: { [gain.stat]: gain.tradeGain, [loss.stat]: loss.tradeLoss }
+                mods
             });
         }
     }
@@ -209,8 +232,8 @@ function generatePerks():Perk[] {
 export const POSITIVE_PERKS:Perk[] = [
     {
         id: "assault_instinct", name: "Штурмовой инстинкт", rarity: "rare", category: "attack",
-        description: "Урон +15%, скорострельность +12%. Без штрафов.",
-        mods: { damage: 0.15, fireRate: 0.12 }, icon: "perk_assault_instinct", positive: true
+        description: "Урон +15%, скорострельность +6%. Без штрафов.",
+        mods: { damage: 0.15, fireRate: 0.06 }, icon: "perk_assault_instinct", positive: true
     },
     {
         id: "iron_heart", name: "Железное сердце", rarity: "rare", category: "defense",
@@ -259,7 +282,7 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "blood_price", name: "Плата кровью", rarity: "rare", category: "strange", description: "Урон +60%. Каждый выстрел отнимает 1 здоровья.", mods: { damage: 0.6, selfDamage: 1 } },
     { id: "piercing", name: "Бронебойные пули", rarity: "rare", category: "weapon", description: "Пули пробивают +1 цель.", mods: { pierce: 1 } },
     { id: "deep_piercing", name: "Сердечник из вольфрама", rarity: "epic", category: "weapon", description: "Пули пробивают +3 цели. Скорострельность −25%.", mods: { pierce: 3, fireRate: -0.25 } },
-    { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +45%. Разброс +90%.", mods: { fireRate: 0.45, spread: 0.9 } },
+    { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +23%. Разброс +90%.", mods: { fireRate: 0.225, spread: 0.9 } },
     { id: "feast", name: "Пир", rarity: "rare", category: "fortune", description: "Каждое убийство лечит на 25 здоровья. Обычное восстановление здоровья −1 в секунду.", mods: { onKillHeal: 25, regen: -1 } },
     { id: "vampire", name: "Вампир", rarity: "epic", category: "attack", description: "20% урона возвращается здоровьем. Макс. здоровье −30.", mods: { lifesteal: 0.2, maxHp: -30 } },
     { id: "heavy_armor", name: "Латы", rarity: "epic", category: "defense", description: "Снижение любого урона +35%. Скорость бега −22%.", mods: { armor: 0.35, speed: -0.22 } },
@@ -267,7 +290,7 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "giant", name: "Великан", rarity: "epic", category: "defense", description: "Макс. здоровье +120. Скорость бега −18%, разброс +25%.", mods: { maxHp: 120, speed: -0.18, spread: 0.25 } },
     { id: "sprinter", name: "Спринтер", rarity: "rare", category: "mobility", description: "Скорость бега +35%. Дальность стрельбы −35%.", mods: { speed: 0.35, range: -0.35 } },
     { id: "sniper_eye", name: "Глаз снайпера", rarity: "rare", category: "weapon", description: "Разброс −60%, дальность +50%. Скорострельность −30%.", mods: { spread: -0.6, range: 0.5, fireRate: -0.3 } },
-    { id: "spray", name: "Поливай и молись", rarity: "rare", category: "weapon", description: "Скорострельность +60%, магазин +50%. Урон −25%, разброс +50%.", mods: { fireRate: 0.6, clip: 0.5, damage: -0.25, spread: 0.5 } },
+    { id: "spray", name: "Поливай и молись", rarity: "rare", category: "weapon", description: "Скорострельность +30%, магазин +50%. Урон −25%, разброс +50%.", mods: { fireRate: 0.3, clip: 0.5, damage: -0.25, spread: 0.5 } },
     { id: "one_clip", name: "Один, но большой", rarity: "rare", category: "weapon", description: "Магазин +150%. Перезарядка медленнее на 50%.", mods: { clip: 1.5, reload: -0.5 } },
     { id: "small_mag", name: "Обрез магазина", rarity: "rare", category: "weapon", description: "Магазин −50%. Урон +45%, перезарядка быстрее на 40%.", mods: { clip: -0.5, damage: 0.45, reload: 0.4 } },
     { id: "monster_slayer", name: "Истребитель орды", rarity: "rare", category: "attack", description: "Урон по монстрам +70%. Скорость бега −12%.", mods: { monsterDamage: 0.7, speed: -0.12 } },
@@ -277,12 +300,12 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "tortoise", name: "Черепаха", rarity: "epic", category: "defense", description: "Снижение урона от монстров +55%. Скорость бега −30%.", mods: { monsterArmor: 0.55, speed: -0.3 } },
     { id: "hare", name: "Заяц", rarity: "epic", category: "mobility", description: "Скорость бега +50%. Макс. здоровье −40, снижение любого урона −15%.", mods: { speed: 0.5, maxHp: -40, armor: -0.15 } },
     { id: "slow_bullets", name: "Тяжёлые пули", rarity: "common", category: "weapon", description: "Урон +30%. Скорость пули −35%: по бегущим попасть труднее.", mods: { damage: 0.3, bulletSpeed: -0.35 } },
-    { id: "needle", name: "Иглы", rarity: "common", category: "weapon", description: "Скорость пули +60%. Урон −15%.", mods: { bulletSpeed: 0.6, damage: -0.15 } },
+    { id: "needle", name: "Иглы", rarity: "common", category: "weapon", description: "Скорострельность +30%. Урон −15%.", mods: { fireRate: 0.3, damage: -0.15 } },
     { id: "point_blank", name: "В упор", rarity: "rare", category: "weapon", description: "Урон +55%. Дальность стрельбы −50%.", mods: { damage: 0.55, range: -0.5 } },
     { id: "marksman", name: "Стрелок с вышки", rarity: "rare", category: "weapon", description: "Дальность +80%. Урон −15%.", mods: { range: 0.8, damage: -0.15 } },
     { id: "pain_killer", name: "Обезболивающее", rarity: "common", category: "defense", description: "Снижение любого урона +15%. Восстановление здоровья −0.5 в секунду.", mods: { armor: 0.15, regen: -0.5 } },
     { id: "vitamins", name: "Витамины", rarity: "common", category: "defense", description: "Макс. здоровье +20, восстановление +0.5 здоровья в секунду.", mods: { maxHp: 20, regen: 0.5 } },
-    { id: "energy_drink", name: "Энергетик", rarity: "common", category: "mobility", description: "Скорость бега +8%, скорострельность +8%. Макс. здоровье −10.", mods: { speed: 0.08, fireRate: 0.08, maxHp: -10 } },
+    { id: "energy_drink", name: "Энергетик", rarity: "common", category: "mobility", description: "Скорость бега +8%, скорострельность +4%. Макс. здоровье −10.", mods: { speed: 0.08, fireRate: 0.04, maxHp: -10 } },
     { id: "lucky_coin", name: "Счастливая монета", rarity: "common", category: "fortune", description: "Шанс крита +5%, уклонение +3%.", mods: { crit: 0.05, dodge: 0.03 } },
     { id: "dead_weight", name: "Мёртвый груз", rarity: "common", category: "strange", description: "Опыт +30%. Скорость бега −5%.", mods: { speed: -0.05, exp: 0.3 } }
 ];

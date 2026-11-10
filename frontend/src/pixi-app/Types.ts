@@ -23,6 +23,10 @@ export interface BackendWeaponState {
     clipSize:number;
     isReloading:boolean;
     damage?:number;
+    /** Множитель разброса с перков. Сервер шлёт в weapon.spread. */
+    spread?:number;
+    /** Пауза между выстрелами, мс, уже с перками. */
+    fireRate?:number;
 }
 
 export interface BackendPerkOffer {
@@ -99,6 +103,11 @@ export interface BackendPickup {
     weaponId?:string;
 }
 
+export interface BackendSpectator {
+    socketId:string;
+    name:string;
+}
+
 export interface BackendScene {
     serverCurrentDateTime:string,
     width:number,
@@ -112,6 +121,7 @@ export interface BackendScene {
     wave?:number,
     waveAnnouncing?:boolean,
     players:BackendPlayer[],
+    spectators?:BackendSpectator[],
     enemies:BackendEnemy[],
     missiles:BackendMissile[],
     pickups?:BackendPickup[]

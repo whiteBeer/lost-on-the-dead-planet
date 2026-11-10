@@ -162,7 +162,9 @@ export class Weapon {
             ammo: this.ammo,
             clipSize: this.getClipSize(),
             isReloading: this.isReloading,
-            damage: Math.round(this.getDamage())
+            damage: Math.round(this.getDamage()),
+            spread: this.getSpreadMul(),
+            fireRate: this.getFireRateMs()
         };
     }
 }
