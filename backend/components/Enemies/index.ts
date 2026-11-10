@@ -5,7 +5,7 @@ import { EnemyTier } from "../../configs/Enemies";
 import { calcTimedPoint } from "../../utils/geometry";
 import { dropChanceForWave } from "../../configs/Waves";
 import { rollWeaponDrop } from "../../configs/Weapons";
-import { createEnemyForTier } from "./createEnemy";
+import { createEnemyById, createEnemyForTier } from "./createEnemy";
 
 export class Enemies {
 
@@ -23,9 +23,33 @@ export class Enemies {
         hpMul = 1,
         damageMul = 1,
         speedMul = 1,
-        fireRateMul = 1
+        fireRateMul = 1,
+        wave = 1
     ) {
-        const enemy = createEnemyForTier(this.scene, tier, x, y, hpMul, damageMul, speedMul, fireRateMul);
+        const enemy = createEnemyForTier(this.scene, tier, x, y, hpMul, damageMul, speedMul, fireRateMul, wave);
+        this.enemies.push(enemy);
+        this.scene.emit("enemiesAdded", { enemy: enemy.toJSON() });
+        return enemy;
+    }
+
+    spawnById(
+        enemyId:string,
+        x:number,
+        y:number,
+        hpMul = 1,
+        damageMul = 1,
+        speedMul = 1,
+        colorTier:EnemyTier = "green"
+    ) {
+        const enemy = createEnemyById(this.scene, enemyId, {
+            rotation: 0,
+            startX: x,
+            startY: y,
+            hpMul,
+            damageMul,
+            speedMul,
+            colorTier
+        });
         this.enemies.push(enemy);
         this.scene.emit("enemiesAdded", { enemy: enemy.toJSON() });
         return enemy;

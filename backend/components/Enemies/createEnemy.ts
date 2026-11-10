@@ -10,7 +10,6 @@ import { Spitter } from "./Spitter";
 import { Bloater } from "./Bloater";
 import { Screamer } from "./Screamer";
 import { Spider } from "./Spider";
-import { Soldier } from "./Soldier";
 import { Stalker } from "./Stalker";
 import { Brute } from "./Brute";
 import { Behemoth } from "./Behemoth";
@@ -27,7 +26,6 @@ const ENEMY_BY_ID:Record<string, EnemyCtor> = {
     Bloater,
     Screamer,
     Spider,
-    Soldier,
     Stalker,
     Brute,
     Behemoth,
@@ -51,9 +49,10 @@ export function createEnemyForTier(
     hpMul:number,
     damageMul:number,
     speedMul = 1,
-    fireRateMul = 1
+    fireRateMul = 1,
+    wave = 1
 ):BaseEnemy {
-    const enemyId = pickEnemyForTier(tier);
+    const enemyId = pickEnemyForTier(tier, wave);
     return createEnemyById(scene, enemyId, {
         rotation: 0,
         startX,
@@ -61,6 +60,7 @@ export function createEnemyForTier(
         hpMul,
         damageMul,
         speedMul,
-        fireRateMul
+        fireRateMul,
+        colorTier: tier
     });
 }

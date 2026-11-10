@@ -1,4 +1,5 @@
 import { Scene } from "../Scene";
+import { SCENE_CONFIG } from "../../configs/Scene";
 import { ChaseEnemy, ChaseSpawnParams } from "./ChaseEnemy";
 
 /** Ходит по кругу вокруг точки спавна, на игрока не идёт. */
@@ -11,9 +12,20 @@ export class Spider extends ChaseEnemy {
 
     constructor(scene:Scene, params:Omit<ChaseSpawnParams, "enemyId">) {
         super(scene, { ...params, enemyId: "Spider" });
-        this.pivotX = params.startX;
-        this.pivotY = params.startY;
-        this.radius = 140 + Math.random() * 120;
+        const body = Math.max(this.width, this.height) / 2;
+        const padX = SCENE_CONFIG.edgePadX + body;
+        const padY = SCENE_CONFIG.edgePadY + body;
+        const maxRadius = Math.max(40, Math.min(
+            (SCENE_CONFIG.width - padX * 2) / 2,
+            (SCENE_CONFIG.height - padY * 2) / 2
+        ));
+        this.radius = Math.min(140 + Math.random() * 120, maxRadius);
+        const minX = padX + this.radius;
+        const maxX = SCENE_CONFIG.width - padX - this.radius;
+        const minY = padY + this.radius;
+        const maxY = SCENE_CONFIG.height - padY - this.radius;
+        this.pivotX = Math.min(maxX, Math.max(minX, params.startX));
+        this.pivotY = Math.min(maxY, Math.max(minY, params.startY));
         this.angle = Math.random() * Math.PI * 2;
         this.dir = Math.random() < 0.5 ? 1 : -1;
 

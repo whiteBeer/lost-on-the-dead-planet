@@ -2,7 +2,18 @@ import { Scene } from "../Scene";
 import { BaseEnemy } from "./BaseEnemy";
 import { Coords, EnemyParams } from "../../types";
 import { calcTimedPoint } from "../../utils/geometry";
-import { ENEMIES, EnemyConfig } from "../../configs/Enemies";
+import { ENEMIES, EnemyConfig, EnemyTier, TIER_TINT, tierStatScale } from "../../configs/Enemies";
+
+/** Случайный размер обычного монстра. Босс фиксированный. */
+const SIZE_MIN = 0.7;
+const SIZE_MAX = 1.3;
+
+/** Самый маленький оставляет текущие жизни, самый большой получает в 3 раза больше. */
+function hpScaleForSize(sizeScale:number):number {
+    const t = (sizeScale - SIZE_MIN) / (SIZE_MAX - SIZE_MIN);
+    const clamped = Math.min(1, Math.max(0, t));
+    return SIZE_MIN * (1 + clamped * 2);
+}
 
 export interface ChaseSpawnParams extends EnemyParams {
     enemyId:string;
@@ -11,6 +22,8 @@ export interface ChaseSpawnParams extends EnemyParams {
     speedMul?:number;
     /** >1 = быстрее стреляет (короче attackInterval) */
     fireRateMul?:number;
+    /** Цвет спавна. Вид монстра от него не зависит. */
+    colorTier?:EnemyTier;
 }
 
 /**
@@ -47,12 +60,14 @@ export abstract class ChaseEnemy extends BaseEnemy {
         const speedMul = params.speedMul ?? 1;
         const sizeScale = this.getSizeScale(cfg);
 
+        const color:EnemyTier = params.colorTier || cfg.tier;
+        const colorScale = tierStatScale(cfg.tier, color);
         this.type = cfg.id.toLowerCase();
-        this.tier = cfg.tier;
-        this.tint = cfg.tint;
+        this.tier = color;
+        this.tint = TIER_TINT[color];
         this.spriteKey = cfg.spriteKey;
-        this.exp = cfg.exp;
-        this.color = `#${cfg.tint.toString(16).padStart(6, "0")}`;
+        this.exp = Math.max(1, Math.round(cfg.exp * colorScale.exp));
+        this.color = `#${this.tint.toString(16).padStart(6, "0")}`;
 
         this.width = Math.round(cfg.width * sizeScale);
         this.height = Math.round(cfg.height * sizeScale);
@@ -69,9 +84,10 @@ export abstract class ChaseEnemy extends BaseEnemy {
         this.defaultSpeedInSecond = baseSpeed;
         this.speedInSecond = this.defaultSpeedInSecond;
 
-        this.health = Math.max(1, Math.round(cfg.health * hpMul * sizeScale));
+        const sizeHp = cfg.tier === "boss" ? sizeScale : hpScaleForSize(sizeScale);
+        this.health = Math.max(1, Math.round(cfg.health * hpMul * sizeHp * colorScale.hp));
         this.maxHealth = this.health;
-        this.damageValue = Math.round(cfg.damage * damageMul);
+        this.damageValue = Math.max(1, Math.round(cfg.damage * damageMul * colorScale.dmg));
         const fireRateMul = Math.max(0.25, params.fireRateMul ?? 1);
         // Потолок скорострельности — не ниже 350мс между выстрелами
         this.attackInterval = Math.max(350, Math.round(cfg.attackInterval / fireRateMul));
@@ -81,7 +97,7 @@ export abstract class ChaseEnemy extends BaseEnemy {
         if (cfg.tier === "boss") {
             return 1.25;
         }
-        return 0.7 + Math.random() * 0.6;
+        return SIZE_MIN + Math.random() * (SIZE_MAX - SIZE_MIN);
     }
 
     protected getViewDist() {

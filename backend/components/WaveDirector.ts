@@ -7,7 +7,11 @@ import {
     waveDurationMs,
     waveHpMul,
     waveDamageMul,
-    waveSpeedMul
+    waveSpeedMul,
+    hordeCountForWave,
+    pickHordeEnemyId,
+    pickColorForWave,
+    hordeSize
 } from "../configs/Waves";
 import { EnemyTier } from "../configs/Enemies";
 
@@ -19,6 +23,10 @@ interface PendingSpawn {
     dmgMul:number;
     speedMul:number;
     fireRateMul:number;
+    /** Сколько слотов спавна закрывает этот таймер (орда = её размер) */
+    count:number;
+    hordeEnemyId?:string;
+    hordeColor?:EnemyTier;
 }
 
 interface FrozenSpawn {
@@ -28,6 +36,9 @@ interface FrozenSpawn {
     dmgMul:number;
     speedMul:number;
     fireRateMul:number;
+    count:number;
+    hordeEnemyId?:string;
+    hordeColor?:EnemyTier;
 }
 
 export class WaveDirector {
@@ -112,7 +123,10 @@ export class WaveDirector {
             hpMul: spawn.hpMul,
             dmgMul: spawn.dmgMul,
             speedMul: spawn.speedMul,
-            fireRateMul: spawn.fireRateMul
+            fireRateMul: spawn.fireRateMul,
+            count: spawn.count,
+            hordeEnemyId: spawn.hordeEnemyId,
+            hordeColor: spawn.hordeColor
         }));
         this.spawnTimeouts.forEach((spawn) => clearTimeout(spawn.timeout));
         this.spawnTimeouts = [];
@@ -227,9 +241,28 @@ export class WaveDirector {
                 hpMul: tierHpMul,
                 dmgMul,
                 speedMul: tier === "boss" ? Math.min(speedMul, 1.15) : speedMul,
-                fireRateMul
+                fireRateMul,
+                count: 1
             }, generation);
         });
+
+        // Орды: пачка одного типа за экраном, идут на игрока
+        const hordes = hordeCountForWave(this.wave);
+        for (let i = 0; i < hordes; i++) {
+            const size = hordeSize();
+            this.pendingSpawns += size;
+            this.armSpawn({
+                remainingMs: Math.floor(Math.random() * durationMs * 0.7),
+                tier: "green",
+                hpMul,
+                dmgMul,
+                speedMul,
+                fireRateMul: 1,
+                count: size,
+                hordeEnemyId: pickHordeEnemyId(this.wave),
+                hordeColor: pickColorForWave(this.wave)
+            }, generation);
+        }
     }
 
     private armSpawn(spawn:FrozenSpawn, generation:number) {
@@ -239,8 +272,19 @@ export class WaveDirector {
             if (generation !== this.generation) {
                 return;
             }
-            this.spawnAtEdge(spawn.tier, spawn.hpMul, spawn.dmgMul, spawn.speedMul, spawn.fireRateMul);
-            this.pendingSpawns = Math.max(0, this.pendingSpawns - 1);
+            if (spawn.hordeEnemyId) {
+                this.spawnHorde(
+                    spawn.hordeEnemyId,
+                    spawn.count,
+                    spawn.hpMul,
+                    spawn.dmgMul,
+                    spawn.speedMul,
+                    spawn.hordeColor || "green"
+                );
+            } else {
+                this.spawnAtEdge(spawn.tier, spawn.hpMul, spawn.dmgMul, spawn.speedMul, spawn.fireRateMul);
+            }
+            this.pendingSpawns = Math.max(0, this.pendingSpawns - Math.max(1, spawn.count || 1));
             if (this.pendingSpawns === 0 && this.scene.enemiesCollection.getAliveCount() === 0) {
                 this.onEnemiesCleared();
             }
@@ -252,7 +296,10 @@ export class WaveDirector {
             hpMul: spawn.hpMul,
             dmgMul: spawn.dmgMul,
             speedMul: spawn.speedMul,
-            fireRateMul: spawn.fireRateMul
+            fireRateMul: spawn.fireRateMul,
+            count: spawn.count || 1,
+            hordeEnemyId: spawn.hordeEnemyId,
+            hordeColor: spawn.hordeColor
         });
     }
 
@@ -301,7 +348,49 @@ export class WaveDirector {
             y = cy + (Math.random() - 0.5) * 2 * ry;
             break;
         }
-        this.scene.enemiesCollection.spawnTier(tier, x, y, hpMul, dmgMul, speedMul, fireRateMul);
+        this.scene.enemiesCollection.spawnTier(tier, x, y, hpMul, dmgMul, speedMul, fireRateMul, this.wave);
+    }
+
+    /** 5–10 копий одного типа кучно за краем арены — дальше сами идут на игрока. */
+    private spawnHorde(
+        enemyId:string,
+        size:number,
+        hpMul:number,
+        dmgMul:number,
+        speedMul:number,
+        color:EnemyTier
+    ) {
+        const w = this.scene.getWidth();
+        const h = this.scene.getHeight();
+        const margin = 80;
+        const side = Math.floor(Math.random() * 4);
+        const cx = w / 2;
+        const cy = h / 2;
+        let ox = cx;
+        let oy = cy;
+        switch (side) {
+        case 0:
+            oy = -margin;
+            ox = cx + (Math.random() - 0.5) * w * 0.5;
+            break;
+        case 1:
+            ox = w + margin;
+            oy = cy + (Math.random() - 0.5) * h * 0.5;
+            break;
+        case 2:
+            oy = h + margin;
+            ox = cx + (Math.random() - 0.5) * w * 0.5;
+            break;
+        default:
+            ox = -margin;
+            oy = cy + (Math.random() - 0.5) * h * 0.5;
+            break;
+        }
+        for (let i = 0; i < size; i++) {
+            const x = ox + (Math.random() - 0.5) * 110;
+            const y = oy + (Math.random() - 0.5) * 110;
+            this.scene.enemiesCollection.spawnById(enemyId, x, y, hpMul, dmgMul, speedMul, color);
+        }
     }
 
     private clearTimer() {

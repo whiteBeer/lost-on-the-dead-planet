@@ -10,7 +10,6 @@ const MONSTER_KEYS = [
     "monster_bloater",
     "monster_screamer",
     "monster_stalker",
-    "monster_soldier",
     "monster_behemoth",
     "monster_boss"
 ];

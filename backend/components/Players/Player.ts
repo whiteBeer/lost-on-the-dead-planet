@@ -115,7 +115,7 @@ export class Player {
     public tick(deltaSec:number) {
         if (this.isDead) return;
 
-        const regen = this.stats.regen;
+        const regen = Math.min(3, this.stats.regen);
         // stillRegen: считаем «стоит», если давно не обновлял позицию — упрощённо всегда добавляем маленький вклад не используем
         if (regen > 0) {
             this.regenAcc += regen * deltaSec;

@@ -1,4 +1,4 @@
-import { EnemyTier } from "./Enemies";
+import { EnemyTier, monstersForWave } from "./Enemies";
 
 export interface WaveComposition {
     green:number;
@@ -16,8 +16,8 @@ export const WAVES_CONFIG = {
     maxWaveDurationMs: 90_000,
     /** Составы ниже посчитаны на это окно; count *= duration / reference */
     referenceDurationMs: 60_000,
-    /** +10% монстров за каждую волну после первой */
-    countMulPerWave: 0.1,
+    /** +20% монстров за каждую волну после первой (поверх масштаба от длительности) */
+    countMulPerWave: 0.2,
     /** Каждая N-я волна — босс */
     bossEveryNWaves: 5,
     /** Базовый шанс дропа оружия с врага */
@@ -73,13 +73,45 @@ export function isBossWave(wave:number):boolean {
     return wave > 0 && wave % WAVES_CONFIG.bossEveryNWaves === 0;
 }
 
-/** Составы на referenceDurationMs (60с); реально масштабируются длиной волны */
-const PRESET:Record<number, WaveComposition> = {
-    1: { green: 48, yellow: 0, red: 0 },
-    2: { green: 44, yellow: 12, red: 0 },
-    3: { green: 40, yellow: 20, red: 6 },
-    4: { green: 36, yellow: 28, red: 10 }
-};
+/** 1–5: одна орда, 6–10: две, 11–15: три, … */
+export function hordeCountForWave(wave:number):number {
+    return Math.max(1, Math.ceil(wave / 5));
+}
+
+/** Доли цветов: волна 1 — только зелёные, дальше больше жёлтых и красных. */
+export function colorShares(wave:number) {
+    const t = Math.max(0, wave - 1);
+    let red = Math.min(0.38, Math.max(0, (t - 2) * 0.03));
+    let yellow = Math.min(0.46, t * 0.045);
+    if (red + yellow > 0.88) {
+        const k = 0.88 / (red + yellow);
+        red *= k;
+        yellow *= k;
+    }
+    return { green: 1 - red - yellow, yellow, red };
+}
+
+export function pickColorForWave(wave:number):Exclude<EnemyTier, "boss"> {
+    const shares = colorShares(wave);
+    const roll = Math.random();
+    if (roll < shares.red) {
+        return "red";
+    }
+    if (roll < shares.red + shares.yellow) {
+        return "yellow";
+    }
+    return "green";
+}
+
+/** Один тип на всю орду. Паук не берётся — он не идёт на игрока. */
+export function pickHordeEnemyId(wave:number):string {
+    const pool = monstersForWave(wave).filter((id) => id !== "Spider");
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function hordeSize():number {
+    return 5 + Math.floor(Math.random() * 6);
+}
 
 function scaleComposition(comp:WaveComposition, wave:number):WaveComposition {
     const durationScale = waveDurationMs(wave) / WAVES_CONFIG.referenceDurationMs;
@@ -94,26 +126,23 @@ function scaleComposition(comp:WaveComposition, wave:number):WaveComposition {
     return { green, yellow, red, boss: comp.boss || 0 };
 }
 
+/** Эталон на 60с. Волна 1 — только зелёные, дальше растут жёлтые и красные. */
 export function getWaveComposition(wave:number):WaveComposition {
+    const shares = colorShares(wave);
+    const total = 48;
+    let red = Math.round(total * shares.red);
+    let yellow = Math.round(total * shares.yellow);
+    let green = Math.max(0, total - red - yellow);
+    if (wave <= 1) {
+        green = total;
+        yellow = 0;
+        red = 0;
+    }
+    const scaled = scaleComposition({ green, yellow, red }, wave);
     if (isBossWave(wave)) {
-        // Чёрный босс + немного мелочи вокруг
-        const adds = scaleComposition({ green: 18, yellow: 6, red: 0 }, wave);
-        return { ...adds, boss: 1 };
+        return { ...scaled, boss: 1 };
     }
-    if (PRESET[wave]) {
-        // Волна 1 (20с): 48 → 16 (−×3 к старому)
-        return scaleComposition(PRESET[wave], wave);
-    }
-    // Базовый count на 60с, потом × duration/60с
-    const count = Math.round(48 + 10 * wave);
-    const redShare = Math.min(0.28, 0.05 + wave * 0.022);
-    const yellowShare = Math.min(0.48, 0.15 + wave * 0.035);
-
-    const red = Math.round(count * redShare);
-    const yellow = Math.round(count * yellowShare);
-    const green = Math.max(0, count - red - yellow);
-
-    return scaleComposition({ green, yellow, red }, wave);
+    return scaled;
 }
 
 export function flattenComposition(comp:WaveComposition):EnemyTier[] {

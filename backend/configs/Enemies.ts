@@ -57,7 +57,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Crawler",
         tier: "green",
         name: "Ползун",
-        health: 20,
+        health: 60,
         speed: 40,
         speedJitter: 12,
         width: 66,
@@ -91,7 +91,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Hound",
         tier: "yellow",
         name: "Гончая",
-        health: 45,
+        health: 135,
         speed: 160,
         speedJitter: 30,
         width: 66,
@@ -108,7 +108,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Spitter",
         tier: "yellow",
         name: "Плевальщик",
-        health: 48,
+        health: 96,
         speed: 70,
         speedJitter: 20,
         width: 76,
@@ -125,7 +125,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Bloater",
         tier: "yellow",
         name: "Раздутый",
-        health: 55,
+        health: 165,
         speed: 48,
         speedJitter: 15,
         width: 88,
@@ -172,28 +172,11 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         spriteKey: "monster_spider",
         exp: 28
     },
-    "Soldier": {
-        id: "Soldier",
-        tier: "yellow",
-        name: "Солдат",
-        health: 58,
-        speed: 75,
-        speedJitter: 18,
-        width: 76,
-        height: 68,
-        bulletHit: { width: 76, height: 68 },
-        playerTouch: { width: 46, height: 40 },
-        damage: 17,
-        attackInterval: 800,
-        tint: 0xffffff,
-        spriteKey: "monster_soldier",
-        exp: 28
-    },
     "Stalker": {
         id: "Stalker",
         tier: "red",
         name: "Призрак",
-        health: 110,
+        health: 330,
         speed: 145,
         speedJitter: 25,
         width: 78,
@@ -210,7 +193,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Brute",
         tier: "red",
         name: "Громила",
-        health: 130,
+        health: 260,
         speed: 78,
         speedJitter: 20,
         width: 100,
@@ -227,7 +210,7 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         id: "Behemoth",
         tier: "red",
         name: "Бегемот",
-        health: 160,
+        health: 480,
         speed: 55,
         speedJitter: 12,
         width: 130,
@@ -275,13 +258,51 @@ for (const cfg of Object.values(ENEMIES)) {
     cfg.tint = TIER_TINT[cfg.tier];
 }
 
-/** Пулы типов по тиру волны — спавн выбирает случайно. */
+/** Пулы оставлены для совместимости. Спавн берёт любой вид и красит его в цвет слота. */
 export const TIER_ENEMY_POOL:Record<EnemyTier, string[]> = {
     green: ["Zombie", "Crawler", "Runner"],
-    yellow: ["Hound", "Spitter", "Bloater", "Screamer", "Spider", "Soldier"],
+    yellow: ["Hound", "Spitter", "Bloater", "Screamer", "Spider"],
     red: ["Stalker", "Brute", "Behemoth"],
     boss: ["Boss"]
 };
+
+export const ALL_MONSTERS = Object.keys(ENEMIES).filter((id) => id !== "Boss");
+
+const EARLY_MONSTERS = ["Runner", "Screamer", "Spider", "Zombie"];
+const MID_MONSTERS = [...EARLY_MONSTERS, "Spitter", "Brute"];
+
+/** Волны 1–4: ранний пул, 5–10: плюс spitter и brute, дальше все виды. */
+export function monstersForWave(wave:number):string[] {
+    if (wave < 5) {
+        return EARLY_MONSTERS;
+    }
+    if (wave <= 10) {
+        return MID_MONSTERS;
+    }
+    return ALL_MONSTERS;
+}
+
+/** Любой вид, кроме босса. Цвет задаётся отдельно. */
+export function pickAnyMonster(wave = 99):string {
+    const pool = monstersForWave(wave);
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/** Насколько цвет усиливает вид относительно его «родного» тира в конфиге. */
+export const TIER_POWER:Record<Exclude<EnemyTier, "boss">, { hp:number, dmg:number, exp:number }> = {
+    green: { hp: 1, dmg: 1, exp: 1 },
+    yellow: { hp: 2.1, dmg: 1.5, exp: 1.8 },
+    red: { hp: 4.2, dmg: 2.2, exp: 3.4 }
+};
+
+export function tierStatScale(native:EnemyTier, color:EnemyTier) {
+    if (native === "boss" || color === "boss") {
+        return { hp: 1, dmg: 1, exp: 1 };
+    }
+    const from = TIER_POWER[native];
+    const to = TIER_POWER[color];
+    return { hp: to.hp / from.hp, dmg: to.dmg / from.dmg, exp: to.exp / from.exp };
+}
 
 /** @deprecated — оставлен для совместимости; предпочитай pickEnemyForTier */
 export const TIER_TO_ENEMY:Record<EnemyTier, string> = {
@@ -291,7 +312,9 @@ export const TIER_TO_ENEMY:Record<EnemyTier, string> = {
     boss: "Boss"
 };
 
-export function pickEnemyForTier(tier:EnemyTier):string {
-    const pool = TIER_ENEMY_POOL[tier];
-    return pool[Math.floor(Math.random() * pool.length)];
+export function pickEnemyForTier(tier:EnemyTier, wave = 1):string {
+    if (tier === "boss") {
+        return "Boss";
+    }
+    return pickAnyMonster(wave);
 }
