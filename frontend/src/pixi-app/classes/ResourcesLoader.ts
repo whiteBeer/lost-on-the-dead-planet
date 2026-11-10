@@ -22,12 +22,16 @@ const WEAPON_KEYS = [
     "weapon_Sniper"
 ];
 
+const PICKUP_KEYS = [
+    "pickup_bomb",
+    "pickup_medkit"
+];
+
 const PERK_KEYS = [
     "perk_assault_instinct",
     "perk_bottomless_mag",
     "perk_chain_thunder",
     "perk_eagle_eye",
-    "perk_field_medic",
     "perk_iron_heart",
     "perk_light_boots",
     "perk_trophy_hunter"
@@ -56,15 +60,18 @@ export class ResourcesLoader {
         for (const key of PERK_KEYS) {
             PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
         }
+        for (const key of PICKUP_KEYS) {
+            PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
+        }
 
         const aliases = [
             "playerTex", "enemyZombieTex", "ground",
-            ...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS
+            ...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS, ...PICKUP_KEYS
         ];
         await PIXI.Assets.load(aliases);
 
         this.textures.ground = PIXI.Assets.get("ground");
-        for (const key of [...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS]) {
+        for (const key of [...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS, ...PICKUP_KEYS]) {
             this.textures[key] = PIXI.Assets.get(key);
         }
 

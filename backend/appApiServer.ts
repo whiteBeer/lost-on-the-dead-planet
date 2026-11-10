@@ -67,6 +67,7 @@ export class AppApiServer {
                 "waveStarted",
                 "waveCleared",
                 "hitFx",
+                "bombFx",
                 "perkOffer",
                 "playerStats",
                 "sceneReset",

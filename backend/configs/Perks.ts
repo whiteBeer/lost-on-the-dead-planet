@@ -132,7 +132,6 @@ const STATS:StatText[] = [
     { stat: "fireRate", label: "Скорострельность", unit: "%", category: "weapon", gain: [0.05, 0.09, 0.14], tradeGain: 0.2, tradeLoss: -0.2, gainWord: "Скорострельный", lossWord: "тугодум", baseName: "Быстрый палец" },
     { stat: "speed", label: "Скорость бега", unit: "%", category: "mobility", gain: [0.06, 0.11, 0.17], tradeGain: 0.25, tradeLoss: -0.14, gainWord: "Быстроногий", lossWord: "увалень", baseName: "Лёгкий шаг" },
     { stat: "maxHp", label: "Макс. здоровье", unit: "", category: "defense", gain: [15, 30, 50], tradeGain: 70, tradeLoss: -25, gainWord: "Живучий", lossWord: "доходяга", baseName: "Крепкое тело" },
-    { stat: "regen", label: "Восстановление здоровья в секунду", unit: "", category: "defense", gain: [0.5, 1, 2], tradeGain: 3, tradeLoss: -0.5, gainWord: "Заживающий", lossWord: "анемик", baseName: "Быстрое заживление" },
     { stat: "armor", label: "Снижение любого урона", unit: "%", category: "defense", gain: [0.05, 0.09, 0.14], tradeGain: 0.22, tradeLoss: -0.14, gainWord: "Бронированный", lossWord: "неженка", baseName: "Бронежилет" },
     { stat: "monsterArmor", label: "Снижение урона от монстров", unit: "%", category: "defense", gain: [0.08, 0.14, 0.22], tradeGain: 0.32, gainWord: "Толстокожий", lossWord: "корм", tradeLoss: -0.2, baseName: "Толстая кожа" },
     { stat: "reload", label: "Скорость перезарядки", unit: "%", category: "weapon", gain: [0.12, 0.22, 0.35], tradeGain: 0.5, tradeLoss: -0.25, gainWord: "Проворный", lossWord: "копуша", baseName: "Ловкие руки" },
@@ -143,9 +142,7 @@ const STATS:StatText[] = [
     { stat: "exp", label: "Получаемый опыт", unit: "%", category: "fortune", gain: [0.08, 0.15, 0.25], tradeGain: 0.4, tradeLoss: -0.2, gainWord: "Прилежный", lossWord: "двоечник", baseName: "Быстрый ум" },
     { stat: "crit", label: "Шанс критического попадания", unit: "%", category: "attack", gain: [0.04, 0.08, 0.13], tradeGain: 0.2, tradeLoss: 0, gainWord: "Смертоносный", baseName: "Слабое место" },
     { stat: "dodge", label: "Шанс уклониться от урона", unit: "%", category: "mobility", gain: [0.03, 0.06, 0.1], tradeGain: 0.16, tradeLoss: 0, gainWord: "Вёрткий", baseName: "Чутьё" },
-    { stat: "lifesteal", label: "Доля урона, возвращаемая здоровьем", unit: "%", category: "attack", gain: [0.02, 0.04, 0.07], tradeGain: 0.1, tradeLoss: 0, gainWord: "Кровожадный", baseName: "Вкус крови" },
     { stat: "monsterDamage", label: "Урон по монстрам", unit: "%", category: "attack", gain: [0.12, 0.22, 0.35], tradeGain: 0.5, tradeLoss: -0.3, gainWord: "Зверобойный", lossWord: "зоозащитник", baseName: "Истребитель" },
-    { stat: "onKillHeal", label: "Здоровья за каждое убийство", unit: "", category: "fortune", gain: [3, 6, 10], tradeGain: 16, tradeLoss: 0, gainWord: "Ненасытный", baseName: "Трофейная аптечка" },
     { stat: "ammoRefund", label: "Шанс не потратить патрон", unit: "%", category: "weapon", gain: [0.06, 0.12, 0.2], tradeGain: 0.3, tradeLoss: 0, gainWord: "Экономный", baseName: "Бережливость" },
     { stat: "reloadOnKill", label: "Шанс мгновенно пополнить магазин при убийстве", unit: "%", category: "weapon", gain: [0.1, 0.2, 0.35], tradeGain: 0.5, tradeLoss: 0, gainWord: "Расчётливый", baseName: "Перезарядка на бегу" }
 ];
@@ -241,11 +238,6 @@ export const POSITIVE_PERKS:Perk[] = [
         mods: { maxHp: 35, armor: 0.08 }, icon: "perk_iron_heart", positive: true
     },
     {
-        id: "field_medic", name: "Полевой медик", rarity: "rare", category: "defense",
-        description: "Восстановление +1.5 здоровья в секунду, каждое убийство лечит на 6.",
-        mods: { regen: 1.5, onKillHeal: 6 }, icon: "perk_field_medic", positive: true
-    },
-    {
         id: "light_boots", name: "Лёгкие берцы", rarity: "rare", category: "mobility",
         description: "Скорость бега +12%, шанс уклониться +5%. Без штрафов.",
         mods: { speed: 0.12, dodge: 0.05 }, icon: "perk_light_boots", positive: true
@@ -283,8 +275,6 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "piercing", name: "Бронебойные пули", rarity: "rare", category: "weapon", description: "Пули пробивают +1 цель.", mods: { pierce: 1 } },
     { id: "deep_piercing", name: "Сердечник из вольфрама", rarity: "epic", category: "weapon", description: "Пули пробивают +3 цели. Скорострельность −25%.", mods: { pierce: 3, fireRate: -0.25 } },
     { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +23%. Разброс +90%.", mods: { fireRate: 0.225, spread: 0.9 } },
-    { id: "feast", name: "Пир", rarity: "rare", category: "fortune", description: "Каждое убийство лечит на 25 здоровья. Обычное восстановление здоровья −1 в секунду.", mods: { onKillHeal: 25, regen: -1 } },
-    { id: "vampire", name: "Вампир", rarity: "epic", category: "attack", description: "20% урона возвращается здоровьем. Макс. здоровье −30.", mods: { lifesteal: 0.2, maxHp: -30 } },
     { id: "heavy_armor", name: "Латы", rarity: "epic", category: "defense", description: "Снижение любого урона +35%. Скорость бега −22%.", mods: { armor: 0.35, speed: -0.22 } },
     { id: "feather", name: "Перо", rarity: "rare", category: "mobility", description: "Шанс уклониться +25%. Снижение любого урона −25%: когда попадут, будет больнее.", mods: { dodge: 0.25, armor: -0.25 } },
     { id: "giant", name: "Великан", rarity: "epic", category: "defense", description: "Макс. здоровье +120. Скорость бега −18%, разброс +25%.", mods: { maxHp: 120, speed: -0.18, spread: 0.25 } },
@@ -295,7 +285,6 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "small_mag", name: "Обрез магазина", rarity: "rare", category: "weapon", description: "Магазин −50%. Урон +45%, перезарядка быстрее на 40%.", mods: { clip: -0.5, damage: 0.45, reload: 0.4 } },
     { id: "monster_slayer", name: "Истребитель орды", rarity: "rare", category: "attack", description: "Урон по монстрам +70%. Скорость бега −12%.", mods: { monsterDamage: 0.7, speed: -0.12 } },
     { id: "miser", name: "Скупой платит дважды", rarity: "common", category: "strange", description: "Шанс не потратить патрон +40%. Перезарядка медленнее на 45%.", mods: { ammoRefund: 0.4, reload: -0.45 } },
-    { id: "slow_burn", name: "Медленный огонь", rarity: "common", category: "defense", description: "Восстановление +3 здоровья в секунду. Макс. здоровье −25.", mods: { regen: 3, maxHp: -25 } },
     { id: "crit_addict", name: "Всё или ничего", rarity: "epic", category: "attack", description: "Шанс крита +40%. Обычные, не критические попадания наносят на 40% меньше: урон −40%, крит наносит тройной урон.", mods: { crit: 0.4, damage: -0.4, critDamage: 1 } },
     { id: "tortoise", name: "Черепаха", rarity: "epic", category: "defense", description: "Снижение урона от монстров +55%. Скорость бега −30%.", mods: { monsterArmor: 0.55, speed: -0.3 } },
     { id: "hare", name: "Заяц", rarity: "epic", category: "mobility", description: "Скорость бега +50%. Макс. здоровье −40, снижение любого урона −15%.", mods: { speed: 0.5, maxHp: -40, armor: -0.15 } },
@@ -303,8 +292,7 @@ const SPECIAL_PERKS:Perk[] = [
     { id: "needle", name: "Иглы", rarity: "common", category: "weapon", description: "Скорострельность +30%. Урон −15%.", mods: { fireRate: 0.3, damage: -0.15 } },
     { id: "point_blank", name: "В упор", rarity: "rare", category: "weapon", description: "Урон +55%. Дальность стрельбы −50%.", mods: { damage: 0.55, range: -0.5 } },
     { id: "marksman", name: "Стрелок с вышки", rarity: "rare", category: "weapon", description: "Дальность +80%. Урон −15%.", mods: { range: 0.8, damage: -0.15 } },
-    { id: "pain_killer", name: "Обезболивающее", rarity: "common", category: "defense", description: "Снижение любого урона +15%. Восстановление здоровья −0.5 в секунду.", mods: { armor: 0.15, regen: -0.5 } },
-    { id: "vitamins", name: "Витамины", rarity: "common", category: "defense", description: "Макс. здоровье +20, восстановление +0.5 здоровья в секунду.", mods: { maxHp: 20, regen: 0.5 } },
+    { id: "pain_killer", name: "Обезболивающее", rarity: "common", category: "defense", description: "Снижение любого урона +15%.", mods: { armor: 0.15 } },
     { id: "energy_drink", name: "Энергетик", rarity: "common", category: "mobility", description: "Скорость бега +8%, скорострельность +4%. Макс. здоровье −10.", mods: { speed: 0.08, fireRate: 0.04, maxHp: -10 } },
     { id: "lucky_coin", name: "Счастливая монета", rarity: "common", category: "fortune", description: "Шанс крита +5%, уклонение +3%.", mods: { crit: 0.05, dodge: 0.03 } },
     { id: "dead_weight", name: "Мёртвый груз", rarity: "common", category: "strange", description: "Опыт +30%. Скорость бега −5%.", mods: { speed: -0.05, exp: 0.3 } }

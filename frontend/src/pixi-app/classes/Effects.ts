@@ -14,6 +14,8 @@ interface BloodDrop {
 }
 
 const BLOOD_COLORS = [0x5a0c0c, 0x7a1010, 0x9b1515, 0x3d0808, 0xb01a1a, 0x4e0a0a];
+const FIRE_COLORS = [0xfff1c2, 0xffd15a, 0xff9a2e, 0xf25a18, 0xc43210];
+const SMOKE_COLORS = [0x2c2622, 0x4a4038, 0x6a5c50];
 
 /** Направленный спрей крови при попадании. */
 export class Effects {
@@ -31,6 +33,85 @@ export class Effects {
         this.app.socket?.on("hitFx", (data:{ x:number, y:number, tint?:number, dir?:number }) => {
             this.spawnBlood(data.x, data.y, data.dir ?? Math.random() * Math.PI * 2);
         });
+        this.app.socket?.on("bombFx", (data:{ x:number, y:number, radius?:number }) => {
+            this.spawnExplosion(data.x, data.y, data.radius || 375);
+        });
+    }
+
+    spawnExplosion(x:number, y:number, radius:number) {
+        const scorch = new PIXI.Graphics();
+        scorch.ellipse(0, 0, radius * 0.42, radius * 0.28)
+            .fill({ color: 0x1c120c, alpha: 0.85 });
+        scorch.ellipse(6, -2, radius * 0.16, radius * 0.1)
+            .fill({ color: 0x5a3018, alpha: 0.55 });
+        scorch.position.set(x, y);
+        scorch.rotation = Math.random() * Math.PI;
+        this.layer.addChild(scorch);
+        this.drops.push({
+            gfx: scorch, vx: 0, vy: 0, life: 3.2, total: 3.2,
+            drag: 1, spin: 0, gravity: 0, settle: true
+        });
+
+        const flash = new PIXI.Graphics();
+        flash.circle(0, 0, radius * 0.55).fill({ color: 0xffb03a, alpha: 0.55 });
+        flash.circle(0, 0, radius * 0.28).fill({ color: 0xfff6d0, alpha: 0.8 });
+        flash.position.set(x, y);
+        this.layer.addChild(flash);
+        this.drops.push({
+            gfx: flash, vx: 0, vy: 0, life: 0.42, total: 0.42,
+            drag: 1, spin: 0, gravity: 0, settle: false
+        });
+
+        const sparks = 28 + Math.floor(Math.random() * 8);
+        for (let i = 0; i < sparks; i++) {
+            const drop = new PIXI.Graphics();
+            const w = 2 + Math.random() * 4;
+            const h = 4 + Math.random() * 10;
+            const color = FIRE_COLORS[Math.floor(Math.random() * FIRE_COLORS.length)];
+            drop.ellipse(0, 0, w, h).fill({ color, alpha: 0.92 });
+            drop.position.set(x, y);
+            const angle = Math.random() * Math.PI * 2;
+            drop.rotation = angle + Math.PI / 2;
+            this.layer.addChild(drop);
+            const speed = radius * (0.7 + Math.random() * 2.2);
+            const life = 0.7 + Math.random() * 0.7;
+            this.drops.push({
+                gfx: drop,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life,
+                total: life,
+                drag: 0.9,
+                spin: (Math.random() - 0.5) * 8,
+                gravity: 180 + Math.random() * 160,
+                settle: false
+            });
+        }
+
+        for (let i = 0; i < 12; i++) {
+            const smoke = new PIXI.Graphics();
+            const s = 6 + Math.random() * 10;
+            smoke.circle(0, 0, s).fill({
+                color: SMOKE_COLORS[Math.floor(Math.random() * SMOKE_COLORS.length)],
+                alpha: 0.55
+            });
+            smoke.position.set(x, y);
+            this.layer.addChild(smoke);
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 30 + Math.random() * 70;
+            const life = 1.4 + Math.random() * 1.1;
+            this.drops.push({
+                gfx: smoke,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 40,
+                life,
+                total: life,
+                drag: 0.92,
+                spin: (Math.random() - 0.5) * 2,
+                gravity: -20,
+                settle: true
+            });
+        }
     }
 
     spawnBlood(x:number, y:number, dir:number) {

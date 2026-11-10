@@ -1,6 +1,11 @@
 import { Scene } from "../Scene";
-import { Pickup } from "./Pickup";
+import { Pickup, PickupKind } from "./Pickup";
 import { PLAYER_CONFIG } from "../../configs/Players";
+import type { Player } from "../Players/Player";
+
+const BOMB_DAMAGE = 350;
+const BOMB_RADIUS = 375;
+const MEDKIT_HEAL = 100;
 
 export class Pickups {
     private readonly scene:Scene;
@@ -10,11 +15,15 @@ export class Pickups {
         this.scene = scene;
     }
 
-    addWeaponPickup(x:number, y:number, weaponId:string) {
-        const pickup = new Pickup("weapon", x, y, weaponId);
+    addPickup(kind:PickupKind, x:number, y:number, weaponId?:string) {
+        const pickup = new Pickup(kind, x, y, weaponId);
         this.items.push(pickup);
         this.scene.emit("pickupAdded", { pickup: pickup.toJSON() });
         return pickup;
+    }
+
+    addWeaponPickup(x:number, y:number, weaponId:string) {
+        return this.addPickup("weapon", x, y, weaponId);
     }
 
     removeAll() {
@@ -57,10 +66,8 @@ export class Pickups {
                     bestDist = distSq;
                 }
             }
-            if (best?.weaponId) {
-                player.equipWeapon(best.weaponId);
-                this.removeById(best.id);
-                this.scene.emit("playerStats", { player: player.toJSON() });
+            if (best) {
+                this.take(player, best);
             }
         }
     }
@@ -85,12 +92,27 @@ export class Pickups {
             }
         }
 
-        if (!best || best.kind !== "weapon" || !best.weaponId) {
+        if (!best) {
             return false;
         }
+        return this.take(player, best);
+    }
 
-        player.equipWeapon(best.weaponId);
-        this.removeById(best.id);
+    private take(player:Player, item:Pickup) {
+        if (item.kind === "weapon") {
+            if (!item.weaponId) return false;
+            player.equipWeapon(item.weaponId);
+        } else if (item.kind === "medkit") {
+            player.heal(MEDKIT_HEAL);
+        } else if (item.kind === "bomb") {
+            this.scene.enemiesCollection.damageInRadius(
+                item.x, item.y, BOMB_RADIUS, BOMB_DAMAGE, player.socketId
+            );
+            this.scene.emit("bombFx", { x: item.x, y: item.y, radius: BOMB_RADIUS });
+        } else {
+            return false;
+        }
+        this.removeById(item.id);
         this.scene.emit("playerStats", { player: player.toJSON() });
         return true;
     }

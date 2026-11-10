@@ -4,6 +4,19 @@ import { App } from "../../App";
 import { BackendPickup, BackendScene } from "../../Types";
 import { ResourcesLoader } from "../ResourcesLoader";
 
+function itemGraphic(kind:"bomb" | "medkit") {
+    const g = new PIXI.Graphics();
+    if (kind === "bomb") {
+        g.circle(0, 0, 14).fill(0xe24b2a);
+        g.circle(0, 0, 6).fill(0xffd24a);
+        return g;
+    }
+    g.rect(-12, -12, 24, 24).fill(0xf4f7f2);
+    g.rect(-3, -9, 6, 18).fill(0xd64545);
+    g.rect(-9, -3, 18, 6).fill(0xd64545);
+    return g;
+}
+
 interface PickupView {
     id:string;
     weaponId:string;
@@ -43,13 +56,17 @@ export class PickupsCollection {
             return;
         }
         const container = new PIXI.Container();
-        const key = data.weaponId ? `weapon_${data.weaponId}` : "";
+        const key = data.kind === "bomb" ? "pickup_bomb"
+            : data.kind === "medkit" ? "pickup_medkit"
+            : (data.weaponId ? `weapon_${data.weaponId}` : "");
         const tex = key ? ResourcesLoader.getTexture(key) : null;
         if (tex) {
             const sprite = new PIXI.Sprite(tex);
             sprite.anchor.set(0.5);
             ResourcesLoader.fitSprite(sprite, 48);
             container.addChild(sprite);
+        } else if (data.kind === "bomb" || data.kind === "medkit") {
+            container.addChild(itemGraphic(data.kind));
         } else {
             const g = new PIXI.Graphics();
             g.rect(-16, -8, 32, 16).fill(0xffd24a);

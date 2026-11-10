@@ -139,8 +139,14 @@ export class Enemies {
 
         const wave = this.scene.waveDirector.getWave();
         if (Math.random() < dropChanceForWave(wave)) {
-            const weaponId = rollWeaponDrop(wave);
-            this.scene.pickupsCollection.addWeaponPickup(pos.x, pos.y, weaponId);
+            const roll = Math.random();
+            if (roll < 0.2) {
+                this.scene.pickupsCollection.addPickup("bomb", pos.x, pos.y);
+            } else if (roll < 0.4) {
+                this.scene.pickupsCollection.addPickup("medkit", pos.x, pos.y);
+            } else {
+                this.scene.pickupsCollection.addWeaponPickup(pos.x, pos.y, rollWeaponDrop(wave));
+            }
         }
 
         this.removeEnemyById(enemy.id);
@@ -157,6 +163,24 @@ export class Enemies {
             enemy.remove();
             this.enemies.splice(index, 1);
             this.scene.emit("enemiesRemoved", { enemy: enemy.toJSON() });
+        }
+    }
+
+    damageInRadius(x:number, y:number, radius:number, damage:number, killerSocketId?:string) {
+        const reachSq = radius * radius;
+        const hits:{ id:string, x:number, y:number }[] = [];
+        for (const enemy of this.enemies) {
+            const pos = calcTimedPoint(
+                enemy.startX, enemy.startY, enemy.rotation, enemy.speedInSecond, enemy.updatedAt
+            );
+            const dx = pos.x - x;
+            const dy = pos.y - y;
+            if (dx * dx + dy * dy <= reachSq) {
+                hits.push({ id: enemy.id, x: pos.x, y: pos.y });
+            }
+        }
+        for (const hit of hits) {
+            this.damageEnemyById(hit.id, damage, killerSocketId, hit.x, hit.y);
         }
     }
 
