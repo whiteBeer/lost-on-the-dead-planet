@@ -11,15 +11,19 @@ import { ResourcesLoader } from "./classes/ResourcesLoader";
 
 const CLIENT_KEY = "wave-arena-client";
 
+function newClientId():string {
+    return Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
+}
+
 function storedClientId():string {
     try {
         const saved = localStorage.getItem(CLIENT_KEY) || "";
         if (/^[a-zA-Z0-9-]{8,64}$/.test(saved)) return saved;
-        const id = crypto.randomUUID();
+        const id = newClientId();
         localStorage.setItem(CLIENT_KEY, id);
         return id;
     } catch {
-        return crypto.randomUUID();
+        return newClientId();
     }
 }
 
