@@ -16,8 +16,8 @@ export const WAVES_CONFIG = {
     maxWaveDurationMs: 90_000,
     /** Составы ниже посчитаны на это окно; count *= duration / reference */
     referenceDurationMs: 60_000,
-    /** +20% монстров за каждую волну после первой (поверх масштаба от длительности) */
-    countMulPerWave: 0.2,
+    /** +30% обычных монстров за каждую волну после первой (поверх масштаба от длительности) */
+    countMulPerWave: 0.5,
     /** Каждая N-я волна — босс */
     bossEveryNWaves: 5,
     /** Базовый шанс дропа оружия с врага */
@@ -71,9 +71,12 @@ export function isBossWave(wave:number):boolean {
     return wave > 0 && wave % WAVES_CONFIG.bossEveryNWaves === 0;
 }
 
-/** 1–5: одна орда, 6–10: две, 11–15: три, … */
+/** 1–5: одна орда, 6–10: две, дальше +1 орда за каждую волну. */
 export function hordeCountForWave(wave:number):number {
-    return Math.max(1, Math.ceil(wave / 5));
+    if (wave <= 10) {
+        return Math.max(1, Math.ceil(wave / 5));
+    }
+    return 2 + (wave - 10);
 }
 
 /** Доли цветов: волна 1 — только зелёные, дальше больше жёлтых и красных. */
