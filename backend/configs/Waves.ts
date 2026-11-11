@@ -13,7 +13,7 @@ export const WAVES_CONFIG = {
     /** Длительность 1-й волны; каждая следующая +waveDurationStepMs (потолок maxWaveDurationMs) */
     firstWaveDurationMs: 20_000,
     waveDurationStepMs: 5_000,
-    maxWaveDurationMs: 90_000,
+    maxWaveDurationMs: 60_000,
     /** Составы ниже посчитаны на это окно; count *= duration / reference */
     referenceDurationMs: 60_000,
     /** +30% обычных монстров за каждую волну после первой (поверх масштаба от длительности) */
@@ -35,7 +35,7 @@ export const WAVES_CONFIG = {
 
 export function expForLevel(level:number):number {
     const n = Math.max(1, level);
-    return 40 + n * 20;
+    return (40 + n * 20) * 2;
 }
 
 export function waveHpMul(wave:number):number {
@@ -60,7 +60,7 @@ export function dropChanceForWave(wave:number):number {
     );
 }
 
-/** Волна 1 = 20с, каждая следующая +5с, максимум 90с */
+/** Волна 1 = 20с, каждая следующая +5с, максимум 60с */
 export function waveDurationMs(wave:number):number {
     const raw = WAVES_CONFIG.firstWaveDurationMs
         + Math.max(0, wave - 1) * WAVES_CONFIG.waveDurationStepMs;
@@ -71,12 +71,12 @@ export function isBossWave(wave:number):boolean {
     return wave > 0 && wave % WAVES_CONFIG.bossEveryNWaves === 0;
 }
 
-/** 1–5: одна орда, 6–10: две, дальше +1 орда за каждую волну. */
+/** До 5-й волны одна орда, с 5-й +1 орда за каждую волну. */
 export function hordeCountForWave(wave:number):number {
-    if (wave <= 10) {
-        return Math.max(1, Math.ceil(wave / 5));
+    if (wave < 5) {
+        return 1;
     }
-    return 2 + (wave - 10);
+    return wave - 3;
 }
 
 /** Доли цветов: волна 1 — только зелёные, дальше больше жёлтых и красных. */
@@ -110,8 +110,8 @@ export function pickHordeEnemyId(wave:number):string {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export function hordeSize():number {
-    return 5 + Math.floor(Math.random() * 6);
+export function hordeSize(wave:number):number {
+    return Math.max(1, wave) * 2;
 }
 
 function scaleComposition(comp:WaveComposition, wave:number):WaveComposition {

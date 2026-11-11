@@ -249,7 +249,7 @@ export class WaveDirector {
         // Орды: пачка одного типа за экраном, идут на игрока
         const hordes = hordeCountForWave(this.wave);
         for (let i = 0; i < hordes; i++) {
-            const size = hordeSize();
+            const size = hordeSize(this.wave);
             this.pendingSpawns += size;
             this.armSpawn({
                 remainingMs: Math.floor(Math.random() * durationMs * 0.7),
@@ -351,7 +351,7 @@ export class WaveDirector {
         this.scene.enemiesCollection.spawnTier(tier, x, y, hpMul, dmgMul, speedMul, fireRateMul, this.wave);
     }
 
-    /** 5–10 копий одного типа кучно за краем арены — дальше сами идут на игрока. */
+    /** Пачка одного типа кучно за краем арены — дальше сами идут на игрока. */
     private spawnHorde(
         enemyId:string,
         size:number,
