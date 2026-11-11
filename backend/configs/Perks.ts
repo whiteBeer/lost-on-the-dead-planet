@@ -271,7 +271,6 @@ export const POSITIVE_PERKS:Perk[] = [
 const SPECIAL_PERKS:Perk[] = [
     { id: "glass_cannon", name: "Стеклянная пушка", rarity: "epic", category: "attack", description: "Урон +70%. Макс. здоровье −45.", mods: { damage: 0.7, maxHp: -45 } },
     { id: "casino", name: "Казино", rarity: "rare", category: "strange", description: "Шанс крита +25%, крит наносит тройной урон. Но 25% пуль не наносят вообще никакого урона.", mods: { crit: 0.25, critDamage: 1, miss: 0.25 } },
-    { id: "blood_price", name: "Плата кровью", rarity: "rare", category: "strange", description: "Урон +60%. Каждый выстрел отнимает 1 здоровья.", mods: { damage: 0.6, selfDamage: 1 } },
     { id: "piercing", name: "Бронебойные пули", rarity: "rare", category: "weapon", description: "Пули пробивают +1 цель.", mods: { pierce: 1 } },
     { id: "deep_piercing", name: "Сердечник из вольфрама", rarity: "epic", category: "weapon", description: "Пули пробивают +3 цели. Скорострельность −25%.", mods: { pierce: 3, fireRate: -0.25 } },
     { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +23%. Разброс +90%.", mods: { fireRate: 0.225, spread: 0.9 } },
