@@ -36,6 +36,8 @@ export class Player {
 
     private scene:Scene | null = null;
     private spawnProtectedUntil = 0;
+    /** Попал союзник: до этого момента ни ходить, ни поворачиваться */
+    private stunnedUntil = 0;
     /** Доля замедления от укусов, 0…0.5 */
     private biteSlow = 0;
     private sentBiteSlow = 0;
@@ -83,6 +85,20 @@ export class Player {
 
     public isSpawnProtected() {
         return Date.now() < this.spawnProtectedUntil;
+    }
+
+    public isStunned() {
+        return Date.now() < this.stunnedUntil;
+    }
+
+    /** Попадание союзника. Уже оглушённого не продлеваем, иначе можно держать вечно. */
+    public stun(ms:number):boolean {
+        if (this.isDead || this.isStunned() || this.isSpawnProtected()) {
+            return false;
+        }
+        this.stunnedUntil = Date.now() + ms;
+        this.emitStats();
+        return true;
     }
 
     public takeDamage(amount:number):boolean {
@@ -231,6 +247,7 @@ export class Player {
         this.isDead = false;
         this.biteSlow = 0;
         this.sentBiteSlow = 0;
+        this.stunnedUntil = 0;
         this.isReady = false;
         this.grantSpawnProtection();
         this.weapon.switchTo(STARTING_WEAPON);
@@ -266,6 +283,8 @@ export class Player {
             level: this.level,
             perks: [...this.perks],
             speed: this.getSpeed(),
+            // Остаток, а не момент окончания: часы клиента и сервера расходятся
+            stunnedMs: Math.max(0, this.stunnedUntil - Date.now()),
             weapon: this.weapon.toJSON(),
             perkOffer: this.perkOffer.map(p => ({
                 id: p.id,

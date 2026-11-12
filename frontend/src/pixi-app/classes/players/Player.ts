@@ -20,6 +20,8 @@ export class Player {
     private speedInSecond = 150;
     private radius = 0;
     private rotation = 0;
+    /** performance.now(), до которого игрок оглушён союзником */
+    private stunnedUntil = 0;
 
     public health = 0;
     public maxHealth = 0;
@@ -83,6 +85,7 @@ export class Player {
         if (params.speed) {
             this.speedInSecond = params.speed;
         }
+        this.stunnedUntil = params.stunnedMs ? performance.now() + params.stunnedMs : 0;
         this.setHealth(this.health);
         if (params.isDead) this.hide();
         else this.show();
@@ -140,6 +143,24 @@ export class Player {
 
     getSpeed() {
         return this.speedInSecond;
+    }
+
+    isStunned() {
+        return performance.now() < this.stunnedUntil;
+    }
+
+    /** Оглушённый мигает и синеет; имя не трогаем, чтобы читалось. */
+    updateStunFx() {
+        if (!this.bodyContainer || !this.bodySprite) {
+            return;
+        }
+        if (this.isStunned()) {
+            this.bodyContainer.alpha = Math.floor(performance.now() / 120) % 2 ? 0.35 : 1;
+            this.bodySprite.tint = 0x7fd4ff;
+        } else if (this.bodySprite.tint !== 0xffffff) {
+            this.bodyContainer.alpha = 1;
+            this.bodySprite.tint = 0xffffff;
+        }
     }
 
     getCoords() {

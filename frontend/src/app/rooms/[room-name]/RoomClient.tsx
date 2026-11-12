@@ -72,6 +72,7 @@ export default function RoomClient() {
     const [isHost, setIsHost] = useState(false);
     const [canStart, setCanStart] = useState(false);
     const [hostSocketId, setHostSocketId] = useState<string | null>(null);
+    const [friendlyFire, setFriendlyFire] = useState(false);
     const [joinError, setJoinError] = useState<string | null>(null);
     const [isTouch, setIsTouch] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
@@ -173,6 +174,7 @@ export default function RoomClient() {
                     setIsHost(state.isHost);
                     setCanStart(state.canStart);
                     setHostSocketId(state.hostSocketId);
+                    setFriendlyFire(state.friendlyFire);
                     if (state.phase === "lobby") {
                         setDead(null);
                         setWatching(false);
@@ -346,6 +348,18 @@ export default function RoomClient() {
                                 </li>
                             ))}
                         </ul>
+                        <label className={styles.lobbyOption}>
+                            <input
+                                type="checkbox"
+                                checked={friendlyFire}
+                                disabled={!isHost}
+                                onChange={(e) => appRef.current?.setFriendlyFire(e.target.checked)}
+                            />
+                            <span>
+                                Огонь по своим
+                                <small>Попавший в союзника обездвиживает его на 8 с. Урона нет.</small>
+                            </span>
+                        </label>
                         {lobbyPlayers.length > 1 && (
                             <button
                                 className={meReady ? styles.secondary : styles.primary}

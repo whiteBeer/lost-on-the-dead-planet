@@ -352,6 +352,32 @@
   margin-bottom: 4px;
 }
 
+.lobbyOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: #eceadf;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lobbyOption input {
+  margin-top: 3px;
+  accent-color: #a8e05f;
+}
+
+.lobbyOption input:disabled {
+  cursor: default;
+}
+
+.lobbyOption small {
+  display: block;
+  color: #a9ae9b;
+  font-size: 12px;
+}
+
 .nameLabel {
   display: block;
   margin: 6px 0 4px;

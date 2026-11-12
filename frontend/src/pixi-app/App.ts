@@ -36,7 +36,8 @@ export type LobbyListener = (state:{
     meReady:boolean,
     isHost:boolean,
     canStart:boolean,
-    hostSocketId:string | null
+    hostSocketId:string | null,
+    friendlyFire:boolean
 }) => void;
 export type JoinRejectedListener = (info:{ reason:string, message:string }) => void;
 export type PauseListener = (paused:boolean) => void;
@@ -70,6 +71,7 @@ export class App {
     private spectatorListener:SpectatorListener | null = null;
     private rosterListener:RosterListener | null = null;
     private rosterKey = "";
+    private friendlyFire = false;
     private spectating = false;
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
@@ -236,6 +238,11 @@ export class App {
         this.socket?.emit("startGame");
     }
 
+    /** Только хост в лобби — остальным сервер откажет молча. */
+    public setFriendlyFire(enabled:boolean) {
+        this.socket?.emit("setFriendlyFire", { enabled });
+    }
+
     public togglePause() {
         this.socket?.emit("togglePause");
     }
@@ -276,7 +283,8 @@ export class App {
             meReady: !!me?.isReady,
             isHost: !!meId && meId === hostId,
             canStart,
-            hostSocketId: hostId
+            hostSocketId: hostId,
+            friendlyFire: this.friendlyFire
         });
     }
 
@@ -308,6 +316,7 @@ export class App {
             this.scene.phase = data.phase === "playing" ? "playing" : "lobby";
             this.scene.playersCollection.updatePlayers(data.players || []);
             if (data.spectators) this.scene.spectators = data.spectators;
+            this.friendlyFire = !!data.friendlyFire;
             this.notifyLobby(
                 this.scene.phase,
                 data.players || [],
@@ -326,6 +335,7 @@ export class App {
         try {
             const { data: backendScene } = await axios.get(`${this.backendUrl}${this.apiBasePath}/api/rooms/${roomId}/scene`);
             this.weaponsConfig = backendScene?.configs?.weapons;
+            this.friendlyFire = !!backendScene?.friendlyFire;
 
             this.scene = new Scene(this, backendScene);
             this.socket?.on("gameOver", (data:{ reason?:string }) => {
@@ -339,10 +349,12 @@ export class App {
                 phase?:"lobby" | "playing",
                 players?:BackendPlayer[],
                 hostSocketId?:string | null,
-                canStart?:boolean
+                canStart?:boolean,
+                friendlyFire?:boolean
             }) => {
                 const phase = data.phase || "lobby";
                 if (this.scene) this.scene.phase = phase;
+                this.friendlyFire = !!data.friendlyFire;
                 this.notifyLobby(
                     phase,
                     data.players || [],
@@ -451,6 +463,7 @@ export class App {
 
     private gameLoop(ticker:PIXI.Ticker) {
         this.publishRoster();
+        this.scene?.playersCollection.getPlayers().forEach(p => p.updateStunFx());
         // HUD/баннер живут даже без Control (смерть / пауза)
         this.hud?.update(ticker.deltaMS);
 
@@ -464,7 +477,9 @@ export class App {
 
         const player = this.scene.mePlayer;
         const deltaSec = ticker.deltaMS / 1000;
-        const move = this.control.moveVector();
+        // Оглушён союзником: стоит и смотрит в одну сторону, но стрелять может
+        const stunned = player.isStunned();
+        const move = stunned ? { x: 0, y: 0 } : this.control.moveVector();
         const dx = move.x;
         const dy = move.y;
 
@@ -481,7 +496,9 @@ export class App {
 
         const mouseCoords = this.control.getMouseCoords();
         let isRotationChanged = false;
-        if (this.control.isTouch) {
+        if (stunned) {
+            // поворот заблокирован
+        } else if (this.control.isTouch) {
             const aim = this.control.aimAngle;
             if (aim !== null) {
                 isRotationChanged = player.setRotation(aim);

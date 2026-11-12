@@ -116,6 +116,10 @@ export class AppSocketServer {
             roomScene.startGameByHost(socket.id);
         });
 
+        socket.on("setFriendlyFire", (params:{ enabled?:boolean } = {}) => {
+            roomScene.setFriendlyFire(socket.id, params?.enabled === true);
+        });
+
         socket.on("togglePause", () => {
             if (!roomScene.isLobby()) {
                 roomScene.togglePause();
@@ -199,6 +203,8 @@ export class AppSocketServer {
 
             roomScene.missilesCollection.createMissile({
                 ...params,
+                // team от клиента не берём: иначе пуля игрока бьёт игроков как вражеская
+                team: "player",
                 weaponType: player.weapon.id,
                 rotation,
                 ownerId: socketId,

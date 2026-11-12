@@ -11,6 +11,7 @@ import { Players } from "./Players";
 import { Pickups } from "./Pickups";
 import { WaveDirector } from "./WaveDirector";
 import { BaseEnemy } from "./Enemies/BaseEnemy";
+import type { Player } from "./Players/Player";
 import { clearInterval } from "timers";
 import { WEAPONS } from "../configs/Weapons";
 import { PLAYER_CONFIG } from "../configs/Players";
@@ -36,6 +37,8 @@ export class Scene extends EventEmitter {
     private phase:ScenePhase = "lobby";
     private hostSocketId:string | null = null;
     private paused = false;
+    /** Огонь по своим: хост включает в лобби, держится до закрытия комнаты */
+    private friendlyFire = false;
     private spectators:{ socketId:string, name:string }[] = [];
     private spectatorN = 0;
 
@@ -180,11 +183,21 @@ export class Scene extends EventEmitter {
         return this.playersCollection.areAllReady();
     }
 
+    setFriendlyFire(socketId:string, enabled:boolean) {
+        if (this.phase !== "lobby" || socketId !== this.hostSocketId) {
+            return false;
+        }
+        this.friendlyFire = enabled;
+        this.emitLobbyState();
+        return true;
+    }
+
     emitLobbyState() {
         this.emit("lobbyUpdated", {
             phase: this.phase,
             hostSocketId: this.hostSocketId,
             canStart: this.canHostStart(),
+            friendlyFire: this.friendlyFire,
             players: this.playersCollection.getPlayersJSON()
         });
     }
@@ -325,6 +338,7 @@ export class Scene extends EventEmitter {
             phase: this.phase,
             hostSocketId: this.hostSocketId,
             canStart: this.canHostStart(),
+            friendlyFire: this.friendlyFire,
             paused: this.paused,
             wave: this.waveDirector.getDisplayWave(),
             waveAnnouncing: this.waveDirector.isAnnouncing(),
@@ -420,6 +434,16 @@ export class Scene extends EventEmitter {
                 }
             }
 
+            // Огонь по своим: пуля застревает в союзнике, если он ближе врага. Урона нет, только стоп.
+            if (this.friendlyFire) {
+                const ally = this.findAllyHit(missile.ownerId, previousPos, currentMissilePos, minDistanceSq);
+                if (ally) {
+                    ally.stun(PLAYER_CONFIG.friendlyFireStunMs);
+                    this.missilesCollection.removeMissileById(missile.id);
+                    return;
+                }
+            }
+
             if (closestHitEnemy) {
                 const owner = this.playersCollection.getPlayerById(missile.ownerId);
                 let damage = missile.damage;
@@ -459,6 +483,36 @@ export class Scene extends EventEmitter {
                 };
             }
         });
+    }
+
+    /** Ближайший к началу отрезка живой игрок, кроме стрелка, если он ближе maxDistSq. */
+    private findAllyHit(
+        ownerId:string,
+        from:{ x:number, y:number },
+        to:{ x:number, y:number },
+        maxDistSq:number
+    ):Player | null {
+        let hit:Player | null = null;
+        let best = maxDistSq;
+        for (const player of this.playersCollection.getLivePlayers()) {
+            if (player.socketId === ownerId) {
+                continue;
+            }
+            const isHit = checkLineCircleCollision(from, to, {
+                x: player.pageX,
+                y: player.pageY,
+                radius: player.radius
+            });
+            if (!isHit) {
+                continue;
+            }
+            const distSq = Math.pow(player.pageX - from.x, 2) + Math.pow(player.pageY - from.y, 2);
+            if (distSq < best) {
+                best = distSq;
+                hit = player;
+            }
+        }
+        return hit;
     }
 
     /** Пули врагов → игроки */

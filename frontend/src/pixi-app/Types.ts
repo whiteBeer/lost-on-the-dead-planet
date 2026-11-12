@@ -54,6 +54,8 @@ export interface BackendPlayer {
     level?:number;
     perks?:string[];
     speed?:number;
+    /** Сколько ещё стоит после попадания союзника, мс */
+    stunnedMs?:number;
     weapon:BackendWeaponState;
     perkOffer?:BackendPerkOffer[];
 }

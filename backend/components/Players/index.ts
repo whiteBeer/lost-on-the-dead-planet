@@ -70,6 +70,9 @@ export class Players {
         const index = this.players.findIndex(p => p.socketId === socketId);
         if (index !== -1) {
             const player = this.players[index];
+            if (player.isStunned()) {
+                return -1;
+            }
             // Клиент — источник истины по позиции; сервер только держит в границах арены.
             const margin = player.radius || 13;
             const edgePadX = this.scene.getEdgePadX();
