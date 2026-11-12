@@ -3,7 +3,7 @@ import { PLAYER_CONFIG } from "../../configs/Players";
 import { STARTING_WEAPON } from "../../configs/Weapons";
 import {
     BASE_STATS,
-    PlayerStats,
+    AdditionalStats,
     computeStats,
     getPerk,
     rollPerkOffer,
@@ -31,12 +31,10 @@ export class Player {
     public exp = 0;
     public level = 1;
     public perks:string[] = [];
-    public stats:PlayerStats = { ...BASE_STATS };
+    public additionalStats:AdditionalStats = { ...BASE_STATS };
     public perkOffer:Perk[] = [];
 
     private scene:Scene | null = null;
-    private regenAcc = 0;
-    private lastStillAt = Date.now();
     private spawnProtectedUntil = 0;
     /** Доля замедления от укусов, 0…0.5 */
     private biteSlow = 0;
@@ -62,7 +60,7 @@ export class Player {
     }
 
     public getSpeed() {
-        return PLAYER_CONFIG.baseSpeed * this.stats.speed * (1 - this.biteSlow);
+        return PLAYER_CONFIG.baseSpeed * (1 + this.additionalStats.speed) * (1 - this.biteSlow);
     }
 
     /** Укус в ближнем бою. Попавший укус замедляет на 12%, но не больше чем на 50%. */
@@ -91,13 +89,13 @@ export class Player {
         if (this.isDead) return false;
         if (this.isSpawnProtected()) return false;
 
-        if (Math.random() < this.stats.dodge) {
+        if (Math.random() < this.additionalStats.dodge) {
             return false;
         }
 
         let dmg = amount;
-        dmg *= Math.max(0, 1 - this.stats.armor);
-        dmg *= Math.max(0, 1 - this.stats.monsterArmor);
+        dmg *= Math.max(0, 1 - this.additionalStats.armor);
+        dmg *= Math.max(0, 1 - this.additionalStats.monsterArmor);
         dmg = Math.max(1, Math.round(dmg));
 
         this.health -= dmg;
@@ -112,14 +110,11 @@ export class Player {
     public onKill(baseExp:number) {
         if (this.isDead) return;
 
-        if (this.stats.onKillHeal > 0) {
-            this.heal(this.stats.onKillHeal);
-        }
-        if (this.stats.reloadOnKill > 0 && Math.random() < this.stats.reloadOnKill) {
+        if (this.additionalStats.reloadOnKill > 0 && Math.random() < this.additionalStats.reloadOnKill) {
             this.weapon.refill();
         }
 
-        const gained = Math.round(baseExp * this.stats.exp);
+        const gained = Math.round(baseExp * this.additionalStats.exp);
         this.exp += gained;
         this.checkLevelUp();
         this.emitStats();
@@ -132,18 +127,6 @@ export class Player {
 
     public tick(deltaSec:number) {
         if (this.isDead) return;
-
-        const regen = Math.min(3, this.stats.regen);
-        // stillRegen: считаем «стоит», если давно не обновлял позицию — упрощённо всегда добавляем маленький вклад не используем
-        if (regen > 0) {
-            this.regenAcc += regen * deltaSec;
-            if (this.regenAcc >= 1) {
-                const heal = Math.floor(this.regenAcc);
-                this.regenAcc -= heal;
-                this.heal(heal);
-                this.emitStats();
-            }
-        }
 
         if (this.biteSlow > 0) {
             this.biteSlow = Math.max(0, this.biteSlow - 0.12 * deltaSec);
@@ -211,16 +194,13 @@ export class Player {
 
     public equipWeapon(weaponId:string) {
         this.weapon.switchTo(weaponId);
-        this.weapon.setStats(this.stats);
+        this.weapon.setAdditionalStats(this.additionalStats);
     }
 
     public refreshStats() {
-        this.stats = computeStats(this.perks);
-        const levelMul = 1 + Math.max(0, this.level - 1) * 0.01;
-        this.stats.damage *= levelMul;
-        this.stats.maxHp *= levelMul;
-        this.maxHealth = Math.round(this.stats.maxHp);
-        this.weapon.setStats(this.stats);
+        this.additionalStats = computeStats(this.perks);
+        this.maxHealth = Math.round(PLAYER_CONFIG.defaultHealth + this.additionalStats.maxHp);
+        this.weapon.setAdditionalStats(this.additionalStats);
         if (this.health > this.maxHealth) {
             this.health = this.maxHealth;
         }
@@ -254,7 +234,7 @@ export class Player {
         this.isReady = false;
         this.grantSpawnProtection();
         this.weapon.switchTo(STARTING_WEAPON);
-        this.weapon.setStats(this.stats);
+        this.weapon.setAdditionalStats(this.additionalStats);
         this.emitStats();
     }
 

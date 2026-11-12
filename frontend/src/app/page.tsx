@@ -81,9 +81,6 @@ function Main() {
                         <li><b>Ctrl+1 2 3</b> перк · <b>Esc</b> пауза</li>
                     </ul>
                 )}
-                <p className={styles.note}>
-                    Волны нарастают сами. Зелёные слабее, жёлтые быстрее, красные толще.
-                </p>
             </form>
         </main>
     );

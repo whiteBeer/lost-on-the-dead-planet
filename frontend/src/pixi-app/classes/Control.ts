@@ -50,6 +50,10 @@ export class Control {
     private initListeners() {
         this._handlers.keydown = (e:KeyboardEvent) => {
             this.keys["is" + e.code] = true;
+            if (e.code === "KeyD" && e.ctrlKey && e.altKey && !e.repeat) {
+                e.preventDefault();
+                this.app.scene?.enemiesCollection.toggleDebugHitboxes();
+            }
             if (e.code === "Tab" || e.code === "Space") {
                 e.preventDefault();
             }

@@ -185,24 +185,16 @@ export class AppSocketServer {
             return;
         }
 
-        if (player.stats.selfDamage > 0) {
-            player.takeDamage(player.stats.selfDamage);
-        }
-
         const config = WEAPONS[player.weapon.id];
         const pellets = config?.pellets || 1;
         const cone = config?.pelletCone || 0;
-        const extra = player.weapon.getExtraBullets();
-        const totalBullets = pellets + extra;
         const baseRotation = player.weapon.applySpread(params.rotation);
 
-        for (let i = 0; i < totalBullets; i++) {
+        for (let i = 0; i < pellets; i++) {
             let rotation = baseRotation;
             if (pellets > 1) {
-                const t = totalBullets === 1 ? 0 : (i / (totalBullets - 1)) - 0.5;
+                const t = (i / (pellets - 1)) - 0.5;
                 rotation = baseRotation + t * cone;
-            } else if (extra > 0 && i > 0) {
-                rotation = baseRotation + (Math.random() - 0.5) * 0.15;
             }
 
             roomScene.missilesCollection.createMissile({

@@ -13,6 +13,7 @@ export class EnemiesCollection {
     app:App;
     scene:Scene;
     enemies:Enemy[] = [];
+    private debugHitboxes = false;
 
     constructor(app:App, scene:Scene, backendScene:BackendScene) {
         this.app = app;
@@ -50,6 +51,7 @@ export class EnemiesCollection {
             return;
         }
         const enemy = new Enemy(this.app, enemyJson, serverCurrentDateTime);
+        enemy.setDebugVisible(this.debugHitboxes);
         this.enemies.push(enemy);
         this.scene.addToScene(enemy.getPixiObj());
     }
@@ -72,6 +74,15 @@ export class EnemiesCollection {
         backendScene.enemies.forEach((el:BackendEnemy) => {
             this.addEnemy(el, backendScene.serverCurrentDateTime);
         });
+    }
+
+    setDebugHitboxes(on:boolean) {
+        this.debugHitboxes = on;
+        this.enemies.forEach(enemy => enemy.setDebugVisible(on));
+    }
+
+    toggleDebugHitboxes() {
+        this.setDebugHitboxes(!this.debugHitboxes);
     }
 
     getEnemies() {

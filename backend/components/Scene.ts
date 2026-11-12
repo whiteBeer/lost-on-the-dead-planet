@@ -425,13 +425,10 @@ export class Scene extends EventEmitter {
                 let damage = missile.damage;
                 if (owner) {
                     // Крит / miss из перков
-                    if (Math.random() < owner.stats.miss) {
+                    if (Math.random() < owner.additionalStats.miss) {
                         damage = 0;
-                    } else if (Math.random() < owner.stats.crit) {
-                        damage *= owner.stats.critDamage;
-                    }
-                    if (owner.stats.lifesteal > 0 && damage > 0) {
-                        owner.heal(damage * owner.stats.lifesteal);
+                    } else if (Math.random() < owner.additionalStats.crit) {
+                        damage *= owner.additionalStats.critDamage;
                     }
                 }
 

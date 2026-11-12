@@ -1,5 +1,5 @@
 import { WEAPONS, WeaponConfig } from "../../configs/Weapons";
-import { PlayerStats } from "../../configs/Perks";
+import { AdditionalStats } from "../../configs/Perks";
 
 export class Weapon {
     public id:string;
@@ -12,7 +12,7 @@ export class Weapon {
     private lastShotTime = 0;
     private nextShotAvailableTime = 0;
     private reloadTimer:NodeJS.Timeout | null = null;
-    private stats:PlayerStats | null = null;
+    private additionalStats:AdditionalStats | null = null;
 
     constructor(weaponId:string) {
         this.id = weaponId;
@@ -25,48 +25,43 @@ export class Weapon {
         this.ammo = this.getClipSize();
     }
 
-    public setStats(stats:PlayerStats | null) {
-        this.stats = stats;
+    public setAdditionalStats(additionalStats:AdditionalStats | null) {
+        this.additionalStats = additionalStats;
     }
 
     public getClipSize() {
-        const mul = this.stats?.clip ?? 1;
+        const mul = this.additionalStats?.clip ?? 1;
         return Math.max(1, Math.round(this.config.clipSize * mul));
     }
 
     public getFireRateMs() {
-        const mul = this.stats?.fireRate ?? 1;
-        return Math.max(30, this.config.fireRate / mul);
+        const bonus = this.additionalStats?.fireRate ?? 0;
+        return Math.max(30, this.config.fireRate * Math.max(0.05, 1 - bonus));
     }
 
     public getReloadTime() {
-        const mul = this.stats?.reload ?? 1;
+        const mul = this.additionalStats?.reload ?? 1;
         return Math.max(0.2, this.config.reloadTime / mul);
     }
 
     public getDamage() {
-        const mul = (this.stats?.damage ?? 1) * (this.stats?.monsterDamage ?? 1);
-        return this.config.damage * mul;
+        return this.config.damage * (1 + (this.additionalStats?.damage ?? 0));
     }
 
     public getPierce() {
-        return (this.config.pierce ?? 0) + Math.floor(this.stats?.pierce ?? 0);
-    }
-
-    public getExtraBullets() {
-        return Math.max(0, Math.floor(this.stats?.extraBullets ?? 0));
+        return (this.config.pierce ?? 0) + Math.floor(this.additionalStats?.pierce ?? 0);
     }
 
     public getSpreadMul() {
-        return this.stats?.spread ?? 1;
+        return this.additionalStats?.spread ?? 1;
     }
 
     public getBulletSpeed() {
-        return this.config.speedInSecond * (this.stats?.bulletSpeed ?? 1);
+        return this.config.speedInSecond * (this.additionalStats?.bulletSpeed ?? 1);
     }
 
     public getRange() {
-        return this.config.range * (this.stats?.range ?? 1);
+        return this.config.range * (this.additionalStats?.range ?? 1);
     }
 
     public tryShoot():boolean {
@@ -85,7 +80,7 @@ export class Weapon {
         this.nextShotAvailableTime = now + this.getFireRateMs();
 
         // Обойма конечная; запас бесконечный (перезарядка всегда наполняет магазин)
-        const refund = this.stats?.ammoRefund ?? 0;
+        const refund = this.additionalStats?.ammoRefund ?? 0;
         if (Math.random() >= refund) {
             this.ammo = Math.max(0, this.ammo - 1);
         }

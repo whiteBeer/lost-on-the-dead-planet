@@ -1,17 +1,18 @@
 /**
- * Перки. Все модификаторы складываются со значениями из BASE_STATS.
+ * Перки. Модификаторы складываются в additionalStats — это прибавки, не итог.
+ * Процентные прибавки: итог = база × (1 + процент). Здоровье: итог = 100 + число.
  *
  * Карточки на клиенте намеренно не показывают, хороший перк или нет:
  * у части перков заманчивое название и неприятное условие. Игрок должен читать описание.
  */
-export interface PlayerStats {
-    maxHp:number;
+export interface AdditionalStats {
+    maxHp:number;          // Плоская прибавка к здоровью
     regen:number;          // Здоровья в секунду
-    speed:number;          // Множитель скорости
-    damage:number;         // Множитель всего урона
-    monsterDamage:number;  // Множитель урона по монстрам
+    speed:number;          // Прибавка к скорости бега, доля от базы
+    damage:number;         // Прибавка к урону, доля от урона оружия
+    monsterDamage:number;  // Тоже урон: при подсчёте складывается в damage
     playerDamage:number;   // Множитель урона по игрокам
-    fireRate:number;       // Множитель скорострельности
+    fireRate:number;       // Прибавка к скорости атаки: интервал × (1 − fireRate)
     reload:number;         // Множитель скорости перезарядки
     clip:number;           // Множитель магазина
     spread:number;         // Множитель разброса
@@ -53,9 +54,9 @@ export interface PlayerStats {
     lastBullet:number;     // Множитель урона последнего патрона в магазине
 }
 
-export const BASE_STATS:PlayerStats = {
-    maxHp: 100, regen: 0, speed: 1, damage: 1, monsterDamage: 1, playerDamage: 1,
-    fireRate: 1, reload: 1, clip: 1, spread: 1, bulletSpeed: 1, range: 1,
+export const BASE_STATS:AdditionalStats = {
+    maxHp: 0, regen: 0, speed: 0, damage: 0, monsterDamage: 0, playerDamage: 1,
+    fireRate: 0, reload: 1, clip: 1, spread: 1, bulletSpeed: 1, range: 1,
     armor: 0, monsterArmor: 0, playerArmor: 0, dodge: 0, lifesteal: 0,
     crit: 0, critDamage: 2, thorns: 0, pierce: 0, ricochet: 0, extraBullets: 0,
     exp: 1, drop: 1, onKillHeal: 0, ammoRefund: 0, miss: 0, selfDamage: 0,
@@ -66,15 +67,11 @@ export const BASE_STATS:PlayerStats = {
 };
 
 // Ограничения, чтобы сочетания перков не ломали игру
-export const STAT_LIMITS:Partial<Record<keyof PlayerStats, [number, number]>> = {
-    maxHp: [20, 600],
-    regen: [-20, 3],
-    stillRegen: [0, 3],
-    speed: [0.5, 1.9],
-    damage: [0.25, 5],
-    monsterDamage: [0.25, 5],
-    playerDamage: [0.25, 4],
-    fireRate: [0.35, 3],
+export const STAT_LIMITS:Partial<Record<keyof AdditionalStats, [number, number]>> = {
+    maxHp: [-80, 500],
+    speed: [-0.5, 0.9],
+    damage: [-0.75, 4],
+    fireRate: [-1, 0.8],
     reload: [0.35, 4],
     clip: [0.25, 4],
     spread: [0.1, 4],
@@ -82,20 +79,12 @@ export const STAT_LIMITS:Partial<Record<keyof PlayerStats, [number, number]>> = 
     range: [0.4, 2.5],
     armor: [-1, 0.7],
     monsterArmor: [-1, 0.75],
-    playerArmor: [-1, 0.7],
     dodge: [0, 0.3],
-    lifesteal: [0, 0.4],
     crit: [0, 0.75],
-    thorns: [0, 1],
     pierce: [0, 6],
-    ricochet: [0, 4],
-    extraBullets: [0, 4],
     exp: [0.3, 4],
-    drop: [0.2, 5],
     miss: [0, 0.6],
-    ammoRefund: [0, 0.7],
-    aggro: [0.35, 3],
-    deathExpKeep: [0, 0.5]
+    ammoRefund: [0, 0.7]
 };
 
 export type PerkRarity = "common" | "rare" | "epic";
@@ -106,7 +95,7 @@ export interface Perk {
     description:string;
     rarity:PerkRarity;
     category:"attack" | "defense" | "mobility" | "weapon" | "fortune" | "strange";
-    mods:Partial<PlayerStats>;
+    mods:Partial<AdditionalStats>;
     icon?:string;
     positive?:boolean;
 }
@@ -114,7 +103,7 @@ export interface Perk {
 type Category = Perk["category"];
 
 interface StatText {
-    stat:keyof PlayerStats;
+    stat:keyof AdditionalStats;
     label:string;
     // Как показывать значение: проценты или единицы
     unit:"%" | "";
@@ -165,7 +154,7 @@ function asFireRate(entry:StatText, value:number):StatText {
     return entry;
 }
 
-function putMod(mods:Partial<PlayerStats>, entry:StatText, value:number) {
+function putMod(mods:Partial<AdditionalStats>, entry:StatText, value:number) {
     const stat = asFireRate(entry, value).stat;
     mods[stat] = (mods[stat] || 0) + value;
 }
@@ -177,7 +166,7 @@ function generatePerks():Perk[] {
     for (const entry of STATS) {
         entry.gain.forEach((value, tier) => {
             const effect = asFireRate(entry, value);
-            const mods:Partial<PlayerStats> = {};
+            const mods:Partial<AdditionalStats> = {};
             putMod(mods, entry, value);
             perks.push({
                 id: `pure_${entry.stat}_${tier + 1}`,
@@ -205,7 +194,7 @@ function generatePerks():Perk[] {
             if (gain.stat === "bulletSpeed" && loss.stat === "fireRate") {
                 continue;
             }
-            const mods:Partial<PlayerStats> = {};
+            const mods:Partial<AdditionalStats> = {};
             putMod(mods, gain, gain.tradeGain);
             putMod(mods, loss, loss.tradeLoss);
             perks.push({
@@ -357,22 +346,22 @@ export function rollPerkOffer(taken:Set<string>, level:number, count = 3):Perk[]
     return offer;
 }
 
-export function computeStats(perkIds:Iterable<string>):PlayerStats {
+export function computeStats(perkIds:Iterable<string>):AdditionalStats {
     const stats = { ...BASE_STATS };
     for (const id of perkIds) {
         const perk = perkById.get(id);
         if (!perk) {
             continue;
         }
-        for (const key of Object.keys(perk.mods) as (keyof PlayerStats)[]) {
+        for (const key of Object.keys(perk.mods) as (keyof AdditionalStats)[]) {
             stats[key] += perk.mods[key] || 0;
         }
     }
-    for (const key of Object.keys(STAT_LIMITS) as (keyof PlayerStats)[]) {
+    stats.damage += stats.monsterDamage;
+    stats.monsterDamage = 0;
+    for (const key of Object.keys(STAT_LIMITS) as (keyof AdditionalStats)[]) {
         const [min, max] = STAT_LIMITS[key]!;
         stats[key] = Math.max(min, Math.min(max, stats[key]));
     }
-    stats.killBounty = Math.max(0, stats.killBounty);
-    stats.teamShare = Math.max(0, stats.teamShare);
     return stats;
 }

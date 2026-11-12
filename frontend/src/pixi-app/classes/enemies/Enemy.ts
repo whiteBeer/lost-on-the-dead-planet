@@ -18,6 +18,9 @@ export class Enemy {
 
     private health = 0;
     private maxHealth = 0;
+    private bulletHit = { width: 0, height: 0 };
+    private playerTouch = { width: 0, height: 0 };
+    private hitGfx:PIXI.Graphics | null = null;
 
     private tickerFunc:(ticker:PIXI.Ticker) => void;
 
@@ -29,6 +32,7 @@ export class Enemy {
         this.maxHealth = enemyJson.maxHealth;
 
         this.pixiObj = this.initGraphics(enemyJson);
+        this.setHitboxes(enemyJson);
         this.update(enemyJson, serverCurrentDateTime);
         this.tickerFunc = this.moveEnemy.bind(this);
         this.app.addTicker(this.tickerFunc);
@@ -66,7 +70,19 @@ export class Enemy {
         this.dy = dirSin * (enemyJson.speedInSecond / 60);
 
         this.syncAnimSpeed();
+        this.setHitboxes(enemyJson);
         this.updateVisuals();
+    }
+
+    setDebugVisible(on:boolean) {
+        if (on && !this.hitGfx) {
+            this.hitGfx = new PIXI.Graphics();
+            this.pixiObj.addChild(this.hitGfx);
+            this.drawHitboxes();
+        }
+        if (this.hitGfx) {
+            this.hitGfx.visible = on;
+        }
     }
 
     clear() {
@@ -126,6 +142,27 @@ export class Enemy {
         }
 
         return container;
+    }
+
+    private setHitboxes(json:BackendEnemy) {
+        this.bulletHit = json.bulletHit || { width: json.width, height: json.height };
+        this.playerTouch = json.playerTouch || this.bulletHit;
+        if (this.hitGfx?.visible) {
+            this.drawHitboxes();
+        }
+    }
+
+    private drawHitboxes() {
+        if (!this.hitGfx) return;
+        const bullet = this.bulletHit;
+        const touch = this.playerTouch;
+        this.hitGfx.clear();
+        this.hitGfx
+            .rect(-bullet.width / 2, -bullet.height / 2, bullet.width, bullet.height)
+            .stroke({ color: 0xffffff, width: 1, alpha: 0.95 });
+        this.hitGfx
+            .rect(-touch.width / 2, -touch.height / 2, touch.width, touch.height)
+            .stroke({ color: 0xffffff, width: 2, alpha: 0.95 });
     }
 
     private syncAnimSpeed() {

@@ -35,7 +35,7 @@ export const WAVES_CONFIG = {
 
 export function expForLevel(level:number):number {
     const n = Math.max(1, level);
-    return (40 + n * 20) * 2;
+    return 100 + n * n * 10;
 }
 
 export function waveHpMul(wave:number):number {
