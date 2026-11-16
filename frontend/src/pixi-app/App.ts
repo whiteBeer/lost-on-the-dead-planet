@@ -120,7 +120,7 @@ export class App {
 
         try {
             await axios.put(this.backendUrl + this.apiBasePath + "/api/rooms/" + roomId);
-        } catch (error) {
+        } catch {
             console.log("Room was created early. Join room.");
         }
         if (this.destroyed) {

@@ -7,7 +7,7 @@ export class EmitManager {
         this.io = io;
     }
 
-    emit(roomId:string, eventName:string, ...data:any[]):void {
+    emit(roomId:string, eventName:string, ...data:object[]):void {
         if (!this.io) {
             console.warn("Socket.io server not initialized. Call initialize first.");
             return;
@@ -16,15 +16,16 @@ export class EmitManager {
         room.emit.apply(room, [eventName, ...data]);
     }
 
-    emitVolatile(roomId:string, eventName:string, data:object):void {
+    emitVolatile(roomId:string, eventName:string, ...data:object[]):void {
         if (!this.io) {
             console.warn("Socket.io server not initialized. Call initialize first.");
             return;
         }
-        this.io.to(roomId).volatile.emit(eventName, data);
+        const room = this.io.to(roomId).volatile;
+        room.emit.apply(room, [eventName, ...data]);
     }
 
-    emitSceneChanged(roomId:string, sceneData:any):void {
+    emitSceneChanged(roomId:string, sceneData:object):void {
         this.emit(roomId, "sceneChanged", sceneData);
     }
 }

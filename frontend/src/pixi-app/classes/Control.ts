@@ -13,6 +13,10 @@ const STICK_RADIUS = 60;
 const MOVE_DEADZONE = 0.15;
 const AIM_DEADZONE = 14;
 
+function asListener<E extends Event>(handler:(event:E) => void):EventListener {
+    return handler as EventListener;
+}
+
 export class Control {
 
     private app:App;
@@ -23,7 +27,7 @@ export class Control {
     private _mouseMovement = { x: 0, y: 0 };
     private _scrollDelta = 0;
 
-    private _handlers:{ [key:string]:(e:any) => void } = {};
+    private _handlers:{ [key:string]:EventListener } = {};
     private touchTarget:EventTarget | null = null;
 
     private isMousePressed = false;
@@ -48,7 +52,7 @@ export class Control {
     }
 
     private initListeners() {
-        this._handlers.keydown = (e:KeyboardEvent) => {
+        this._handlers.keydown = asListener((e:KeyboardEvent) => {
             this.keys["is" + e.code] = true;
             if (e.code === "KeyD" && e.ctrlKey && e.altKey && !e.repeat) {
                 e.preventDefault();
@@ -57,33 +61,33 @@ export class Control {
             if (e.code === "Tab" || e.code === "Space") {
                 e.preventDefault();
             }
-        };
-        this._handlers.keyup = (e:KeyboardEvent) => {
+        });
+        this._handlers.keyup = asListener((e:KeyboardEvent) => {
             this.keys["is" + e.code] = false;
-        };
-        this._handlers.mousemove = (e:MouseEvent) => {
+        });
+        this._handlers.mousemove = asListener((e:MouseEvent) => {
             this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
             this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
             this._mouseMovement.x += e.movementX;
             this._mouseMovement.y += e.movementY;
-        };
-        this._handlers.mousedown = (e:MouseEvent) => {
+        });
+        this._handlers.mousedown = asListener((e:MouseEvent) => {
             if (e.button === 0) {
                 this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
                 this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
                 this.isMousePressed = true;
             }
-        };
-        this._handlers.mouseup = (e:MouseEvent) => {
+        });
+        this._handlers.mouseup = asListener((e:MouseEvent) => {
             if (e.button === 0) {
                 this.mouseCoords.pageX = e.pageX - this.getCanvasOffsetLeft();
                 this.mouseCoords.pageY = e.pageY - this.getCanvasOffsetTop();
                 this.isMousePressed = false;
             }
-        };
-        this._handlers.wheel = (e:WheelEvent) => {
+        });
+        this._handlers.wheel = asListener((e:WheelEvent) => {
             this._scrollDelta += Math.sign(e.deltaY);
-        };
+        });
         this._handlers.contextmenu = (e:Event) => {
             e.preventDefault();
             this.clearKeys();
@@ -96,7 +100,7 @@ export class Control {
         };
 
         // Левая половина — бег, правая — прицел и стрельба. Стики появляются там, где коснулись
-        this._handlers.touchstart = (e:TouchEvent) => {
+        this._handlers.touchstart = asListener((e:TouchEvent) => {
             e.preventDefault();
             for (const touch of Array.from(e.changedTouches)) {
                 const stick:Stick = {
@@ -112,8 +116,8 @@ export class Control {
                     this.aimStick = this.aimStick || stick;
                 }
             }
-        };
-        this._handlers.touchmove = (e:TouchEvent) => {
+        });
+        this._handlers.touchmove = asListener((e:TouchEvent) => {
             e.preventDefault();
             for (const touch of Array.from(e.changedTouches)) {
                 const stick = this.moveStick?.id === touch.identifier ? this.moveStick
@@ -123,8 +127,8 @@ export class Control {
                     stick.y = touch.clientY;
                 }
             }
-        };
-        this._handlers.touchend = (e:TouchEvent) => {
+        });
+        this._handlers.touchend = asListener((e:TouchEvent) => {
             for (const touch of Array.from(e.changedTouches)) {
                 if (this.moveStick?.id === touch.identifier) {
                     this.moveStick = null;
@@ -133,7 +137,7 @@ export class Control {
                     this.aimStick = null;
                 }
             }
-        };
+        });
 
         window.addEventListener("keydown", this._handlers.keydown);
         window.addEventListener("keyup", this._handlers.keyup);

@@ -58,7 +58,7 @@ export class PickupsCollection {
         const container = new PIXI.Container();
         const key = data.kind === "bomb" ? "pickup_bomb"
             : data.kind === "medkit" ? "pickup_medkit"
-            : (data.weaponId ? `weapon_${data.weaponId}` : "");
+                : (data.weaponId ? `weapon_${data.weaponId}` : "");
         const tex = key ? ResourcesLoader.getTexture(key) : null;
         if (tex) {
             const sprite = new PIXI.Sprite(tex);

@@ -23,9 +23,7 @@ export class RoomsManager {
     public removeRoom(roomId:string):void {
         const scene = this.rooms.get(roomId);
         if (scene) {
-            if (typeof (scene as any).destroy === "function") {
-                (scene as any).destroy();
-            }
+            scene.destroy();
 
             this.rooms.delete(roomId);
             console.log(`Room deleted: ${roomId}. Total rooms: ${this.rooms.size}`);

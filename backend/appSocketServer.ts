@@ -1,14 +1,16 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { RoomsManager } from "./classes/RoomsManager";
 import { PlayerJSON } from "./types";
-import { EmitManager } from "./classes/EmitManager";
 import { WEAPONS } from "./configs/Weapons";
+import { Scene } from "./components/Scene";
+import { Player } from "./components/Players/Player";
+import { Players } from "./components/Players";
 
 export class AppSocketServer {
     private io:SocketIOServer;
     private roomsManager:RoomsManager;
 
-    constructor(io:SocketIOServer, roomsManager:RoomsManager, emitManager:EmitManager) {
+    constructor(io:SocketIOServer, roomsManager:RoomsManager) {
         this.io = io;
         this.roomsManager = roomsManager;
         this.setupSocketHandlers();
@@ -27,7 +29,7 @@ export class AppSocketServer {
         });
     }
 
-    private triggerReload(player:any, roomId:string, socketId:string) {
+    private triggerReload(player:Player, roomId:string, socketId:string) {
         const weapon = player.weapon;
 
         const started = weapon.reload((newAmmo:number) => {
@@ -70,7 +72,7 @@ export class AppSocketServer {
     }
 
     /** Тот же таб переподключился, пока старый сокет ещё жив — не заводим второго игрока. */
-    private retargetPlayer(socket:Socket, roomScene:any, player:any):void {
+    private retargetPlayer(socket:Socket, roomScene:Scene, player:Player):void {
         const oldId = player.socketId;
         if (!oldId || oldId === socket.id) return;
         player.socketId = socket.id;
@@ -78,7 +80,7 @@ export class AppSocketServer {
         this.io.sockets.sockets.get(oldId)?.disconnect(true);
     }
 
-    private handleGameConnection(socket:Socket, roomId:string, roomScene:any):void {
+    private handleGameConnection(socket:Socket, roomId:string, roomScene:Scene):void {
         socket.join(roomId);
         this.watchHeartbeat(socket);
 
@@ -136,7 +138,7 @@ export class AppSocketServer {
             }
         });
 
-        socket.on("missileCreate", (params:any) => {
+        socket.on("missileCreate", (params:{ rotation:number, startX:number, startY:number }) => {
             if (roomScene.isLobby() || roomScene.isPaused()) return;
             this.handleMissileCreate(roomScene, params, socket.id);
         });
@@ -163,7 +165,7 @@ export class AppSocketServer {
         roomScene.emitLobbyState();
     }
 
-    private handlePlayerMoved(socket:Socket, roomScene:any, params:PlayerJSON):void {
+    private handlePlayerMoved(socket:Socket, roomScene:Scene, params:PlayerJSON):void {
         const scenePlayers = roomScene.playersCollection;
         const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
         if (currentPlayerIndex === -1) {
@@ -181,7 +183,11 @@ export class AppSocketServer {
         }
     }
 
-    private handleMissileCreate(roomScene:any, params:any, socketId:string):void {
+    private handleMissileCreate(
+        roomScene:Scene,
+        params:{ rotation:number, startX:number, startY:number },
+        socketId:string
+    ):void {
         const player = roomScene.playersCollection.getPlayerById(socketId);
         if (!player || player.isDead) {
             return;
@@ -229,7 +235,7 @@ export class AppSocketServer {
         }
     }
 
-    private handlePlayerDisconnect(socketId:string, roomId:string, scenePlayers:any):void {
+    private handlePlayerDisconnect(socketId:string, roomId:string, scenePlayers:Players):void {
         if (!scenePlayers.deletePlayer(socketId)) return;
         this.emitToRoom(roomId, "playersDisconnected", { socketId });
         console.log("Disconnected ", socketId);
@@ -246,7 +252,7 @@ export class AppSocketServer {
         }
     }
 
-    public emitToRoom(roomId:string, eventName:string, data:any):void {
+    public emitToRoom(roomId:string, eventName:string, data:object):void {
         this.io.to(roomId).emit(eventName, data);
     }
 }

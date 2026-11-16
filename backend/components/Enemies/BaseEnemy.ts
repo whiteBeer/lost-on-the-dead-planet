@@ -45,7 +45,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
     spriteKey = "";
     exp = 0;
 
-    protected serverProps:any;
+    protected serverProps:object = {};
 
     constructor(scene:Scene, params:EnemyParams) {
         this.scene = scene;
@@ -154,6 +154,11 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
             savedSpeedInSecond,
             ...json
         } = this;
+        void scene;
+        void serverProps;
+        void moveInterval;
+        void movementPaused;
+        void savedSpeedInSecond;
         return json;
     }
 }

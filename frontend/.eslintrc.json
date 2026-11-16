@@ -22,17 +22,7 @@
       "named": "never",
       "asyncArrow": "always"
     }],
-    "@typescript-eslint/type-annotation-spacing": ["error", {
-      "before": false,
-      "after": false,
-      "overrides": {
-        "arrow": {
-          "before": true,
-          "after": true
-        }
-      }
-    }],
     "object-curly-spacing": ["error", "always"]
   },
-  "ignorePatterns": ["webpack.config.js"]
+  "ignorePatterns": ["webpack.config.js", ".next", "next-env.d.ts"]
 }

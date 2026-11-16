@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import { App } from "../App";
 import Player from "./players/Player";
-import { BackendPerkOffer } from "../Types";
+import { BackendPerkOffer, BackendPlayer } from "../Types";
 
 interface WaveBanner {
     root:PIXI.Container;
@@ -95,7 +95,7 @@ export class Hud {
             }
         });
 
-        this.app.socket?.on("playerStats", (data:{ player:any }) => {
+        this.app.socket?.on("playerStats", (data:{ player:BackendPlayer }) => {
             if (data.player?.socketId === this.app.socket?.id) {
                 this.mePlayer.update(data.player);
                 if (!data.player.perkOffer?.length) {

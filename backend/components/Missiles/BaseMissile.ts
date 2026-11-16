@@ -59,6 +59,10 @@ export class BaseMissile implements MissileJSON {
 
     toJSON() {
         const { scene, previousPos, lifeTimeout, hitEnemyIds, ...json } = this;
+        void scene;
+        void previousPos;
+        void lifeTimeout;
+        void hitEnemyIds;
         return json;
     }
 }

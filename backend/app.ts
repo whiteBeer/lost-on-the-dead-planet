@@ -39,7 +39,7 @@ class Server {
         this.emitManager = new EmitManager(this.io);
 
         this.apiService = new AppApiServer(this.app, this.roomsManager, this.emitManager);
-        this.socketService = new AppSocketServer(this.io, this.roomsManager, this.emitManager);
+        this.socketService = new AppSocketServer(this.io, this.roomsManager);
 
         this.handleGlobalErrors();
     }

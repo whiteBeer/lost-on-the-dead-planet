@@ -207,7 +207,9 @@ export default function RoomClient() {
         })();
 
         return () => {
-            appRef.current && appRef.current.destroy();
+            if (appRef.current) {
+                appRef.current.destroy();
+            }
             appRef.current = null;
         };
     }, []);

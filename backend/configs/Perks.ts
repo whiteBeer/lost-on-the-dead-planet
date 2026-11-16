@@ -360,7 +360,11 @@ export function computeStats(perkIds:Iterable<string>):AdditionalStats {
     stats.damage += stats.monsterDamage;
     stats.monsterDamage = 0;
     for (const key of Object.keys(STAT_LIMITS) as (keyof AdditionalStats)[]) {
-        const [min, max] = STAT_LIMITS[key]!;
+        const limits = STAT_LIMITS[key];
+        if (!limits) {
+            continue;
+        }
+        const [min, max] = limits;
         stats[key] = Math.max(min, Math.min(max, stats[key]));
     }
     return stats;
