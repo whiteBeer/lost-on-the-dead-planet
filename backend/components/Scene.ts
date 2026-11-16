@@ -10,6 +10,7 @@ import { Missiles } from "./Missiles";
 import { Players } from "./Players";
 import { Pickups } from "./Pickups";
 import { WaveDirector } from "./WaveDirector";
+import { WorldBatch } from "../classes/WorldBatch";
 import { BaseEnemy } from "./Enemies/BaseEnemy";
 import { clearInterval } from "timers";
 import { WEAPONS } from "../configs/Weapons";
@@ -17,6 +18,10 @@ import { PLAYER_CONFIG } from "../configs/Players";
 import { SCENE_CONFIG } from "../configs/Scene";
 import { ENEMIES } from "../configs/Enemies";
 import { PERKS } from "../configs/Perks";
+
+// Один flush — 60мс (два тика по 20мс).
+const BATCH_EVERY_TICKS = 3;
+
 interface CachedEnemy {
     original:BaseEnemy;
     x:number;
@@ -28,6 +33,7 @@ export type ScenePhase = "lobby" | "playing";
 export class Scene extends EventEmitter {
 
     private verifyInterval:NodeJS.Timeout | null = null;
+    private batchTick = 0;
     private readonly roomId:string = "";
     private readonly width:number = SCENE_CONFIG.width;
     private readonly height:number = SCENE_CONFIG.height;
@@ -44,6 +50,7 @@ export class Scene extends EventEmitter {
     playersCollection:Players;
     pickupsCollection:Pickups;
     waveDirector:WaveDirector;
+    public readonly worldBatch = new WorldBatch();
 
     constructor(roomId:string) {
         super();
@@ -237,6 +244,11 @@ export class Scene extends EventEmitter {
     }
 
     private update() {
+        this.batchTick += 1;
+        if (this.batchTick >= BATCH_EVERY_TICKS) {
+            this.batchTick = 0;
+            this.worldBatch.flush((eventName, data) => this.emit(eventName, data));
+        }
         if (this.phase !== "playing" || this.paused) {
             return;
         }

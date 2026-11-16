@@ -29,10 +29,8 @@ export class Stalker extends ChaseEnemy {
         }
 
         this.lungeLeft -= 1;
-        this.chaseToward(pos, player.pageX, player.pageY, 0);
         // Во время рывка чуть быстрее
-        this.speedInSecond = this.defaultSpeedInSecond * 1.55;
-        this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
+        this.chaseToward(pos, player.pageX, player.pageY, 0, this.defaultSpeedInSecond * 1.55);
 
         if (this.lungeLeft <= 0) {
             this.freezeLeft = 3 + Math.floor(Math.random() * 5);

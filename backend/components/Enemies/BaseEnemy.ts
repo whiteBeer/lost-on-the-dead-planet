@@ -4,6 +4,7 @@ import { Scene } from "../Scene";
 import { clearInterval } from "timers";
 import { EnemyTier, HitboxRect } from "../../configs/Enemies";
 import { calcTimedPoint } from "../../utils/geometry";
+import { EnemyMovementSnap } from "../../classes/WorldBatch";
 
 export class BaseEnemy implements EnemyJSON, Rectangle {
 
@@ -114,7 +115,7 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         this.savedSpeedInSecond = this.speedInSecond;
         this.speedInSecond = 0;
         this.updatedAt = new Date().toISOString();
-        this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
+        this.scene.worldBatch.markEnemy(this.movementSnap());
     }
 
     resumeMovement() {
@@ -125,12 +126,23 @@ export class BaseEnemy implements EnemyJSON, Rectangle {
         this.speedInSecond = this.savedSpeedInSecond;
         this.updatedAt = new Date().toISOString();
         this.restartMovement();
-        this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
+        this.scene.worldBatch.markEnemy(this.movementSnap());
     }
 
     /** Подклассы перезапускают AI после паузы. */
     protected restartMovement() {
         // no-op for base
+    }
+
+    movementSnap():EnemyMovementSnap {
+        return {
+            id: this.id,
+            startX: this.startX,
+            startY: this.startY,
+            rotation: this.rotation,
+            speedInSecond: this.speedInSecond,
+            updatedAt: this.updatedAt
+        };
     }
 
     toJSON() {

@@ -79,7 +79,7 @@ export class OrbitSpider extends BaseEnemy {
         }
         this.moveInterval = setInterval(() => {
             this.calculateNextMove();
-            this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
+            this.scene.worldBatch.markEnemy(this.movementSnap());
         }, this.UPDATE_DELAY);
     }
 }

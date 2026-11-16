@@ -29,6 +29,18 @@ interface IPlayerDiedEvent {
     killedBy:string
 }
 
+interface PlayerMovementSnap {
+    socketId:string,
+    pageX:number,
+    pageY:number,
+    rotation:number
+}
+
+interface IWorldPlayersSocket {
+    players:PlayerMovementSnap[],
+    serverCurrentDateTime:string
+}
+
 export class PlayersCollection {
 
     app:App;
@@ -44,25 +56,18 @@ export class PlayersCollection {
             this.updatePlayers(backendPlayers);
         });
 
-        this.app.socket?.on("playersMoved", (params:BackendPlayer) => {
-            if (params.socketId !== this.app.socket?.id) {
-                const player = this.findPlayer(params.socketId);
-                if (player) {
-                    player.moveTo(params.pageX, params.pageY, params.rotation);
-
-                    // TODO: нужно чтобы при повороте не включалась анимация
-                    player.animationPlay();
-                    if (player.movementStopTimer) {
-                        clearTimeout(player.movementStopTimer);
-                    }
-                    player.movementStopTimer = setTimeout(() => {
-                        player.animationStop();
-                    }, 200);
-
-                } else {
-                    this.addPlayer(params);
+        this.app.socket?.on("world", (payload:IWorldPlayersSocket) => {
+            payload.players.forEach(snap => {
+                if (snap.socketId === this.app.socket?.id) {
+                    return;
                 }
-            }
+                const player = this.findPlayer(snap.socketId);
+                if (!player) {
+                    return;
+                }
+                player.moveTo(snap.pageX, snap.pageY, snap.rotation);
+                this.restartWalkAnimation(player);
+            });
         });
 
         this.app.socket?.on("playersDamaged", (params:IPlayerDamagedEvent) => {
@@ -112,6 +117,17 @@ export class PlayersCollection {
                 player.update(params.player);
             }
         });
+    }
+
+    private restartWalkAnimation(player:Player) {
+        // TODO: нужно чтобы при повороте не включалась анимация
+        player.animationPlay();
+        if (player.movementStopTimer) {
+            clearTimeout(player.movementStopTimer);
+        }
+        player.movementStopTimer = setTimeout(() => {
+            player.animationStop();
+        }, 200);
     }
 
     findPlayer(socketId:string):Player | undefined {

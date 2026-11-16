@@ -3,6 +3,15 @@ import { App } from "../../App";
 import { BackendEnemy } from "../../Types";
 import { ResourcesLoader } from "../ResourcesLoader";
 
+export interface EnemyMovementSnap {
+    id:string,
+    startX:number,
+    startY:number,
+    rotation:number,
+    speedInSecond:number,
+    updatedAt:string
+}
+
 export class Enemy {
     public x = 0;
     public y = 0;
@@ -71,6 +80,27 @@ export class Enemy {
 
         this.syncAnimSpeed();
         this.setHitboxes(enemyJson);
+        this.updateVisuals();
+    }
+
+    applyMovement(snap:EnemyMovementSnap, serverCurrentDateTime:string) {
+        this.pixiObj.rotation = snap.rotation;
+        this.speedInSecond = snap.speedInSecond;
+
+        const dirCos = Math.cos(snap.rotation);
+        const dirSin = Math.sin(snap.rotation);
+
+        const serverTime = new Date(serverCurrentDateTime).getTime();
+        const updateTime = new Date(snap.updatedAt).getTime();
+        const dTimeSeconds = Math.max(0, (serverTime - updateTime) / 1000);
+
+        this.x = snap.startX + (dirCos * snap.speedInSecond * dTimeSeconds);
+        this.y = snap.startY + (dirSin * snap.speedInSecond * dTimeSeconds);
+
+        this.dx = dirCos * (snap.speedInSecond / 60);
+        this.dy = dirSin * (snap.speedInSecond / 60);
+
+        this.syncAnimSpeed();
         this.updateVisuals();
     }
 

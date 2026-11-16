@@ -16,6 +16,14 @@ export class EmitManager {
         room.emit.apply(room, [eventName, ...data]);
     }
 
+    emitVolatile(roomId:string, eventName:string, data:object):void {
+        if (!this.io) {
+            console.warn("Socket.io server not initialized. Call initialize first.");
+            return;
+        }
+        this.io.to(roomId).volatile.emit(eventName, data);
+    }
+
     emitSceneChanged(roomId:string, sceneData:any):void {
         this.emit(roomId, "sceneChanged", sceneData);
     }

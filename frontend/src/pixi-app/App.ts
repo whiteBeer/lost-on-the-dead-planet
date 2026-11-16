@@ -74,6 +74,10 @@ export class App {
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
     private heartbeatTimer:ReturnType<typeof setInterval> | null = null;
+    private pendingMove:{ pageX:number, pageY:number, rotation:number } | null = null;
+    private lastMoveSentAt = 0;
+    // Сервер складывает ходы в пакет world, каждый кадр слать нельзя
+    private readonly moveSendIntervalMs = 50;
     private destroyed = false;
     private loading:Promise<void> | null = null;
     private readonly clientId = storedClientId();
@@ -502,8 +506,9 @@ export class App {
         }
 
         if (dx !== 0 || dy !== 0 || isRotationChanged) {
-            this.socket?.emit("playerMoved", player.getCoords());
+            this.queuePlayerMove(player.getCoords());
         }
+        this.flushPlayerMove(Date.now());
 
         if (this.control.isFiring) {
             player.fire();
@@ -515,6 +520,19 @@ export class App {
 
         player.weapon?.update(ticker.deltaMS);
         this.cursor?.update(mouseCoords);
+    }
+
+    private queuePlayerMove(coords:{ pageX:number, pageY:number, rotation:number }) {
+        this.pendingMove = coords;
+    }
+
+    private flushPlayerMove(now:number) {
+        if (!this.pendingMove || now - this.lastMoveSentAt < this.moveSendIntervalMs) {
+            return;
+        }
+        this.socket?.emit("playerMoved", this.pendingMove);
+        this.pendingMove = null;
+        this.lastMoveSentAt = now;
     }
 
     addTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {

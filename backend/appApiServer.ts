@@ -53,7 +53,7 @@ export class AppApiServer {
             return;
         } else {
             const sceneEvents = [
-                "enemiesUpdated",
+                "world",
                 "enemiesRemoved",
                 "enemiesDamaged",
                 "enemiesAdded",
@@ -79,10 +79,15 @@ export class AppApiServer {
             ];
             sceneEvents.forEach((sceneEvent) => {
                 scene.on(sceneEvent, (data) => {
-                    this.emitManager.emit(roomId, sceneEvent, Object.assign(
+                    const payload = Object.assign(
                         typeof data === "object" && data !== null ? data : { value: data },
                         { serverCurrentDateTime: new Date().toISOString() }
-                    ));
+                    );
+                    if (sceneEvent === "world") {
+                        this.emitManager.emitVolatile(roomId, sceneEvent, payload);
+                    } else {
+                        this.emitManager.emit(roomId, sceneEvent, payload);
+                    }
                 });
             });
             res.json({ isCreated: true });

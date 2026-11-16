@@ -124,7 +124,7 @@ export class AppSocketServer {
 
         socket.on("playerMoved", (params:PlayerJSON) => {
             if (!roomScene.isLobby() && !roomScene.isPaused()) {
-                this.handlePlayerMoved(socket, roomId, scenePlayers, params);
+                this.handlePlayerMoved(socket, roomScene, params);
             }
         });
 
@@ -163,10 +163,21 @@ export class AppSocketServer {
         roomScene.emitLobbyState();
     }
 
-    private handlePlayerMoved(socket:Socket, roomId:string, scenePlayers:any, params:PlayerJSON):void {
+    private handlePlayerMoved(socket:Socket, roomScene:any, params:PlayerJSON):void {
+        const scenePlayers = roomScene.playersCollection;
         const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
-        if (currentPlayerIndex !== -1) {
-            this.emitToRoom(roomId, "playersMoved", scenePlayers.getPlayersJSON()[currentPlayerIndex]);
+        if (currentPlayerIndex === -1) {
+            return;
+        }
+        const player = scenePlayers.getPlayerById(socket.id);
+        if (player) {
+            // Позиция уйдёт с игроками и монстрами в следующем world, не своим пакетом
+            roomScene.worldBatch.markPlayer({
+                socketId: player.socketId,
+                pageX: player.pageX,
+                pageY: player.pageY,
+                rotation: player.rotation
+            });
         }
     }
 

@@ -1,10 +1,15 @@
 import { Scene } from "../Scene";
-import { Enemy } from "./Enemy";
+import { Enemy, EnemyMovementSnap } from "./Enemy";
 import { App } from "../../App";
 import { BackendScene, BackendEnemy } from "../../Types";
 
 interface IBackendEnemyUpdatedSocket {
     enemy:BackendEnemy,
+    serverCurrentDateTime:string
+}
+
+interface IWorldEnemiesSocket {
+    enemies:EnemyMovementSnap[],
     serverCurrentDateTime:string
 }
 
@@ -21,13 +26,13 @@ export class EnemiesCollection {
 
         this.enemiesFromBackendScene(backendScene);
 
-        this.app.socket?.on("enemiesUpdated", (beObj:IBackendEnemyUpdatedSocket) => {
-            const existEnemy = this.enemies.find(el => el.getId() === beObj.enemy.id);
-            if (existEnemy) {
-                existEnemy.update(beObj.enemy, beObj.serverCurrentDateTime);
-            } else {
-                this.addEnemy(beObj.enemy, beObj.serverCurrentDateTime);
-            }
+        this.app.socket?.on("world", (payload:IWorldEnemiesSocket) => {
+            payload.enemies.forEach(snap => {
+                const enemy = this.enemies.find(el => el.getId() === snap.id);
+                if (enemy) {
+                    enemy.applyMovement(snap, payload.serverCurrentDateTime);
+                }
+            });
         });
 
         this.app.socket?.on("enemiesAdded", (beObj:IBackendEnemyUpdatedSocket) => {

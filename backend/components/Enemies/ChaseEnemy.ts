@@ -139,12 +139,16 @@ export abstract class ChaseEnemy extends BaseEnemy {
     }
 
     protected commitMove(x:number, y:number, angle:number, speed:number) {
+        const previousRotation = this.rotation;
+        const previousSpeed = this.speedInSecond;
         this.startX = x;
         this.startY = y;
         this.rotation = angle;
         this.speedInSecond = speed;
         this.updatedAt = new Date().toISOString();
-        this.scene.emit("enemiesUpdated", { enemy: this.toJSON() });
+        if (previousRotation !== this.rotation || previousSpeed !== this.speedInSecond) {
+            this.scene.worldBatch.markEnemy(this.movementSnap());
+        }
     }
 
     protected idleSpin(pos:Coords) {
@@ -152,9 +156,15 @@ export abstract class ChaseEnemy extends BaseEnemy {
     }
 
     /** Прямой chase с опциональным смещением угла (фланг). */
-    protected chaseToward(pos:Coords, tx:number, ty:number, angleBias = 0) {
+    protected chaseToward(
+        pos:Coords,
+        tx:number,
+        ty:number,
+        angleBias = 0,
+        speed = this.defaultSpeedInSecond
+    ) {
         const angle = Math.atan2(ty - pos.y, tx - pos.x) + angleBias;
-        this.commitMove(pos.x, pos.y, angle, this.defaultSpeedInSecond);
+        this.commitMove(pos.x, pos.y, angle, speed);
     }
 
     findNearestPlayer(enemyCoords:Coords) {

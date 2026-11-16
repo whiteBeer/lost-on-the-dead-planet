@@ -3,8 +3,13 @@ import { Missile } from "./Missile";
 import { App } from "../../App";
 import { BackendScene, BackendMissile } from "../../Types";
 
-interface IBackendMissileSocket {
-    missile:BackendMissile,
+interface IMissilesAddedSocket {
+    missiles:BackendMissile[],
+    serverCurrentDateTime:string
+}
+
+interface IMissilesRemovedSocket {
+    ids:string[],
     serverCurrentDateTime:string
 }
 
@@ -22,18 +27,25 @@ export class MissilesCollection {
             this.createMissile(el, backendScene.serverCurrentDateTime);
         });
 
-        this.app.socket?.on("missilesRemoved", (mObj:IBackendMissileSocket) => {
-            const existMissile = this.missiles.find(el => el.getId() === mObj.missile.id);
-            if (existMissile) {
-                existMissile.clear();
-                this.scene.removeFromScene(existMissile.getPixiObj());
-                this.missiles = this.missiles.filter(el => el.getId() !== mObj.missile.id);
-            }
+        // сервер шлёт весь тик одним пакетом
+        this.app.socket?.on("missilesRemoved", (payload:IMissilesRemovedSocket) => {
+            payload.ids.forEach(id => this.removeMissile(id));
         });
 
-        this.app.socket?.on("missilesAdded", (params:IBackendMissileSocket) => {
-            this.createMissile(params.missile, params.serverCurrentDateTime);
+        this.app.socket?.on("missilesAdded", (payload:IMissilesAddedSocket) => {
+            payload.missiles.forEach(missile => {
+                this.createMissile(missile, payload.serverCurrentDateTime);
+            });
         });
+    }
+
+    private removeMissile(id:string) {
+        const existMissile = this.missiles.find(el => el.getId() === id);
+        if (existMissile) {
+            existMissile.clear();
+            this.scene.removeFromScene(existMissile.getPixiObj());
+            this.missiles = this.missiles.filter(el => el.getId() !== id);
+        }
     }
 
     getMissiles() {
