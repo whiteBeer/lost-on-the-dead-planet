@@ -392,6 +392,7 @@ export class Scene {
             return;
         }
         this.groundKind = kind;
+        this.clearCorpses();
         const tex = ResourcesLoader.getTexture(GROUND_TEXTURE[kind]);
         if (!tex) {
             return;
