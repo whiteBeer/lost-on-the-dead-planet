@@ -5,12 +5,12 @@ import { ChaseEnemy, ChaseSpawnParams } from "./ChaseEnemy";
 /** Спираль к игроку + стрельба по цели. */
 export class Boss extends ChaseEnemy {
     private side = Math.random() < 0.5 ? 1 : -1;
-    private readonly shootRange = 780;
-    private readonly shotSpeed = 260;
-    private readonly shotTravel = 980;
+    protected readonly shootRange = 780;
+    protected readonly shotSpeed = 260;
+    protected readonly shotTravel = 980;
 
-    constructor(scene:Scene, params:Omit<ChaseSpawnParams, "enemyId">) {
-        super(scene, { ...params, enemyId: "Boss" });
+    constructor(scene:Scene, params:Omit<ChaseSpawnParams, "enemyId">, enemyId = "Boss") {
+        super(scene, { ...params, enemyId });
     }
 
     protected getViewDist() {
@@ -40,7 +40,7 @@ export class Boss extends ChaseEnemy {
         this.commitMove(pos.x, pos.y, angle, this.defaultSpeedInSecond);
     }
 
-    private tryShoot(pos:Coords, tx:number, ty:number) {
+    protected tryShoot(pos:Coords, tx:number, ty:number) {
         if (!this.canAttack()) {
             return;
         }

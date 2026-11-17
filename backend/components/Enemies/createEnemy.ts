@@ -14,6 +14,7 @@ import { Stalker } from "./Stalker";
 import { Brute } from "./Brute";
 import { Behemoth } from "./Behemoth";
 import { Boss } from "./Boss";
+import { Hyena } from "./Hyena";
 
 type EnemyCtor = new (scene:Scene, params:Omit<ChaseSpawnParams, "enemyId">) => BaseEnemy;
 
@@ -29,7 +30,8 @@ const ENEMY_BY_ID:Record<string, EnemyCtor> = {
     Stalker,
     Brute,
     Behemoth,
-    Boss
+    Boss,
+    Hyena
 };
 
 export function createEnemyById(

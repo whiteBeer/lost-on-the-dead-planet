@@ -11,7 +11,8 @@ const MONSTER_KEYS = [
     "monster_screamer",
     "monster_stalker",
     "monster_behemoth",
-    "monster_boss"
+    "monster_boss",
+    "monster_boss2"
 ];
 
 const WEAPON_KEYS = [
@@ -62,6 +63,8 @@ export class ResourcesLoader {
         }
         PIXI.Assets.add({ alias: "enemyZombieTex", src: `${BASE_PATH}/img/zombie_sprite.png` });
         PIXI.Assets.add({ alias: "ground", src: `${BASE_PATH}/img/ground.png` });
+        PIXI.Assets.add({ alias: "groundDry", src: `${BASE_PATH}/img/ground_dry.png` });
+        PIXI.Assets.add({ alias: "groundSnow", src: `${BASE_PATH}/img/ground_snow.png` });
 
         for (const key of MONSTER_KEYS) {
             PIXI.Assets.add({ alias: key, src: `${BASE_PATH}/img/${key}.png` });
@@ -78,12 +81,14 @@ export class ResourcesLoader {
 
         const aliases = [
             ...Object.values(PLAYER_BODY_SPRITES),
-            "enemyZombieTex", "ground",
+            "enemyZombieTex", "ground", "groundDry", "groundSnow",
             ...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS, ...PICKUP_KEYS
         ];
         await PIXI.Assets.load(aliases);
 
         this.textures.ground = PIXI.Assets.get("ground");
+        this.textures.groundDry = PIXI.Assets.get("groundDry");
+        this.textures.groundSnow = PIXI.Assets.get("groundSnow");
         for (const key of [...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS, ...PICKUP_KEYS]) {
             this.textures[key] = PIXI.Assets.get(key);
         }

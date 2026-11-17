@@ -73,6 +73,18 @@ export class WaveDirector {
         return this.announcedWave > this.wave;
     }
 
+    /** 0 боссов — трава, после первого — сушь, после второго — снег. */
+    groundKind():"grass" | "dry" | "snow" {
+        const cleared = Math.floor(Math.max(0, this.getDisplayWave() - 1) / WAVES_CONFIG.bossEveryNWaves);
+        if (cleared >= 2) {
+            return "snow";
+        }
+        if (cleared >= 1) {
+            return "dry";
+        }
+        return "grass";
+    }
+
     isBetweenWaves() {
         return !this.active && this.started;
     }
@@ -190,7 +202,8 @@ export class WaveDirector {
             speedMul: waveSpeedMul(upcoming),
             count: flattenComposition(composition).length,
             announcing: true,
-            isBoss: isBossWave(upcoming)
+            isBoss: isBossWave(upcoming),
+            ground: this.groundKind()
         });
         this.armBetweenTimer(delayMs);
     }

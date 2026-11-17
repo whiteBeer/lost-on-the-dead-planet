@@ -125,6 +125,7 @@ export interface BackendScene {
     paused?:boolean,
     wave?:number,
     waveAnnouncing?:boolean,
+    ground?:"grass" | "dry" | "snow",
     players:BackendPlayer[],
     spectators?:BackendSpectator[],
     enemies:BackendEnemy[],

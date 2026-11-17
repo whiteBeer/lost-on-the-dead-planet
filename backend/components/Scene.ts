@@ -342,6 +342,7 @@ export class Scene extends EventEmitter {
             paused: this.paused,
             wave: this.waveDirector.getDisplayWave(),
             waveAnnouncing: this.waveDirector.isAnnouncing(),
+            ground: this.waveDirector.groundKind(),
             players: this.playersCollection.getPlayersJSON(),
             spectators: this.getSpectatorsJSON(),
             enemies: this.enemiesCollection.getEnemiesJSON(),

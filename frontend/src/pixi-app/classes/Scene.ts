@@ -40,6 +40,7 @@ export class Scene {
 
     wave = 0;
     waveAnnouncing = false;
+    private groundKind:"grass" | "dry" | "snow" = "grass";
     phase:"lobby" | "playing" = "lobby";
     paused = false;
     spectators:BackendSpectator[] = [];
@@ -53,6 +54,7 @@ export class Scene {
         this.edgePadY = backendScene.edgePadY ?? 100;
         this.wave = backendScene.wave || 0;
         this.waveAnnouncing = !!backendScene.waveAnnouncing;
+        this.groundKind = backendScene.ground || "grass";
         this.phase = backendScene.phase === "playing" ? "playing" : "lobby";
         this.paused = !!backendScene.paused;
         this.spectators = backendScene.spectators || [];
@@ -80,6 +82,9 @@ export class Scene {
             this.enemiesCollection.enemiesFromBackendScene(newScene);
             this.pickupsCollection.fromBackendScene(newScene);
             this.wave = newScene.wave || this.wave;
+            if (newScene.ground) {
+                this.setGround(newScene.ground);
+            }
             if (newScene.spectators) {
                 this.spectators = newScene.spectators;
             }
@@ -92,6 +97,7 @@ export class Scene {
             this.enemiesCollection.enemiesFromBackendScene(newScene);
             this.pickupsCollection.fromBackendScene(newScene);
             this.wave = newScene.wave || 0;
+            this.setGround(newScene.ground || "grass");
             this.phase = newScene.phase === "playing" ? "playing" : "lobby";
             this.paused = false;
             if (newScene.spectators) {
@@ -110,9 +116,12 @@ export class Scene {
             this.spectators = data?.spectators || [];
         });
 
-        this.app.socket?.on("waveStarted", (data:{ wave:number, announcing?:boolean }) => {
+        this.app.socket?.on("waveStarted", (data:{ wave:number, announcing?:boolean, ground?:"grass" | "dry" | "snow" }) => {
             this.wave = data.wave;
             this.waveAnnouncing = data.announcing !== false;
+            if (data.ground) {
+                this.setGround(data.ground);
+            }
         });
 
         this.app.socket?.on("waveCleared", () => {
@@ -325,7 +334,7 @@ export class Scene {
 
     private initGraphics() {
         const container = new PIXI.Container();
-        const groundTex = ResourcesLoader.getTexture("ground");
+        const groundTex = ResourcesLoader.getTexture(GROUND_TEXTURE[this.groundKind]);
         // Расширяем текстуру далеко за арену, чтобы по краям экрана не было синей пустоты
         const pad = 2500;
         const tile = 512;
@@ -377,4 +386,26 @@ export class Scene {
 
         return container;
     }
+
+    private setGround(kind:"grass" | "dry" | "snow") {
+        if (this.groundKind === kind) {
+            return;
+        }
+        this.groundKind = kind;
+        const tex = ResourcesLoader.getTexture(GROUND_TEXTURE[kind]);
+        if (!tex) {
+            return;
+        }
+        for (const child of this.groundLayer.children) {
+            if (child instanceof PIXI.Sprite) {
+                child.texture = tex;
+            }
+        }
+    }
 }
+
+const GROUND_TEXTURE = {
+    grass: "ground",
+    dry: "groundDry",
+    snow: "groundSnow"
+};

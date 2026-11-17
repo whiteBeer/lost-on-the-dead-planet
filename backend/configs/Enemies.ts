@@ -5,7 +5,7 @@ export const TIER_TINT:Record<EnemyTier, number> = {
     green: 0xffffff,
     yellow: 0xffeb3b,
     red: 0xf44336,
-    boss: 0x111111
+    boss: 0xffffff
 };
 
 export interface HitboxRect {
@@ -237,8 +237,25 @@ export const ENEMIES:Record<string, EnemyConfig> = {
         damage: 36,
         /** Интервал выстрела (и melee на касании) */
         attackInterval: 1100,
-        tint: 0x111111,
+        tint: 0xffffff,
         spriteKey: "monster_boss",
+        exp: 660
+    },
+    "Hyena": {
+        id: "Hyena",
+        tier: "boss",
+        name: "Гиена",
+        health: 2200,
+        speed: 82,
+        speedJitter: 10,
+        width: 170,
+        height: 150,
+        bulletHit: { width: 170, height: 150 },
+        playerTouch: { width: 96, height: 84 },
+        damage: 32,
+        attackInterval: 900,
+        tint: 0xffffff,
+        spriteKey: "monster_boss2",
         exp: 660
     }
 };
@@ -263,10 +280,10 @@ export const TIER_ENEMY_POOL:Record<EnemyTier, string[]> = {
     green: ["Zombie", "Crawler", "Runner"],
     yellow: ["Hound", "Spitter", "Bloater", "Screamer", "Spider"],
     red: ["Stalker", "Brute", "Behemoth"],
-    boss: ["Boss"]
+    boss: ["Boss", "Hyena"]
 };
 
-export const ALL_MONSTERS = Object.keys(ENEMIES).filter((id) => id !== "Boss");
+export const ALL_MONSTERS = Object.keys(ENEMIES).filter((id) => ENEMIES[id].tier !== "boss");
 
 const EARLY_MONSTERS = ["Runner", "Screamer", "Spider", "Zombie"];
 const MID_MONSTERS = [...EARLY_MONSTERS, "Spitter", "Brute"];
@@ -314,7 +331,8 @@ export const TIER_TO_ENEMY:Record<EnemyTier, string> = {
 
 export function pickEnemyForTier(tier:EnemyTier, wave = 1):string {
     if (tier === "boss") {
-        return "Boss";
+        // 5, 15, 25… владыка; 10, 20… гиена
+        return Math.floor(wave / 5) % 2 === 0 ? "Hyena" : "Boss";
     }
     return pickAnyMonster(wave);
 }
