@@ -35,6 +35,10 @@ export interface PlayerJSON {
     level?:number,
     perks?:string[],
     speed?:number,
+    dodge?:number,
+    crit?:number,
+    miss?:number,
+    armor?:number,
     weapon:{
         id:string,
         ammo:number,

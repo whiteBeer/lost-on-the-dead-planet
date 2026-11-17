@@ -437,12 +437,18 @@ export class Scene extends EventEmitter {
             if (closestHitEnemy) {
                 const owner = this.playersCollection.getPlayerById(missile.ownerId);
                 let damage = missile.damage;
+                let crit = false;
+                let missed = false;
                 if (owner) {
                     // Крит / miss из перков
                     if (Math.random() < owner.additionalStats.miss) {
+                        missed = true;
                         damage = 0;
                     } else if (Math.random() < owner.additionalStats.crit) {
-                        damage *= owner.additionalStats.critDamage;
+                        crit = true;
+                        const lo = Math.min(owner.additionalStats.critDamageMin, owner.additionalStats.critDamageMax);
+                        const hi = Math.max(owner.additionalStats.critDamageMin, owner.additionalStats.critDamageMax);
+                        damage *= lo + Math.random() * (hi - lo);
                     }
                 }
 
@@ -452,7 +458,9 @@ export class Scene extends EventEmitter {
                     missile.ownerId,
                     closestHitEnemy.x,
                     closestHitEnemy.y,
-                    missile.rotation
+                    missile.rotation,
+                    crit,
+                    missed
                 );
 
                 missile.hitEnemyIds.push(closestHitEnemy.original.id);

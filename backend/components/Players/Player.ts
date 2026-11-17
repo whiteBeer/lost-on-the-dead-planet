@@ -379,6 +379,10 @@ export class Player {
             level: this.level,
             perks: [...this.perks],
             speed: this.getSpeed(),
+            dodge: this.additionalStats.dodge,
+            crit: this.additionalStats.crit,
+            miss: this.additionalStats.miss,
+            armor: this.additionalStats.armor,
             weapon: this.weapon.toJSON(),
             perkOffer: this.perkOffer.map(p => ({
                 id: p.id,

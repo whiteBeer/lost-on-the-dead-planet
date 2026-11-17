@@ -17,9 +17,11 @@ export class Hud {
     private pixiObj:PIXI.Container;
     private readonly waveText:PIXI.Text;
     private readonly statusText:PIXI.Text;
+    private readonly detailText:PIXI.Text;
     private readonly hintText:PIXI.Text;
     private wave = 0;
     private banner:WaveBanner | null = null;
+    private readonly isTouch:boolean;
 
     constructor(app:App, mePlayer:Player) {
         this.app = app;
@@ -59,20 +61,38 @@ export class Hud {
         });
         this.statusText.position.set(16, 48);
 
-        const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+        this.detailText = new PIXI.Text({
+            text: "",
+            style: {
+                fill: 0xffffff,
+                fontSize: 16,
+                fontFamily: "Segoe UI, Arial",
+                align: "left",
+                dropShadow: {
+                    alpha: 0.7,
+                    blur: 2,
+                    color: 0x000000,
+                    distance: 2
+                }
+            }
+        });
+        this.detailText.position.set(16, 112);
+
+        this.isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
         this.hintText = new PIXI.Text({
-            text: isTouch ? "" : "WASD · ЛКМ · Esc меню",
+            text: this.isTouch ? "" : "WASD · ЛКМ · Esc меню",
             style: {
                 fill: 0xdddddd,
                 fontSize: 13,
                 fontFamily: "Segoe UI, Arial"
             }
         });
-        this.hintText.position.set(16, 136);
+        this.hintText.position.set(16, 160);
 
         this.pixiObj = new PIXI.Container();
         this.pixiObj.addChild(this.waveText);
         this.pixiObj.addChild(this.statusText);
+        this.pixiObj.addChild(this.detailText);
         this.pixiObj.addChild(this.hintText);
 
         this.app.socket?.on("waveStarted", (data:{ wave:number, isBoss?:boolean }) => {
@@ -175,8 +195,21 @@ export class Hud {
         const speed = Math.max(0, Math.round(this.mePlayer.getSpeed()));
         const fireMs = this.mePlayer.weapon.fireRate || this.mePlayer.weapon.config.fireRate || 1;
         const shotsPerSec = Math.round(1000 / fireMs * 10) / 10;
-        this.statusText.text =
+        let stats =
             `HP ${hp}/${maxHp} · Lv ${level} (xp ${exp})\n${weaponId}: ${ammo}/${clip}${reloading}\nАтака ${attack} · Бег ${speed} · Скорострел ${shotsPerSec}`;
+        this.statusText.text = stats;
+        if (this.isTouch) {
+            this.detailText.text = "";
+        } else {
+            const spreadDeg = this.mePlayer.weapon.spreadMaxDeg();
+            const dodge = Math.round(this.mePlayer.dodge * 100);
+            const crit = Math.round(this.mePlayer.crit * 100);
+            const miss = Math.round(this.mePlayer.miss * 100);
+            const armor = Math.round(this.mePlayer.armor * 100);
+            this.detailText.text =
+                `Разброс ${spreadDeg}° · Уклонение ${dodge}% · Броня ${armor}% · Крит ${crit}% · Промах ${miss}%`;
+            this.detailText.y = this.statusText.y + this.statusText.height + 2;
+        }
 
         this.updateBanner(deltaMS / 1000);
     }

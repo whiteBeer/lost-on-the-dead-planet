@@ -24,7 +24,8 @@ export interface AdditionalStats {
     dodge:number;          // Шанс уклониться
     lifesteal:number;      // Доля урона, возвращаемая здоровьем
     crit:number;           // Шанс крита
-    critDamage:number;     // Множитель крита
+    critDamageMin:number;  // Нижняя граница множителя крита
+    critDamageMax:number;  // Верхняя граница множителя крита
     thorns:number;         // Доля урона, возвращаемая атакующему
     pierce:number;         // Дополнительно пробитых целей
     ricochet:number;       // Рикошетов к ближайшей цели
@@ -58,8 +59,8 @@ export const BASE_STATS:AdditionalStats = {
     maxHp: 0, regen: 0, speed: 0, damage: 0, monsterDamage: 0, playerDamage: 1,
     fireRate: 0, reload: 1, clip: 1, spread: 1, bulletSpeed: 1, range: 1,
     armor: 0, monsterArmor: 0, playerArmor: 0, dodge: 0, lifesteal: 0,
-    crit: 0, critDamage: 2, thorns: 0, pierce: 0, ricochet: 0, extraBullets: 0,
-    exp: 1, drop: 1, onKillHeal: 0, ammoRefund: 0, miss: 0, selfDamage: 0,
+    crit: 0.05, critDamageMin: 2, critDamageMax: 3, thorns: 0, pierce: 0, ricochet: 0, extraBullets: 0,
+    exp: 1, drop: 1, onKillHeal: 0, ammoRefund: 0, miss: 0.05, selfDamage: 0,
     lowHpDamage: 0, highHpDamage: 0, movingDamage: 0, stillDamage: 0, stillRegen: 0,
     explodeOnKill: 0, explodeOnDeath: 0, reloadOnKill: 0, aggro: 1, exposed: 0,
     damageVariance: 0, speedOnKill: 0, deathExpKeep: 0, killBounty: 1,
@@ -125,7 +126,7 @@ const STATS:StatText[] = [
     { stat: "monsterArmor", label: "Снижение урона от монстров", unit: "%", category: "defense", gain: [0.08, 0.14, 0.22], tradeGain: 0.32, gainWord: "Толстокожий", lossWord: "корм", tradeLoss: -0.2, baseName: "Толстая кожа" },
     { stat: "reload", label: "Скорость перезарядки", unit: "%", category: "weapon", gain: [0.12, 0.22, 0.35], tradeGain: 0.5, tradeLoss: -0.25, gainWord: "Проворный", lossWord: "копуша", baseName: "Ловкие руки" },
     { stat: "clip", label: "Размер магазина", unit: "%", category: "weapon", gain: [0.15, 0.3, 0.5], tradeGain: 0.7, tradeLoss: -0.3, gainWord: "Запасливый", lossWord: "скряга", baseName: "Удлинённый магазин" },
-    { stat: "spread", label: "Разброс", unit: "%", category: "weapon", gain: [-0.12, -0.22, -0.35], tradeGain: -0.5, tradeLoss: 0.4, gainWord: "Меткий", lossWord: "косоглазый", baseName: "Твёрдая рука" },
+    { stat: "spread", label: "Разброс", unit: "%", category: "weapon", gain: [-0.02, -0.04, -0.06], tradeGain: -0.1, tradeLoss: 0.08, gainWord: "Меткий", lossWord: "косоглазый", baseName: "Твёрдая рука" },
     { stat: "bulletSpeed", label: "Скорость пули", unit: "%", category: "weapon", gain: [0.05, 0.1, 0.2], tradeGain: 0.25, tradeLoss: -0.25, gainWord: "Реактивный", lossWord: "лентяй", baseName: "Плотный огонь" },
     { stat: "range", label: "Дальность стрельбы", unit: "%", category: "weapon", gain: [0.1, 0.2, 0.35], tradeGain: 0.5, tradeLoss: -0.3, gainWord: "Дальнобойный", lossWord: "очкарик", baseName: "Длинный ствол" },
     { stat: "exp", label: "Получаемый опыт", unit: "%", category: "fortune", gain: [0.08, 0.15, 0.25], tradeGain: 0.4, tradeLoss: -0.2, gainWord: "Прилежный", lossWord: "двоечник", baseName: "Быстрый ум" },
@@ -233,8 +234,8 @@ export const POSITIVE_PERKS:Perk[] = [
     },
     {
         id: "eagle_eye", name: "Орлиный глаз", rarity: "rare", category: "weapon",
-        description: "Разброс −25%, дальность стрельбы +20%. Без штрафов.",
-        mods: { spread: -0.25, range: 0.2 }, icon: "perk_eagle_eye", positive: true
+        description: "Разброс −4%, дальность стрельбы +20%. Без штрафов.",
+        mods: { spread: -0.04, range: 0.2 }, icon: "perk_eagle_eye", positive: true
     },
     {
         id: "bottomless_mag", name: "Бездонный магазин", rarity: "epic", category: "weapon",
@@ -259,21 +260,21 @@ export const POSITIVE_PERKS:Perk[] = [
  */
 const SPECIAL_PERKS:Perk[] = [
     { id: "glass_cannon", name: "Стеклянная пушка", rarity: "epic", category: "attack", description: "Урон +70%. Макс. здоровье −45.", mods: { damage: 0.7, maxHp: -45 } },
-    { id: "casino", name: "Казино", rarity: "rare", category: "strange", description: "Шанс крита +25%, крит наносит тройной урон. Но 25% пуль не наносят вообще никакого урона.", mods: { crit: 0.25, critDamage: 1, miss: 0.25 } },
+    { id: "casino", name: "Казино", rarity: "rare", category: "strange", description: "Шанс крита +25%, крит наносит тройной урон. Но 25% пуль не наносят вообще никакого урона.", mods: { crit: 0.25, critDamageMin: 1, critDamageMax: 1, miss: 0.25 } },
     { id: "piercing", name: "Бронебойные пули", rarity: "rare", category: "weapon", description: "Пули пробивают +1 цель.", mods: { pierce: 1 } },
     { id: "deep_piercing", name: "Сердечник из вольфрама", rarity: "epic", category: "weapon", description: "Пули пробивают +3 цели. Скорострельность −25%.", mods: { pierce: 3, fireRate: -0.25 } },
-    { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +23%. Разброс +90%.", mods: { fireRate: 0.225, spread: 0.9 } },
+    { id: "shaky_hands", name: "Дрожащие руки", rarity: "common", category: "strange", description: "Скорострельность +23%. Разброс +18%.", mods: { fireRate: 0.225, spread: 0.18 } },
     { id: "heavy_armor", name: "Латы", rarity: "epic", category: "defense", description: "Снижение любого урона +35%. Скорость бега −22%.", mods: { armor: 0.35, speed: -0.22 } },
     { id: "feather", name: "Перо", rarity: "rare", category: "mobility", description: "Шанс уклониться +25%. Снижение любого урона −25%: когда попадут, будет больнее.", mods: { dodge: 0.25, armor: -0.25 } },
-    { id: "giant", name: "Великан", rarity: "epic", category: "defense", description: "Макс. здоровье +120. Скорость бега −18%, разброс +25%.", mods: { maxHp: 120, speed: -0.18, spread: 0.25 } },
+    { id: "giant", name: "Великан", rarity: "epic", category: "defense", description: "Макс. здоровье +120. Скорость бега −18%, разброс +4%.", mods: { maxHp: 120, speed: -0.18, spread: 0.04 } },
     { id: "sprinter", name: "Спринтер", rarity: "rare", category: "mobility", description: "Скорость бега +35%. Дальность стрельбы −35%.", mods: { speed: 0.35, range: -0.35 } },
-    { id: "sniper_eye", name: "Глаз снайпера", rarity: "rare", category: "weapon", description: "Разброс −60%, дальность +50%. Скорострельность −30%.", mods: { spread: -0.6, range: 0.5, fireRate: -0.3 } },
-    { id: "spray", name: "Поливай и молись", rarity: "rare", category: "weapon", description: "Скорострельность +30%, магазин +50%. Урон −25%, разброс +50%.", mods: { fireRate: 0.3, clip: 0.5, damage: -0.25, spread: 0.5 } },
+    { id: "sniper_eye", name: "Глаз снайпера", rarity: "rare", category: "weapon", description: "Разброс −12%, дальность +50%. Скорострельность −30%.", mods: { spread: -0.12, range: 0.5, fireRate: -0.3 } },
+    { id: "spray", name: "Поливай и молись", rarity: "rare", category: "weapon", description: "Скорострельность +30%, магазин +50%. Урон −25%, разброс +10%.", mods: { fireRate: 0.3, clip: 0.5, damage: -0.25, spread: 0.1 } },
     { id: "one_clip", name: "Один, но большой", rarity: "rare", category: "weapon", description: "Магазин +150%. Перезарядка медленнее на 50%.", mods: { clip: 1.5, reload: -0.5 } },
     { id: "small_mag", name: "Обрез магазина", rarity: "rare", category: "weapon", description: "Магазин −50%. Урон +45%, перезарядка быстрее на 40%.", mods: { clip: -0.5, damage: 0.45, reload: 0.4 } },
     { id: "monster_slayer", name: "Истребитель орды", rarity: "rare", category: "attack", description: "Урон по монстрам +70%. Скорость бега −12%.", mods: { monsterDamage: 0.7, speed: -0.12 } },
     { id: "miser", name: "Скупой платит дважды", rarity: "common", category: "strange", description: "Шанс не потратить патрон +40%. Перезарядка медленнее на 45%.", mods: { ammoRefund: 0.4, reload: -0.45 } },
-    { id: "crit_addict", name: "Всё или ничего", rarity: "epic", category: "attack", description: "Шанс крита +40%. Обычные, не критические попадания наносят на 40% меньше: урон −40%, крит наносит тройной урон.", mods: { crit: 0.4, damage: -0.4, critDamage: 1 } },
+    { id: "crit_addict", name: "Всё или ничего", rarity: "epic", category: "attack", description: "Шанс крита +40%. Обычные, не критические попадания наносят на 40% меньше: урон −40%, крит наносит тройной урон.", mods: { crit: 0.4, damage: -0.4, critDamageMin: 1, critDamageMax: 1 } },
     { id: "tortoise", name: "Черепаха", rarity: "epic", category: "defense", description: "Снижение урона от монстров +55%. Скорость бега −30%.", mods: { monsterArmor: 0.55, speed: -0.3 } },
     { id: "hare", name: "Заяц", rarity: "epic", category: "mobility", description: "Скорость бега +50%. Макс. здоровье −40, снижение любого урона −15%.", mods: { speed: 0.5, maxHp: -40, armor: -0.15 } },
     { id: "slow_bullets", name: "Тяжёлые пули", rarity: "common", category: "weapon", description: "Урон +30%. Скорость пули −35%: по бегущим попасть труднее.", mods: { damage: 0.3, bulletSpeed: -0.35 } },

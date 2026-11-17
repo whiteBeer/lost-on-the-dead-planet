@@ -65,6 +65,12 @@ export class Weapon {
         return this.config.spreadBase * this.spreadMul;
     }
 
+    /** Потолок очереди уже с перками, в градусах. */
+    spreadMaxDeg() {
+        const rad = (this.config.spreadMax || 0) * this.spreadMul;
+        return Math.round(rad * 180 / Math.PI * 10) / 10;
+    }
+
     /** Затухание разброса каждый кадр — как на сервере в applySpread. */
     update(deltaMS:number) {
         const floor = this.spreadFloor();

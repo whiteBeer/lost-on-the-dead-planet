@@ -54,6 +54,10 @@ export interface BackendPlayer {
     level?:number;
     perks?:string[];
     speed?:number;
+    dodge?:number;
+    crit?:number;
+    miss?:number;
+    armor?:number;
     weapon:BackendWeaponState;
     perkOffer?:BackendPerkOffer[];
 }

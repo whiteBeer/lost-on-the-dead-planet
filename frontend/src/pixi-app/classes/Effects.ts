@@ -13,6 +13,12 @@ interface BloodDrop {
     settle:boolean;
 }
 
+interface CritNumber {
+    text:PIXI.Text;
+    life:number;
+    total:number;
+}
+
 const BLOOD_COLORS = [0x5a0c0c, 0x7a1010, 0x9b1515, 0x3d0808, 0xb01a1a, 0x4e0a0a];
 const FIRE_COLORS = [0xfff1c2, 0xffd15a, 0xff9a2e, 0xf25a18, 0xc43210];
 const SMOKE_COLORS = [0x2c2622, 0x4a4038, 0x6a5c50];
@@ -22,6 +28,7 @@ export class Effects {
     private readonly app:App;
     private readonly layer:PIXI.Container;
     private drops:BloodDrop[] = [];
+    private crits:CritNumber[] = [];
     private tickerFunc:(ticker:PIXI.Ticker) => void;
 
     constructor(app:App, layer:PIXI.Container) {
@@ -30,8 +37,15 @@ export class Effects {
         this.tickerFunc = this.update.bind(this);
         this.app.addTicker(this.tickerFunc);
 
-        this.app.socket?.on("hitFx", (data:{ x:number, y:number, tint?:number, dir?:number }) => {
+        this.app.socket?.on("hitFx", (data:{
+            x:number, y:number, tint?:number, dir?:number, crit?:boolean, miss?:boolean, damage?:number
+        }) => {
             this.spawnBlood(data.x, data.y, data.dir ?? Math.random() * Math.PI * 2);
+            if (data.miss) {
+                this.spawnFloater(data.x, data.y, "MISS", 0xff3b3b, 0x3a0808);
+            } else if (data.crit && data.damage) {
+                this.spawnFloater(data.x, data.y, `CRIT ${Math.round(data.damage)}`, 0xffe14a, 0x3a2800);
+            }
         });
         this.app.socket?.on("bombFx", (data:{ x:number, y:number, radius?:number }) => {
             this.spawnExplosion(data.x, data.y, data.radius || 375);
@@ -112,6 +126,25 @@ export class Effects {
                 settle: true
             });
         }
+    }
+
+    /** Цифра крита или MISS: всплывает и гаснет. */
+    private spawnFloater(x:number, y:number, label:string, fill:number, stroke:number) {
+        const text = new PIXI.Text({
+            text: label,
+            style: {
+                fill,
+                fontSize: 22,
+                fontFamily: "Segoe UI, Arial",
+                fontWeight: "800",
+                stroke: { color: stroke, width: 3 }
+            }
+        });
+        text.anchor.set(0.5);
+        text.position.set(x + (Math.random() - 0.5) * 14, y - 10);
+        text.scale.set(1.25);
+        this.layer.addChild(text);
+        this.crits.push({ text, life: 0.7, total: 0.7 });
     }
 
     spawnBlood(x:number, y:number, dir:number) {
@@ -262,11 +295,25 @@ export class Effects {
                 this.drops.splice(i, 1);
             }
         }
+        for (let i = this.crits.length - 1; i >= 0; i--) {
+            const n = this.crits[i];
+            n.life -= dt;
+            n.text.y -= 46 * dt;
+            const t = Math.max(0, n.life / n.total);
+            n.text.alpha = t;
+            n.text.scale.set(1 + 0.25 * t);
+            if (n.life <= 0) {
+                n.text.destroy();
+                this.crits.splice(i, 1);
+            }
+        }
     }
 
     destroy() {
         this.app.removeTicker(this.tickerFunc);
         this.drops.forEach(d => d.gfx.destroy());
         this.drops = [];
+        this.crits.forEach(n => n.text.destroy());
+        this.crits = [];
     }
 }

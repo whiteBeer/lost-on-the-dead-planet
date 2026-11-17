@@ -27,6 +27,10 @@ export class Player {
     public health = 0;
     public maxHealth = 0;
     public level = 1;
+    public dodge = 0;
+    public crit = 0;
+    public miss = 0;
+    public armor = 0;
     public exp = 0;
 
     private bodySprite:PIXI.AnimatedSprite|null = null;
@@ -86,6 +90,18 @@ export class Player {
         this.maxHealth = params.maxHealth;
         this.radius = params.radius;
         this.level = params.level || this.level;
+        if (typeof params.dodge === "number") {
+            this.dodge = params.dodge;
+        }
+        if (typeof params.crit === "number") {
+            this.crit = params.crit;
+        }
+        if (typeof params.miss === "number") {
+            this.miss = params.miss;
+        }
+        if (typeof params.armor === "number") {
+            this.armor = params.armor;
+        }
         this.exp = params.exp || 0;
         if (params.speed) {
             this.speedInSecond = params.speed;

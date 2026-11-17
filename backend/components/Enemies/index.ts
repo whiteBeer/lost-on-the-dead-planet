@@ -87,7 +87,9 @@ export class Enemies {
         killerSocketId?:string,
         hitX?:number,
         hitY?:number,
-        dir?:number
+        dir?:number,
+        crit?:boolean,
+        missed?:boolean
     ) {
         const enemy = this.getEnemyById(enemyId);
         if (!enemy) {
@@ -101,7 +103,10 @@ export class Enemies {
                 x: hitX,
                 y: hitY,
                 tint: enemy.tint,
-                dir: dir ?? 0
+                dir: dir ?? 0,
+                crit: crit === true && missileDamage > 0,
+                miss: missed === true,
+                damage: missileDamage
             });
         }
 
