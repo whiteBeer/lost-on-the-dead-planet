@@ -327,7 +327,7 @@ export class Player {
         const container = new PIXI.Container();
         this.bodyContainer = new PIXI.Container();
 
-        const playerFrames = ResourcesLoader.getPlayerTextures();
+        const playerFrames = ResourcesLoader.getPlayerTextures(this.color);
         this.bodySprite = new PIXI.AnimatedSprite(playerFrames);
         this.bodySprite.animationSpeed = 0.5;
         this.bodySprite.anchor.set(0.5);
@@ -335,7 +335,6 @@ export class Player {
         this.bodySprite.height = this.radius * 3;
         this.bodySprite.rotation = -Math.PI / 2;
         const own = playerColor(this.color);
-        this.bodySprite.tint = mixWhite(own, 0.90);
         this.bodyContainer.addChild(this.bodySprite);
 
         this.glowColor = mixWhite(own, 0.4);

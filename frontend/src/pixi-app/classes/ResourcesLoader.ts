@@ -41,6 +41,15 @@ const PERK_KEYS = [
 const WALK_FRAME_COUNT = 8;
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+/** Цвет игрока с сервера → лист, у которого перекрашена только каска. */
+const PLAYER_BODY_SPRITES:Record<string, string> = {
+    red: "player_body_sprite_red",
+    blue: "player_body_sprite_blue",
+    white: "player_body_sprite_white",
+    "#8f3a84": "player_body_sprite_purple",
+    "#212121": "player_body_sprite_black"
+};
+
 export class ResourcesLoader {
 
     public static enemies:Record<string, PIXI.Texture[]> = {};
@@ -48,7 +57,9 @@ export class ResourcesLoader {
     public static textures:Record<string, PIXI.Texture> = {};
 
     public static async loadAssets():Promise<void> {
-        PIXI.Assets.add({ alias: "playerTex", src: `${BASE_PATH}/img/player_body_sprite.png` });
+        for (const alias of Object.values(PLAYER_BODY_SPRITES)) {
+            PIXI.Assets.add({ alias, src: `${BASE_PATH}/img/${alias}.png` });
+        }
         PIXI.Assets.add({ alias: "enemyZombieTex", src: `${BASE_PATH}/img/zombie_sprite.png` });
         PIXI.Assets.add({ alias: "ground", src: `${BASE_PATH}/img/ground.png` });
 
@@ -66,7 +77,8 @@ export class ResourcesLoader {
         }
 
         const aliases = [
-            "playerTex", "enemyZombieTex", "ground",
+            ...Object.values(PLAYER_BODY_SPRITES),
+            "enemyZombieTex", "ground",
             ...MONSTER_KEYS, ...WEAPON_KEYS, ...PERK_KEYS, ...PICKUP_KEYS
         ];
         await PIXI.Assets.load(aliases);
@@ -84,7 +96,9 @@ export class ResourcesLoader {
             this.enemies[key] = this.createWalkFrames(base, WALK_FRAME_COUNT);
         }
 
-        this.players["player1"] = this.initPlayerTextures();
+        for (const alias of Object.values(PLAYER_BODY_SPRITES)) {
+            this.players[alias] = this.initPlayerTextures(alias);
+        }
     }
 
     public static getTexture(key:string):PIXI.Texture | null {
@@ -99,8 +113,8 @@ export class ResourcesLoader {
         return this.enemies[spriteKey] || null;
     }
 
-    public static initPlayerTextures():PIXI.Texture[] {
-        const playerTexture = PIXI.Assets.get("playerTex");
+    public static initPlayerTextures(alias:string):PIXI.Texture[] {
+        const playerTexture = PIXI.Assets.get(alias);
         const playerFrames:PIXI.Texture[] = [];
         for (let i = 0; i < 9; i++) {
             playerFrames.push(
@@ -113,8 +127,9 @@ export class ResourcesLoader {
         return playerFrames;
     }
 
-    public static getPlayerTextures():PIXI.Texture[] {
-        return this.players["player1"];
+    public static getPlayerTextures(color:string):PIXI.Texture[] {
+        const alias = PLAYER_BODY_SPRITES[color.toLowerCase()] || PLAYER_BODY_SPRITES.red;
+        return this.players[alias] || this.players[PLAYER_BODY_SPRITES.red];
     }
 
     public static initZombieTextures():PIXI.Texture[] {
@@ -136,7 +151,7 @@ export class ResourcesLoader {
     }
 
     public static getPlayerTexture():PIXI.Texture {
-        return PIXI.Assets.get("playerTex");
+        return this.getPlayerTextures("red")[0];
     }
 
     /** Равномерный scale: длинная сторона = targetSize (без сплющивания). */
