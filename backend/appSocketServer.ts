@@ -1,6 +1,6 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { RoomsManager } from "./classes/RoomsManager";
-import { PlayerJSON } from "./types";
+import { PlayerMoveInput } from "./types";
 import { WEAPONS } from "./configs/Weapons";
 import { Scene } from "./components/Scene";
 import { Player } from "./components/Players/Player";
@@ -124,10 +124,21 @@ export class AppSocketServer {
             }
         });
 
-        socket.on("playerMoved", (params:PlayerJSON) => {
+        socket.on("playerMoved", (params:PlayerMoveInput) => {
             if (!roomScene.isLobby() && !roomScene.isPaused()) {
                 this.handlePlayerMoved(socket, roomScene, params);
             }
+        });
+
+        socket.on("playerAimed", (params:{ rotation?:number }) => {
+            if (roomScene.isLobby() || roomScene.isPaused()) return;
+            const player = roomScene.playersCollection.getPlayerById(socket.id);
+            if (!player || player.isDead || !Number.isFinite(params?.rotation)) return;
+            player.rotation = params.rotation as number;
+            this.emitToRoom(roomId, "playerAimed", {
+                socketId: socket.id,
+                rotation: player.rotation
+            });
         });
 
         socket.on("playerReload", () => {
@@ -165,22 +176,16 @@ export class AppSocketServer {
         roomScene.emitLobbyState();
     }
 
-    private handlePlayerMoved(socket:Socket, roomScene:Scene, params:PlayerJSON):void {
-        const scenePlayers = roomScene.playersCollection;
-        const currentPlayerIndex = scenePlayers.updatePlayer(socket.id, params);
-        if (currentPlayerIndex === -1) {
+    private handlePlayerMoved(socket:Socket, roomScene:Scene, params:PlayerMoveInput):void {
+        const player = roomScene.playersCollection.getPlayerById(socket.id);
+        if (!player || player.isDead || !player.applyMove(params)) {
             return;
         }
-        const player = scenePlayers.getPlayerById(socket.id);
-        if (player) {
-            // Позиция уйдёт с игроками и монстрами в следующем world, не своим пакетом
-            roomScene.worldBatch.markPlayer({
-                socketId: player.socketId,
-                pageX: player.pageX,
-                pageY: player.pageY,
-                rotation: player.rotation
-            });
-        }
+        // Сразу, не в пачке world: союзник доезжает с этого момента.
+        this.emitToRoom(roomScene.getRoomId(), "playersMoved", {
+            players: [player.movementSnap()],
+            serverCurrentDateTime: new Date().toISOString()
+        });
     }
 
     private handleMissileCreate(

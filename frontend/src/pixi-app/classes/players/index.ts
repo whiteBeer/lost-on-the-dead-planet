@@ -33,7 +33,10 @@ interface PlayerMovementSnap {
     socketId:string,
     pageX:number,
     pageY:number,
-    rotation:number
+    rotation:number,
+    moveRotation:number,
+    speedInSecond:number,
+    updatedAt:string
 }
 
 interface IWorldPlayersSocket {
@@ -56,7 +59,7 @@ export class PlayersCollection {
             this.updatePlayers(backendPlayers);
         });
 
-        this.app.socket?.on("world", (payload:IWorldPlayersSocket) => {
+        this.app.socket?.on("playersMoved", (payload:IWorldPlayersSocket) => {
             payload.players.forEach(snap => {
                 if (snap.socketId === this.app.socket?.id) {
                     return;
@@ -65,9 +68,23 @@ export class PlayersCollection {
                 if (!player) {
                     return;
                 }
-                player.moveTo(snap.pageX, snap.pageY, snap.rotation);
-                this.restartWalkAnimation(player);
+                player.applyRemoteMove(snap, payload.serverCurrentDateTime);
+                if (snap.speedInSecond > 1) {
+                    player.animationPlay();
+                } else {
+                    player.animationStop();
+                }
             });
+        });
+
+        this.app.socket?.on("playerAimed", (params:{ socketId:string, rotation:number }) => {
+            if (params.socketId === this.app.socket?.id) {
+                return;
+            }
+            const player = this.findPlayer(params.socketId);
+            if (player && Number.isFinite(params.rotation)) {
+                player.setRotation(params.rotation);
+            }
         });
 
         this.app.socket?.on("playersDamaged", (params:IPlayerDamagedEvent) => {
@@ -119,17 +136,6 @@ export class PlayersCollection {
         });
     }
 
-    private restartWalkAnimation(player:Player) {
-        // TODO: нужно чтобы при повороте не включалась анимация
-        player.animationPlay();
-        if (player.movementStopTimer) {
-            clearTimeout(player.movementStopTimer);
-        }
-        player.movementStopTimer = setTimeout(() => {
-            player.animationStop();
-        }, 200);
-    }
-
     findPlayer(socketId:string):Player | undefined {
         return this.players.find(el => el.socketId === socketId);
     }
@@ -149,6 +155,9 @@ export class PlayersCollection {
                     : undefined);
             if (player) {
                 player.update(backendPlayer, opts);
+                if (opts.syncTransform && player.socketId === this.app.socket?.id) {
+                    this.app.invalidateMove();
+                }
             } else {
                 const newPlayer = this.addPlayer(backendPlayer);
                 if (newPlayer.socketId === this.app.socket?.id) {

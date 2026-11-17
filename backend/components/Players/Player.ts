@@ -11,16 +11,24 @@ import {
 } from "../../configs/Perks";
 import { expForLevel } from "../../configs/Waves";
 import { Scene } from "../Scene";
+import { PlayerMoveInput } from "../../types";
+import { calcTimedPoint } from "../../utils/geometry";
 
 export class Player {
     public socketId:string;
     public clientId = "";
     public color:string;
     public name = "Игрок";
-    public pageX:number;
-    public pageY:number;
     public rotation:number;
     public radius:number;
+
+    private startX:number;
+    private startY:number;
+    /** atan2 вектора бега. К прицелу (rotation) не относится. */
+    private moveRotation = 0;
+    private moveSpeed = 0;
+    private savedMoveSpeed = 0;
+    private moveUpdatedAt = new Date().toISOString();
 
     public health = PLAYER_CONFIG.defaultHealth;
     public maxHealth = PLAYER_CONFIG.defaultHealth;
@@ -43,8 +51,8 @@ export class Player {
     constructor(socketId:string, color:string, startX:number, startY:number, scene?:Scene) {
         this.socketId = socketId;
         this.color = color;
-        this.pageX = startX;
-        this.pageY = startY;
+        this.startX = startX;
+        this.startY = startY;
         this.rotation = 0;
         this.radius = PLAYER_CONFIG.radius;
         this.scene = scene || null;
@@ -57,6 +65,80 @@ export class Player {
 
     public setScene(scene:Scene) {
         this.scene = scene;
+    }
+
+    /** Живая точка. Столкновения, подбор и снимок читают её, не место нажатия. */
+    get pageX() {
+        return this.livePoint().x;
+    }
+
+    get pageY() {
+        return this.livePoint().y;
+    }
+
+    set pageX(x:number) {
+        this.startX = x;
+        this.moveSpeed = 0;
+        this.savedMoveSpeed = 0;
+        this.moveUpdatedAt = new Date().toISOString();
+    }
+
+    set pageY(y:number) {
+        this.startY = y;
+        this.moveSpeed = 0;
+        this.savedMoveSpeed = 0;
+        this.moveUpdatedAt = new Date().toISOString();
+    }
+
+    /** Новая прямая. Скорость не выше серверной: стик шлёт долю, чит — нет. */
+    public applyMove(params:PlayerMoveInput):boolean {
+        const x = Number(params.pageX);
+        const y = Number(params.pageY);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return false;
+        }
+        const spot = this.clamp(x, y);
+        const cap = Math.max(0, this.getSpeed());
+        const requested = Number(params.speedInSecond);
+        this.startX = spot.x;
+        this.startY = spot.y;
+        this.moveSpeed = Number.isFinite(requested) ? Math.max(0, Math.min(cap, requested)) : 0;
+        if (Number.isFinite(params.moveRotation)) {
+            this.moveRotation = params.moveRotation;
+        }
+        if (Number.isFinite(params.rotation)) {
+            this.rotation = params.rotation;
+        }
+        this.moveUpdatedAt = new Date().toISOString();
+        return true;
+    }
+
+    /** Старт прямой, как у монстра. pageX здесь — точка смены клавиш, не живая. */
+    public movementSnap() {
+        return {
+            socketId: this.socketId,
+            pageX: this.startX,
+            pageY: this.startY,
+            moveRotation: this.moveRotation,
+            speedInSecond: this.moveSpeed,
+            rotation: this.rotation,
+            updatedAt: this.moveUpdatedAt
+        };
+    }
+
+    public pauseMovement() {
+        if (this.isDead) {
+            return;
+        }
+        this.savedMoveSpeed = this.moveSpeed;
+        this.rebase(0);
+    }
+
+    public resumeMovement() {
+        if (this.isDead) {
+            return;
+        }
+        this.rebase(this.savedMoveSpeed);
     }
 
     public getSpeed() {
@@ -102,6 +184,7 @@ export class Player {
         if (this.health <= 0) {
             this.health = 0;
             this.isDead = true;
+            this.rebase(0);
             return true;
         }
         return false;
@@ -240,6 +323,36 @@ export class Player {
 
     public destroy() {
         this.weapon.cancelReload();
+    }
+
+    private livePoint() {
+        const pos = calcTimedPoint(
+            this.startX, this.startY, this.moveRotation, this.moveSpeed, this.moveUpdatedAt
+        );
+        return this.clamp(pos.x, pos.y);
+    }
+
+    private rebase(speed:number) {
+        const pos = this.livePoint();
+        this.startX = pos.x;
+        this.startY = pos.y;
+        this.moveSpeed = speed;
+        this.moveUpdatedAt = new Date().toISOString();
+    }
+
+    private clamp(x:number, y:number) {
+        if (!this.scene) {
+            return { x, y };
+        }
+        const margin = this.radius || 13;
+        const minX = margin + this.scene.getEdgePadX();
+        const maxX = Math.max(minX, this.scene.getWidth() - margin - this.scene.getEdgePadX());
+        const minY = margin + this.scene.getEdgePadY();
+        const maxY = Math.max(minY, this.scene.getHeight() - margin - this.scene.getEdgePadY());
+        return {
+            x: Math.min(maxX, Math.max(minX, x)),
+            y: Math.min(maxY, Math.max(minY, y))
+        };
     }
 
     private emitStats() {

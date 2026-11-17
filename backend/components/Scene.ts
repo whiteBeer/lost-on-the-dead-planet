@@ -19,8 +19,8 @@ import { SCENE_CONFIG } from "../configs/Scene";
 import { ENEMIES } from "../configs/Enemies";
 import { PERKS } from "../configs/Perks";
 
-// Один flush — 60мс (два тика по 20мс).
-const BATCH_EVERY_TICKS = 3;
+// Один flush — 40мс (два тика по 20мс).
+const BATCH_EVERY_TICKS = 2;
 
 interface CachedEnemy {
     original:BaseEnemy;
@@ -140,8 +140,10 @@ export class Scene extends EventEmitter {
         if (paused) {
             this.waveDirector.pause();
             this.enemiesCollection.pauseAll();
+            this.playersCollection.pauseMovement();
         } else {
             this.enemiesCollection.resumeAll();
+            this.playersCollection.resumeMovement();
             this.waveDirector.resume();
         }
         this.emit("gamePaused", { paused: this.paused });

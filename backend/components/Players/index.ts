@@ -66,26 +66,12 @@ export class Players {
         }
     }
 
-    updatePlayer(socketId:string, params:PlayerJSON):number {
-        const index = this.players.findIndex(p => p.socketId === socketId);
-        if (index !== -1) {
-            const player = this.players[index];
-            // Клиент — источник истины по позиции; сервер только держит в границах арены.
-            const margin = player.radius || 13;
-            const edgePadX = this.scene.getEdgePadX();
-            const edgePadY = this.scene.getEdgePadY();
-            const minX = margin + edgePadX;
-            const maxX = Math.max(minX, this.scene.getWidth() - margin - edgePadX);
-            const minY = margin + edgePadY;
-            const maxY = Math.max(minY, this.scene.getHeight() - margin - edgePadY);
-            player.pageX = Math.min(maxX, Math.max(minX, Number(params.pageX) || player.pageX));
-            player.pageY = Math.min(maxY, Math.max(minY, Number(params.pageY) || player.pageY));
-            if (Number.isFinite(params.rotation)) {
-                player.rotation = params.rotation;
-            }
-            return index;
-        }
-        return -1;
+    pauseMovement() {
+        this.players.forEach(player => player.pauseMovement());
+    }
+
+    resumeMovement() {
+        this.players.forEach(player => player.resumeMovement());
     }
 
     deletePlayer(socketId:string):boolean {

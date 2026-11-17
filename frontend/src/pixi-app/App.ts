@@ -8,6 +8,7 @@ import { getRoomId } from "../utils/getRoomId";
 import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
 import { ResourcesLoader } from "./classes/ResourcesLoader";
+import type { Player } from "./classes/players/Player";
 
 const CLIENT_KEY = "wave-arena-client";
 
@@ -74,10 +75,10 @@ export class App {
     private pendingName:string | null = null;
     private nameSentForSocket:string | null = null;
     private heartbeatTimer:ReturnType<typeof setInterval> | null = null;
-    private pendingMove:{ pageX:number, pageY:number, rotation:number } | null = null;
-    private lastMoveSentAt = 0;
-    // Сервер складывает ходы в пакет world, каждый кадр слать нельзя
-    private readonly moveSendIntervalMs = 50;
+    private lastMoveX = Number.NaN;
+    private lastMoveY = Number.NaN;
+    private sentAim = Number.NaN;
+    private nextAimAt = 0;
     private destroyed = false;
     private loading:Promise<void> | null = null;
     private readonly clientId = storedClientId();
@@ -469,14 +470,12 @@ export class App {
         const player = this.scene.mePlayer;
         const deltaSec = ticker.deltaMS / 1000;
         const move = this.control.moveVector();
-        const dx = move.x;
-        const dy = move.y;
 
-        if (dx !== 0 || dy !== 0) {
+        if (move.x !== 0 || move.y !== 0) {
             player.animationPlay();
             player.moveTo(
-                player.x + dx * player.getSpeed() * deltaSec,
-                player.y + dy * player.getSpeed() * deltaSec
+                player.x + move.x * player.getSpeed() * deltaSec,
+                player.y + move.y * player.getSpeed() * deltaSec
             );
             this.scene.centerScene();
         } else {
@@ -484,14 +483,13 @@ export class App {
         }
 
         const mouseCoords = this.control.getMouseCoords();
-        let isRotationChanged = false;
         if (this.control.isTouch) {
             const aim = this.control.aimAngle;
             if (aim !== null) {
-                isRotationChanged = player.setRotation(aim);
+                player.setRotation(aim);
             }
         } else {
-            isRotationChanged = player.refreshRotationAngleToMouse(mouseCoords);
+            player.refreshRotationAngleToMouse(mouseCoords);
         }
 
         const mouseMovement = this.control.getAndResetMouseMovement();
@@ -505,10 +503,8 @@ export class App {
             this.scene.incrementScale(scrollDelta > 0 ? -0.1 : 0.1);
         }
 
-        if (dx !== 0 || dy !== 0 || isRotationChanged) {
-            this.queuePlayerMove(player.getCoords());
-        }
-        this.flushPlayerMove(Date.now());
+        this.sendMoveIfChanged(player, move);
+        this.sendAimIfDue(player.getCoords().rotation);
 
         if (this.control.isFiring) {
             player.fire();
@@ -522,17 +518,42 @@ export class App {
         this.cursor?.update(mouseCoords);
     }
 
-    private queuePlayerMove(coords:{ pageX:number, pageY:number, rotation:number }) {
-        this.pendingMove = coords;
+    /** После респауна та же зажатая кнопка должна уйти ещё раз, уже с новой точки. */
+    public invalidateMove() {
+        this.lastMoveX = Number.NaN;
+        this.lastMoveY = Number.NaN;
     }
 
-    private flushPlayerMove(now:number) {
-        if (!this.pendingMove || now - this.lastMoveSentAt < this.moveSendIntervalMs) {
+    /** Сразу, и только когда сменился вектор бега. Прицел сюда не входит. */
+    private sendMoveIfChanged(player:Player, move:{ x:number, y:number }) {
+        const changed = Number.isNaN(this.lastMoveX)
+            || Math.abs(move.x - this.lastMoveX) >= 0.02
+            || Math.abs(move.y - this.lastMoveY) >= 0.02;
+        if (!changed) {
             return;
         }
-        this.socket?.emit("playerMoved", this.pendingMove);
-        this.pendingMove = null;
-        this.lastMoveSentAt = now;
+        this.lastMoveX = move.x;
+        this.lastMoveY = move.y;
+        const speed = Math.hypot(move.x, move.y) * player.getSpeed();
+        this.socket?.emit("playerMoved", {
+            pageX: player.x,
+            pageY: player.y,
+            moveRotation: Math.atan2(move.y, move.x),
+            speedInSecond: speed,
+            rotation: player.getCoords().rotation
+        });
+    }
+
+    /** Редко: тело союзника смотрит на прицел, на бег это не влияет. */
+    private sendAimIfDue(rotation:number) {
+        const now = Date.now();
+        const changed = Number.isNaN(this.sentAim) || Math.abs(rotation - this.sentAim) >= 0.04;
+        if (!changed || now < this.nextAimAt) {
+            return;
+        }
+        this.sentAim = rotation;
+        this.nextAimAt = now + 100;
+        this.socket?.emit("playerAimed", { rotation });
     }
 
     addTicker(tickerFunc:(ticker:PIXI.Ticker) => void) {

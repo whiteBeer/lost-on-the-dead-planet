@@ -12,7 +12,6 @@ export class Player {
     public clientId = "";
     public name = "Игрок";
     public weapon:Weapon;
-    public movementStopTimer:NodeJS.Timeout | null = null;
 
     private app:App;
     private pixiObj:PIXI.Container;
@@ -20,6 +19,10 @@ export class Player {
     private speedInSecond = 150;
     private radius = 0;
     private rotation = 0;
+    /** Шаг союзника по последней прямой, в пикселях на кадр при 60 Гц. */
+    private dx = 0;
+    private dy = 0;
+    private tickerFunc:(ticker:PIXI.Ticker) => void;
 
     public health = 0;
     public maxHealth = 0;
@@ -46,6 +49,8 @@ export class Player {
         this.pixiObj = this.initGraphics();
         this.setDisplayName(params.name);
         this.applyTransform();
+        this.tickerFunc = (ticker) => this.stepRemote(ticker);
+        this.app.addTicker(this.tickerFunc);
     }
 
     public animationPlay():void {
@@ -63,16 +68,18 @@ export class Player {
     update(params:BackendPlayer, opts:{ syncTransform?:boolean } = {}) {
         if (params.clientId) this.clientId = params.clientId;
         if (params.socketId) this.socketId = params.socketId;
-        // Локальный игрок двигается на клиенте; серверные stats/scene не должны откатывать позицию.
-        const isMe = this.socketId === this.app.socket?.id;
+        // Позицию союзника ведёт playersMoved. Полный JSON ставит её только при респауне и первой постановке.
         const syncTransform = opts.syncTransform === true
-            || !isMe
             || this.x < 0
             || this.y < 0;
         if (syncTransform) {
             this.x = params.pageX;
             this.y = params.pageY;
             this.rotation = params.rotation;
+            if (opts.syncTransform === true) {
+                this.dx = 0;
+                this.dy = 0;
+            }
             this.applyTransform();
         }
         this.health = params.health;
@@ -109,9 +116,32 @@ export class Player {
     }
 
     remove() {
+        this.app.removeTicker(this.tickerFunc);
         if (this.pixiObj.parent) {
             this.pixiObj.parent.removeChild(this.pixiObj);
         }
+    }
+
+    applyRemoteMove(snap:{
+        pageX:number,
+        pageY:number,
+        rotation:number,
+        moveRotation:number,
+        speedInSecond:number,
+        updatedAt:string
+    }, serverCurrentDateTime:string) {
+        const dirCos = Math.cos(snap.moveRotation);
+        const dirSin = Math.sin(snap.moveRotation);
+        const serverTime = new Date(serverCurrentDateTime).getTime();
+        const updateTime = new Date(snap.updatedAt).getTime();
+        const dt = Math.max(0, (serverTime - updateTime) / 1000);
+        this.place(
+            snap.pageX + dirCos * snap.speedInSecond * dt,
+            snap.pageY + dirSin * snap.speedInSecond * dt,
+            snap.rotation
+        );
+        this.dx = dirCos * (snap.speedInSecond / 60);
+        this.dy = dirSin * (snap.speedInSecond / 60);
     }
 
     hide() {
@@ -162,21 +192,43 @@ export class Player {
     }
 
     moveTo(x:number, y:number, rotation:number | null = null) {
-        if (this.pixiObj && this.app.scene) {
-            const margin = this.radius || 13;
-            const edgePadX = this.app.scene.edgePadX || 0;
-            const edgePadY = this.app.scene.edgePadY || 0;
-            const minX = margin + edgePadX;
-            const maxX = Math.max(minX, this.app.scene.width - margin - edgePadX);
-            const minY = margin + edgePadY;
-            const maxY = Math.max(minY, this.app.scene.height - margin - edgePadY);
-            this.x = Math.min(maxX, Math.max(minX, x));
-            this.y = Math.min(maxY, Math.max(minY, y));
-            if (rotation !== null) {
-                this.rotation = rotation;
-            }
-            this.applyTransform();
+        this.place(x, y, rotation);
+    }
+
+    private stepRemote(ticker:PIXI.Ticker) {
+        if (this.dx === 0 && this.dy === 0) {
+            return;
         }
+        if (this.socketId === this.app.socket?.id) {
+            return;
+        }
+        if (this.app.scene?.paused || !this.pixiObj || this.pixiObj.destroyed) {
+            return;
+        }
+        this.place(
+            this.x + this.dx * ticker.deltaTime,
+            this.y + this.dy * ticker.deltaTime,
+            null
+        );
+    }
+
+    private place(x:number, y:number, rotation:number | null) {
+        if (!this.pixiObj || !this.app.scene) {
+            return;
+        }
+        const margin = this.radius || 13;
+        const edgePadX = this.app.scene.edgePadX || 0;
+        const edgePadY = this.app.scene.edgePadY || 0;
+        const minX = margin + edgePadX;
+        const maxX = Math.max(minX, this.app.scene.width - margin - edgePadX);
+        const minY = margin + edgePadY;
+        const maxY = Math.max(minY, this.app.scene.height - margin - edgePadY);
+        this.x = Math.min(maxX, Math.max(minX, x));
+        this.y = Math.min(maxY, Math.max(minY, y));
+        if (rotation !== null) {
+            this.rotation = rotation;
+        }
+        this.applyTransform();
     }
 
     setRotation(rotation:number) {

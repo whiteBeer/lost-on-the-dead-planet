@@ -9,6 +9,15 @@ export interface Rectangle {
     rotation:number
 }
 
+/** Смена бега: старт, направление, скорость. Прицел в rotation, к бегу не относится. */
+export interface PlayerMoveInput {
+    pageX:number,
+    pageY:number,
+    moveRotation:number,
+    speedInSecond:number,
+    rotation:number
+}
+
 export interface PlayerJSON {
     socketId:string,
     clientId?:string,
