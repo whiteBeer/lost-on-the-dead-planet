@@ -70,6 +70,7 @@ export class AppApiServer {
                 "bombFx",
                 "perkOffer",
                 "playerStats",
+                "playersMoved",
                 "sceneReset",
                 "gameOver",
                 "lobbyUpdated",

@@ -109,6 +109,8 @@ export class Pickups {
                 item.x, item.y, BOMB_RADIUS, BOMB_DAMAGE, player.socketId
             );
             this.scene.emit("bombFx", { x: item.x, y: item.y, radius: BOMB_RADIUS });
+        } else if (item.kind === "speed") {
+            player.grantSpeedBoost();
         } else {
             return false;
         }

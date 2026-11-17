@@ -4,11 +4,15 @@ import { App } from "../../App";
 import { BackendPickup, BackendScene } from "../../Types";
 import { ResourcesLoader } from "../ResourcesLoader";
 
-function itemGraphic(kind:"bomb" | "medkit") {
+function itemGraphic(kind:"bomb" | "medkit" | "speed") {
     const g = new PIXI.Graphics();
     if (kind === "bomb") {
         g.circle(0, 0, 14).fill(0xe24b2a);
         g.circle(0, 0, 6).fill(0xffd24a);
+        return g;
+    }
+    if (kind === "speed") {
+        g.moveTo(-4, -16).lineTo(12, -2).lineTo(2, -2).lineTo(6, 16).lineTo(-10, 0).lineTo(0, 0).closePath().fill(0x4ecbff);
         return g;
     }
     g.rect(-12, -12, 24, 24).fill(0xf4f7f2);
@@ -58,14 +62,15 @@ export class PickupsCollection {
         const container = new PIXI.Container();
         const key = data.kind === "bomb" ? "pickup_bomb"
             : data.kind === "medkit" ? "pickup_medkit"
-                : (data.weaponId ? `weapon_${data.weaponId}` : "");
+                : data.kind === "speed" ? "pickup_speed"
+                    : (data.weaponId ? `weapon_${data.weaponId}` : "");
         const tex = key ? ResourcesLoader.getTexture(key) : null;
         if (tex) {
             const sprite = new PIXI.Sprite(tex);
             sprite.anchor.set(0.5);
             ResourcesLoader.fitSprite(sprite, 48);
             container.addChild(sprite);
-        } else if (data.kind === "bomb" || data.kind === "medkit") {
+        } else if (data.kind === "bomb" || data.kind === "medkit" || data.kind === "speed") {
             container.addChild(itemGraphic(data.kind));
         } else {
             const g = new PIXI.Graphics();

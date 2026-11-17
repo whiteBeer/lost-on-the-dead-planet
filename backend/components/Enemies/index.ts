@@ -145,10 +145,12 @@ export class Enemies {
         const wave = this.scene.waveDirector.getWave();
         if (Math.random() < dropChanceForWave(wave)) {
             const roll = Math.random();
-            if (roll < 0.2) {
+            if (roll < 0.15) {
                 this.scene.pickupsCollection.addPickup("bomb", pos.x, pos.y);
-            } else if (roll < 0.4) {
+            } else if (roll < 0.3) {
                 this.scene.pickupsCollection.addPickup("medkit", pos.x, pos.y);
+            } else if (roll < 0.4) {
+                this.scene.pickupsCollection.addPickup("speed", pos.x, pos.y);
             } else {
                 this.scene.pickupsCollection.addWeaponPickup(pos.x, pos.y, rollWeaponDrop(wave));
             }

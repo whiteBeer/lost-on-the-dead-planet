@@ -11,6 +11,7 @@ export class Player {
     public socketId = "";
     public clientId = "";
     public name = "Игрок";
+    private color = "#ffffff";
     public weapon:Weapon;
 
     private app:App;
@@ -36,6 +37,10 @@ export class Player {
     private bodySprite:PIXI.AnimatedSprite|null = null;
     private legsSprite:PIXI.AnimatedSprite|null = null;
     private nameLabel:PIXI.Text|null = null;
+    private glow:PIXI.Graphics|null = null;
+    private glowColor = 0xffffff;
+    private hurtUntil = 0;
+    private glowHurt = false;
 
     constructor(app:App, params:BackendPlayer) {
         this.app = app;
@@ -53,7 +58,10 @@ export class Player {
         this.pixiObj = this.initGraphics();
         this.setDisplayName(params.name);
         this.applyTransform();
-        this.tickerFunc = (ticker) => this.stepRemote(ticker);
+        this.tickerFunc = (ticker) => {
+            this.stepRemote(ticker);
+            this.syncGlow();
+        };
         this.app.addTicker(this.tickerFunc);
     }
 
@@ -72,6 +80,7 @@ export class Player {
     update(params:BackendPlayer, opts:{ syncTransform?:boolean } = {}) {
         if (params.clientId) this.clientId = params.clientId;
         if (params.socketId) this.socketId = params.socketId;
+        if (params.color) this.color = params.color;
         // Позицию союзника ведёт playersMoved. Полный JSON ставит её только при респауне и первой постановке.
         const syncTransform = opts.syncTransform === true
             || this.x < 0
@@ -86,6 +95,7 @@ export class Player {
             }
             this.applyTransform();
         }
+        const damaged = this.health > 0 && params.health < this.health;
         this.health = params.health;
         this.maxHealth = params.maxHealth;
         this.radius = params.radius;
@@ -105,6 +115,9 @@ export class Player {
         this.exp = params.exp || 0;
         if (params.speed) {
             this.speedInSecond = params.speed;
+        }
+        if (damaged) {
+            this.hurtUntil = performance.now() + 250;
         }
         this.setHealth(this.health);
         if (params.isDead) this.hide();
@@ -127,8 +140,12 @@ export class Player {
     }
 
     setHealth(health:number) {
+        if (health < this.health) {
+            this.hurtUntil = performance.now() + 200;
+        }
         this.health = health;
         this.pixiObj.alpha = 1;
+        this.syncGlow();
     }
 
     remove() {
@@ -209,6 +226,25 @@ export class Player {
 
     moveTo(x:number, y:number, rotation:number | null = null) {
         this.place(x, y, rotation);
+    }
+
+    private syncGlow() {
+        const hurt = performance.now() < this.hurtUntil;
+        if (!this.glow || hurt === this.glowHurt) {
+            return;
+        }
+        this.glowHurt = hurt;
+        this.glow.clear();
+        this.glow.circle(0, 0, (this.radius || 13) * 1.65).fill(
+            hurt
+                ? { color: 0xff2a2a, alpha: 0.5 }
+                : { color: this.glowColor, alpha: 0.16 }
+        );
+        const parent = this.glow.parent;
+        if (parent) {
+            const aboveBody = Math.max(0, parent.children.length - 2);
+            parent.setChildIndex(this.glow, hurt ? aboveBody : 0);
+        }
     }
 
     private stepRemote(ticker:PIXI.Ticker) {
@@ -298,7 +334,14 @@ export class Player {
         this.bodySprite.width = this.radius * 2.5;
         this.bodySprite.height = this.radius * 3;
         this.bodySprite.rotation = -Math.PI / 2;
+        const own = playerColor(this.color);
+        this.bodySprite.tint = mixWhite(own, 0.90);
         this.bodyContainer.addChild(this.bodySprite);
+
+        this.glowColor = mixWhite(own, 0.4);
+        this.glow = new PIXI.Graphics();
+        this.glow.circle(0, 0, (this.radius || 13) * 1.65).fill({ color: this.glowColor, alpha: 0.16 });
+        container.addChild(this.glow);
         container.addChild(this.bodyContainer);
 
         this.nameLabel = new PIXI.Text({
@@ -322,6 +365,21 @@ export class Player {
 
         return container;
     }
+}
+
+function playerColor(color:string):number {
+    const named:Record<string, number> = { red: 0xe23b3b, blue: 0x3a78e0, white: 0xf4f4f4 };
+    const known = named[color.toLowerCase()];
+    if (known !== undefined) {
+        return known;
+    }
+    const n = Number.parseInt(color.replace("#", ""), 16);
+    return Number.isFinite(n) ? n : 0xffffff;
+}
+
+function mixWhite(color:number, white:number):number {
+    const mix = (channel:number) => Math.round(channel + (255 - channel) * white);
+    return (mix((color >> 16) & 255) << 16) | (mix((color >> 8) & 255) << 8) | mix(color & 255);
 }
 
 export default Player;

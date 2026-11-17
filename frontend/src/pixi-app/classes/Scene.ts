@@ -171,6 +171,18 @@ export class Scene {
         }
     }
 
+    /** Следующий живой игрок по кругу. */
+    followNext() {
+        const live = this.playersCollection.getPlayers().filter((player) => player.isVisible());
+        if (live.length === 0) {
+            return;
+        }
+        const index = this.cameraTarget ? live.indexOf(this.cameraTarget) : -1;
+        const target = live[(index + 1) % live.length];
+        this.cameraTarget = target;
+        this.centerOn(target);
+    }
+
     /** Камера на живом игроке. Текущая цель держится, пока её видно. */
     followLive() {
         const live = this.playersCollection.getPlayers().filter((player) => player.isVisible());

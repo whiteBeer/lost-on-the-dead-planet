@@ -47,6 +47,8 @@ export class Player {
     /** Доля замедления от укусов, 0…0.5 */
     private biteSlow = 0;
     private sentBiteSlow = 0;
+    /** Подбор «скорость»: +100% к бегу до этого момента. */
+    private speedBoostUntil = 0;
 
     constructor(socketId:string, color:string, startX:number, startY:number, scene?:Scene) {
         this.socketId = socketId;
@@ -142,7 +144,15 @@ export class Player {
     }
 
     public getSpeed() {
-        return PLAYER_CONFIG.baseSpeed * (1 + this.additionalStats.speed) * (1 - this.biteSlow);
+        const boost = Date.now() < this.speedBoostUntil ? 2 : 1;
+        return PLAYER_CONFIG.baseSpeed * (1 + this.additionalStats.speed) * (1 - this.biteSlow) * boost;
+    }
+
+    /** +100% к бегу на 5 секунд. Повторный подбор начинает отсчёт заново. */
+    public grantSpeedBoost() {
+        const before = this.getSpeed();
+        this.speedBoostUntil = Date.now() + 5000;
+        this.scaleRun(before);
     }
 
     /** Укус в ближнем бою. Попавший укус замедляет на 12%, но не больше чем на 50%. */
@@ -218,6 +228,33 @@ export class Player {
                 this.emitStats();
             }
         }
+
+        if (this.speedBoostUntil && Date.now() >= this.speedBoostUntil) {
+            this.speedBoostUntil = 0;
+            this.scaleRun(this.getSpeed() * 2);
+            this.emitStats();
+        }
+    }
+
+    /** Текущий бег умножается на новую скорость, чтобы союзник не ждал смены клавиш. */
+    private scaleRun(before:number) {
+        const after = Math.max(0, this.getSpeed());
+        if (before <= 1) {
+            return;
+        }
+        const ratio = after / before;
+        if (this.savedMoveSpeed > 1) {
+            this.savedMoveSpeed = Math.min(after, this.savedMoveSpeed * ratio);
+        }
+        if (this.moveSpeed <= 1) {
+            return;
+        }
+        const pos = this.livePoint();
+        this.startX = pos.x;
+        this.startY = pos.y;
+        this.moveSpeed = Math.min(after, this.moveSpeed * ratio);
+        this.moveUpdatedAt = new Date().toISOString();
+        this.scene?.emit("playersMoved", { players: [this.movementSnap()] });
     }
 
     private checkLevelUp() {

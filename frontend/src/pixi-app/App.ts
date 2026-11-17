@@ -103,6 +103,11 @@ export class App {
             resizeTo: window,
             antialias: true
         });
+        this.pixiApp.canvas.addEventListener("pointerdown", () => {
+            if (this.spectating) {
+                this.scene?.followNext();
+            }
+        });
         if (this.destroyed) {
             return;
         }

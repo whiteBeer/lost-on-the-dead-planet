@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { PLAYER_CONFIG } from "../../configs/Players";
 
-export type PickupKind = "weapon" | "bomb" | "medkit";
+export type PickupKind = "weapon" | "bomb" | "medkit" | "speed";
 
 export interface PickupJSON {
     id:string;

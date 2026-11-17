@@ -24,7 +24,8 @@ const WEAPON_KEYS = [
 
 const PICKUP_KEYS = [
     "pickup_bomb",
-    "pickup_medkit"
+    "pickup_medkit",
+    "pickup_speed"
 ];
 
 const PERK_KEYS = [

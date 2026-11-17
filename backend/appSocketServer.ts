@@ -212,11 +212,14 @@ export class AppSocketServer {
         const cone = config?.pelletCone || 0;
         const baseRotation = player.weapon.applySpread(params.rotation);
 
+        const bulletSpeed = player.weapon.getBulletSpeed();
         for (let i = 0; i < pellets; i++) {
             let rotation = baseRotation;
+            let speedInSecond = bulletSpeed;
             if (pellets > 1) {
                 const t = (i / (pellets - 1)) - 0.5;
                 rotation = baseRotation + t * cone;
+                speedInSecond *= 0.97 + Math.random() * 0.06;
             }
 
             roomScene.missilesCollection.createMissile({
@@ -225,7 +228,7 @@ export class AppSocketServer {
                 rotation,
                 ownerId: socketId,
                 damage: player.weapon.getDamage(),
-                speedInSecond: player.weapon.getBulletSpeed(),
+                speedInSecond,
                 range: player.weapon.getRange(),
                 pierce: player.weapon.getPierce()
             });
