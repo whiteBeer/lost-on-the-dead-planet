@@ -23,7 +23,7 @@ export class Missiles {
         try {
             const newMissile = new WeaponMissile(this.scene, params);
             this.items.push(newMissile);
-            this.scene.worldBatch.markMissileAdded(newMissile.toJSON());
+            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
         } catch (e) {
             console.warn(e);
         }
@@ -33,7 +33,7 @@ export class Missiles {
         try {
             const newMissile = new EnemyMissile(this.scene, params);
             this.items.push(newMissile);
-            this.scene.worldBatch.markMissileAdded(newMissile.toJSON());
+            this.scene.emit("missilesAdded", { missile: newMissile.toJSON() });
         } catch (e) {
             console.warn(e);
         }
@@ -53,7 +53,7 @@ export class Missiles {
             const missile = this.items[index];
             missile.destroy();
             this.items.splice(index, 1);
-            this.scene.worldBatch.markMissileRemoved(missile.id);
+            this.scene.emit("missilesRemoved", { missile: missile.toJSON() });
         }
     }
 

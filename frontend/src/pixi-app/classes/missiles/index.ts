@@ -3,13 +3,8 @@ import { Missile } from "./Missile";
 import { App } from "../../App";
 import { BackendScene, BackendMissile } from "../../Types";
 
-interface IMissilesAddedSocket {
-    missiles:BackendMissile[],
-    serverCurrentDateTime:string
-}
-
-interface IMissilesRemovedSocket {
-    ids:string[],
+interface IMissileSocket {
+    missile:BackendMissile,
     serverCurrentDateTime:string
 }
 
@@ -27,15 +22,12 @@ export class MissilesCollection {
             this.createMissile(el, backendScene.serverCurrentDateTime);
         });
 
-        // сервер шлёт весь тик одним пакетом
-        this.app.socket?.on("missilesRemoved", (payload:IMissilesRemovedSocket) => {
-            payload.ids.forEach(id => this.removeMissile(id));
+        this.app.socket?.on("missilesRemoved", (payload:IMissileSocket) => {
+            this.removeMissile(payload.missile.id);
         });
 
-        this.app.socket?.on("missilesAdded", (payload:IMissilesAddedSocket) => {
-            payload.missiles.forEach(missile => {
-                this.createMissile(missile, payload.serverCurrentDateTime);
-            });
+        this.app.socket?.on("missilesAdded", (payload:IMissileSocket) => {
+            this.createMissile(payload.missile, payload.serverCurrentDateTime);
         });
     }
 

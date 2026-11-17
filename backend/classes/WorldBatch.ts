@@ -1,10 +1,7 @@
-import { MissileJSON } from "../types";
-
 /*
- * Сборщик движения врагов и пуль комнаты.
- * Ход игрока сюда не кладётся: он уходит сразу, в момент смены клавиш.
- * Снаружи только mark. flush шлёт непустые буферы отдельными событиями:
- * world, missilesAdded, missilesRemoved.
+ * Сборщик движения врагов.
+ * Ход игрока и пули сюда не кладутся: они уходят сразу.
+ * Снаружи только mark. flush шлёт непустой буфер событием world.
  * Повторный snap того же id в окне затирает предыдущий.
  */
 
@@ -20,24 +17,9 @@ export interface EnemyMovementSnap {
 export class WorldBatch {
 
     private readonly enemies = new Map<string, EnemyMovementSnap>();
-    private missilesAdded:MissileJSON[] = [];
-    private missilesRemoved:string[] = [];
 
     markEnemy(snap:EnemyMovementSnap):void {
         this.enemies.set(snap.id, snap);
-    }
-
-    markMissileAdded(missile:MissileJSON):void {
-        const existingIndex = this.missilesAdded.findIndex((item) => item.id === missile.id);
-        if (existingIndex !== -1) {
-            this.missilesAdded[existingIndex] = missile;
-            return;
-        }
-        this.missilesAdded.push(missile);
-    }
-
-    markMissileRemoved(id:string):void {
-        this.missilesRemoved.push(id);
     }
 
     flush(emit:(eventName:string, data:object) => void):void {
@@ -46,14 +28,6 @@ export class WorldBatch {
                 enemies: [...this.enemies.values()]
             });
         }
-        if (this.missilesAdded.length > 0) {
-            emit("missilesAdded", { missiles: this.missilesAdded });
-        }
-        if (this.missilesRemoved.length > 0) {
-            emit("missilesRemoved", { ids: this.missilesRemoved });
-        }
         this.enemies.clear();
-        this.missilesAdded = [];
-        this.missilesRemoved = [];
     }
 }
