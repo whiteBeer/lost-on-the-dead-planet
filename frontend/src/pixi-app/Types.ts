@@ -50,6 +50,7 @@ export interface BackendPlayer {
     isDead?:boolean;
     isReady?:boolean;
     exp?:number;
+    expToNextLevel?:number;
     level?:number;
     perks?:string[];
     speed?:number;

@@ -410,7 +410,7 @@ export class App {
         const mouseCoords = this.control.getMouseCoords();
         let isRotationChanged = false;
         const touchAim = this.control.getAimAngle();
-        if (!this.uiBlocked && touchAim !== null && this.control.isTouch) {
+        if (!this.uiBlocked && touchAim !== null && (this.control.isTouch || this.control.hasKeyboardAim || this.control.isKey("KeyF"))) {
             const oldRotation = player.getCoords().rotation;
             player.moveTo(player.x, player.y, touchAim);
             isRotationChanged = oldRotation !== touchAim;

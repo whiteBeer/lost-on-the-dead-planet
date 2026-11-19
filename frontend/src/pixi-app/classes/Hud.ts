@@ -181,7 +181,7 @@ export class Hud {
             this.hintText.style.fill = 0xffdc73;
         } else {
             this.hintText.text = this.app.scene?.phase === "playing"
-                ? "WASD · Shift бег · Space рывок · I рюкзак"
+                ? "WASD · Shift бег · Space рывок · I/Tab рюкзак · Стрелки прицел · F огонь"
                 : "";
             this.hintText.style.fill = 0xdddddd;
         }

@@ -128,9 +128,9 @@ function Room() {
     }, []);
 
     useEffect(() => {
-        const blocked = inventoryOpen || pauseOpen || !!dead || !!victoryWave || phase !== "playing";
+        const blocked = pauseOpen || !!dead || !!victoryWave || phase !== "playing";
         appRef.current?.setUiBlocked(blocked);
-    }, [inventoryOpen, pauseOpen, dead, victoryWave, phase]);
+    }, [pauseOpen, dead, victoryWave, phase]);
 
     const togglePause = () => {
         appRef.current?.togglePause();
@@ -158,6 +158,8 @@ function Room() {
     const readyCount = lobbyPlayers.filter(p => p.isReady).length;
     const inventory = playerState?.inventory || [];
     const hpPercent = playerState ? Math.max(0, Math.min(100, playerState.health / playerState.maxHealth * 100)) : 0;
+    const expPercent = playerState ? Math.max(0, Math.min(100,
+        (playerState.exp || 0) / (playerState.expToNextLevel || 1) * 100)) : 0;
     const staminaPercent = playerState ? Math.max(0, Math.min(100,
         (playerState.stamina || 0) / (playerState.maxStamina || 100) * 100)) : 0;
 
@@ -190,10 +192,21 @@ function Room() {
 
             {phase === "playing" && playerState && !dead && (
                 <div className={styles.vitals}>
-                    <div className={styles.vitalLabel}><span>HP</span><b>{Math.ceil(playerState.health)}/{playerState.maxHealth}</b></div>
-                    <div className={styles.vitalTrack}><i className={styles.hpFill} style={{ width: `${hpPercent}%` }} /></div>
-                    <div className={styles.vitalLabel}><span>STAMINA</span><b>{Math.ceil(playerState.stamina || 0)}/{playerState.maxStamina || 100}</b></div>
-                    <div className={styles.vitalTrack}><i className={styles.staminaFill} style={{ width: `${staminaPercent}%` }} /></div>
+                    <div className={styles.levelRow}>
+                        <span className={styles.levelBadge} title="Уровень">{playerState.level || 1}</span>
+                        <div className={styles.vitalTrack} role="progressbar" aria-label="Опыт" aria-valuemin={0} aria-valuemax={playerState.expToNextLevel || 1} aria-valuenow={playerState.exp || 0}>
+                            <i className={styles.expFill} style={{ width: `${expPercent}%` }} />
+                            <span>Опыт {playerState.exp || 0} / {playerState.expToNextLevel || 0}</span>
+                        </div>
+                    </div>
+                    <div className={styles.vitalTrack} role="progressbar" aria-label="Здоровье" aria-valuemin={0} aria-valuemax={playerState.maxHealth} aria-valuenow={Math.max(0, playerState.health)}>
+                        <i className={styles.hpFill} style={{ width: `${hpPercent}%` }} />
+                        <span>{Math.max(0, Math.ceil(playerState.health))} / {playerState.maxHealth}</span>
+                    </div>
+                    <div className={`${styles.vitalTrack} ${styles.staminaTrack}`}>
+                        <i className={styles.staminaFill} style={{ width: `${staminaPercent}%` }} />
+                        <span>Выносливость {Math.ceil(playerState.stamina || 0)}</span>
+                    </div>
                 </div>
             )}
 

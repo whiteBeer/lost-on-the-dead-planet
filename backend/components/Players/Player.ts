@@ -408,6 +408,7 @@ export class Player {
             isDead: this.isDead,
             isReady: this.isReady,
             exp: this.exp,
+            expToNextLevel: expForLevel(this.level),
             level: this.level,
             perks: [...this.perks],
             speed: this.getSpeed(),

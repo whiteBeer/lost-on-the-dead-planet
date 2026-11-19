@@ -56,7 +56,7 @@ export class Control {
         this._handlers.keydown = (e) => {
             if (!e.repeat) this.pressed.add(e.code);
             this.keys.add(e.code);
-            if (["Space", "Tab"].includes(e.code)) e.preventDefault();
+            if (["Space", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
         };
         this._handlers.keyup = (e) => {
             this.keys.delete(e.code);
@@ -90,7 +90,6 @@ export class Control {
         };
         this._handlers.contextmenu = (e) => {
             e.preventDefault();
-            this.clearKeys.call(this);
         };
 
         this._handlers.blur = () => {
@@ -179,6 +178,9 @@ export class Control {
     }
 
     getAimAngle() {
+        const x = Number(this.isKey("ArrowRight")) - Number(this.isKey("ArrowLeft"));
+        const y = Number(this.isKey("ArrowDown")) - Number(this.isKey("ArrowUp"));
+        if (x || y) this.lastAim = Math.atan2(y, x);
         if (this.aimStick) {
             const dx = this.aimStick.x - this.aimStick.originX;
             const dy = this.aimStick.y - this.aimStick.originY;
@@ -187,8 +189,12 @@ export class Control {
         return this.lastAim;
     }
 
+    get hasKeyboardAim() {
+        return ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].some(key => this.isKey(key));
+    }
+
     get isFiring() {
-        return this.isMousePressed || (!!this.aimStick && Math.hypot(
+        return this.isMousePressed || this.isKey("KeyF") || (!!this.aimStick && Math.hypot(
             this.aimStick.x - this.aimStick.originX,
             this.aimStick.y - this.aimStick.originY
         ) >= AIM_DEADZONE);
