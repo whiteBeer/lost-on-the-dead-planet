@@ -21,6 +21,7 @@ const front = process.env.ZB_FRONT || 'http://localhost:3064/?bot';
         const button = a.getByRole('button', { name: 'Команда (T)', exact: true });
         assert(await button.isVisible(), 'team access must be visible on desktop');
         await button.click();
+        await b.getByRole('button', { name: 'Команда (T)', exact: true }).click();
         const row = a.locator('#team-panel li').filter({ hasText: 'TeamUiB' });
         await row.getByRole('button', { name: 'Позвать', exact: true }).click();
         await b.getByRole('button', { name: 'Принять (Y)', exact: true }).click();

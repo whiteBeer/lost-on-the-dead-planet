@@ -107,7 +107,7 @@
 .secondary { padding: 7px 12px; color: #f1f0e6; background: #3a4230; border-radius: 7px; cursor: pointer; }
 .small { padding: 2px 9px; font-size: 12px; color: #14180f; background: #a8e05f; border-radius: 5px; cursor: pointer; }
 
-.invite { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 10px 14px; background: rgba(12, 15, 10, 0.95); border: 2px solid #a8e05f; border-radius: 10px; z-index: 5; }
+.invite { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 10px 14px; background: rgba(12, 15, 10, 0.95); border: 2px solid #a8e05f; border-radius: 10px; z-index: 9; }
 .inviteButtons { display: flex; gap: 8px; margin-top: 8px; }
 
 .overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; text-align: center; background: rgba(40, 6, 6, 0.55); cursor: default; }
