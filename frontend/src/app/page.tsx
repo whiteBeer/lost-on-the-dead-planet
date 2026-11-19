@@ -3,21 +3,11 @@
 import dynamic from "next/dynamic";
 import React, { useEffect, useState } from "react";
 import styles from "./page.module.css";
+import { enterFullscreen } from "../game/Fullscreen";
 
 // Pixi работает только в браузере
 const GameView = dynamic(() => import("../components/GameView"), { ssr: false });
 
-function enterFullscreen() {
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?:() => void };
-    try {
-        const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
-        // В полноэкранном режиме Chrome отдаёт игре Ctrl+1..3 (выбор перка), а не переключает вкладки
-        Promise.resolve(result).then(() => (navigator as Navigator & { keyboard?:{ lock?:(keys:string[]) => Promise<void> } })
-            .keyboard?.lock?.(["Digit1", "Digit2", "Digit3"])).catch(() => {});
-    } catch {
-        // iPhone не умеет: игра просто идёт в обычном окне
-    }
-}
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const NAME_KEY = "lpt-zombies-name";
 

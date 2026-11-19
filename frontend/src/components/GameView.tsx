@@ -7,6 +7,7 @@ import { HudState } from "../game/Types";
 import styles from "./GameView.module.css";
 import Inventory from "./Inventory";
 import { itemImage } from "../game/Assets";
+import { enterFullscreen, isFullscreen, supportsFullscreen, unlockGameKeyboard } from "../game/Fullscreen";
 
 const ZONE_COLORS = ["#8ff06a", "#e8d36a", "#f0954e", "#ff5a5a"];
 
@@ -14,23 +15,6 @@ const RARITY_TEXT:Record<string, string> = { common: "обычный", rare: "р
 const WEAPON_RARITY_TEXT:Record<string, string> = {
     common: "обычное", uncommon: "необычное", rare: "редкое", epic: "эпическое", legendary: "легендарное"
 };
-
-/** Полноэкранный режим без адресной строки. Работает только по жесту игрока (нажатие, касание). */
-export function enterFullscreen() {
-    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?:() => void };
-    const doc = document as Document & { webkitFullscreenElement?:Element };
-    if (document.fullscreenElement || doc.webkitFullscreenElement) {
-        return;
-    }
-    try {
-        const result = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.();
-        // В полноэкранном режиме Chrome отдаёт игре Ctrl+1..3 (выбор перка), а не переключает вкладки
-        Promise.resolve(result).then(() => (navigator as Navigator & { keyboard?:{ lock?:(keys:string[]) => Promise<void> } })
-            .keyboard?.lock?.(["Digit1", "Digit2", "Digit3"])).catch(() => {});
-    } catch {
-        // Браузер не умеет (iPhone): остаётся обычный режим
-    }
-}
 
 function WeaponIcon({ id, className }:{ id:string, className?:string }) {
     return id ? <img className={className} src={imgUrl(`weapon_${id}`)} alt="" draggable={false} /> : null;
@@ -50,6 +34,15 @@ function GameView({ name }:{ name:string }) {
     const [invOpen, setInvOpen] = useState(false);
     const [tradeOpen, setTradeOpen] = useState(false);
     const [sprintOn, setSprintOn] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
+    const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
+
+    const closePanels = useCallback(() => {
+        setTradeOpen(false);
+        setInvOpen(false);
+        setTeamOpen(false);
+        setPerksOpen(false);
+    }, []);
 
     const onUiKey = useCallback((code:string) => {
         if (code === "KeyT") {
@@ -61,12 +54,37 @@ function GameView({ name }:{ name:string }) {
         } else if (code === "OpenTrade") {
             setTradeOpen(value => !value);
         } else if (code === "Escape") {
-            setTradeOpen(false);
-            setInvOpen(false);
-            setTeamOpen(false);
-            setPerksOpen(false);
+            closePanels();
         }
-    }, []);
+    }, [closePanels]);
+
+    useEffect(() => {
+        setFullscreenAvailable(supportsFullscreen());
+        const changed = () => {
+            const full = isFullscreen();
+            setFullscreen(full);
+            if (!full) {
+                closePanels();
+                unlockGameKeyboard();
+            }
+        };
+        changed();
+        document.addEventListener("fullscreenchange", changed);
+        document.addEventListener("webkitfullscreenchange", changed);
+        return () => {
+            document.removeEventListener("fullscreenchange", changed);
+            document.removeEventListener("webkitfullscreenchange", changed);
+            unlockGameKeyboard();
+        };
+    }, [closePanels]);
+
+    useEffect(() => {
+        appRef.current?.setUiOpen(invOpen || tradeOpen || teamOpen || perksOpen);
+    }, [invOpen, tradeOpen, teamOpen, perksOpen]);
+
+    useEffect(() => {
+        if (hud?.me?.dead) closePanels();
+    }, [hud?.me?.dead, closePanels]);
 
     // Телефон: если вышли из полноэкранного режима, следующее касание снова прячет адресную строку
     useEffect(() => {
@@ -149,6 +167,12 @@ function GameView({ name }:{ name:string }) {
     return (
         <div className={styles.root}>
             <div ref={hostRef} className={styles.canvas} />
+
+            {fullscreenAvailable && !fullscreen && (
+                <button className={styles.fullscreenButton} onClick={() => { void enterFullscreen(); }}>
+                    ⛶ На весь экран
+                </button>
+            )}
 
             {!hud?.me && !hud?.worldFull && hud?.connected !== false && <div className={styles.center}>Загрузка мира...</div>}
             {hud?.connected === false && !hud.worldFull && (

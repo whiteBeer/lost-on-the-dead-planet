@@ -51,13 +51,15 @@ export class Control {
             }
             this.keys.add(e.code);
             // Ctrl/Alt + 1..3 — выбор перка, а не переключение вкладок браузера
-            if (e.code === "Tab" || e.code === "Space" || (mod && /^Digit[1-3]$/.test(e.code))) {
+            if (e.code === "Escape" || e.code === "Tab" || e.code === "Space" || (mod && /^Digit[1-3]$/.test(e.code))) {
                 e.preventDefault();
             }
         });
         this.on(window, "keyup", (e:KeyboardEvent) => this.keys.delete(e.code));
         this.on(window, "blur", () => this.clear());
         this.on(document, "visibilitychange", () => this.clear());
+        this.on(document, "fullscreenchange", () => this.clear());
+        this.on(document, "webkitfullscreenchange", () => this.clear());
         this.on(canvas, "contextmenu", (e:Event) => e.preventDefault());
 
         // Левая половина экрана — бег, правая — прицел и стрельба. Стики появляются там, где коснулись

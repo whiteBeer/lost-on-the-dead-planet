@@ -69,6 +69,11 @@ export class App {
     private inputTimer:ReturnType<typeof setInterval> | null = null;
     private destroyed = false;
     private initialized = false;
+    private uiOpen = false;
+
+    setUiOpen(open:boolean) {
+        this.uiOpen = open;
+    }
 
     constructor(
         private readonly $el:HTMLElement,
@@ -109,7 +114,7 @@ export class App {
         await Assets.load();
         this.initialized = true;
         this.$el.appendChild(this.pixi.canvas);
-        this.pixi.canvas.style.cursor = "none";
+        this.pixi.canvas.style.cursor = "default";
 
         this.world.addChild(
             this.layerGround, this.layerItems, this.layerUnits,
@@ -338,6 +343,8 @@ export class App {
         const dt = Math.min(0.25, ticker.elapsedMS / 1000);
         const me = this.meState;
 
+        this.pixi.canvas.style.cursor = me && !me.dead && this.connected && !this.uiOpen ? "none" : "default";
+
         if (me && !me.dead) {
             this.moveSelf(me, dt);
         }
@@ -431,7 +438,7 @@ export class App {
     private drawCrosshair(mouse:{ x:number, y:number }, me:MeState | null) {
         const g = this.crosshair;
         g.clear();
-        if (!me || me.dead) {
+        if (!me || me.dead || this.uiOpen || !this.connected) {
             return;
         }
         const cx = this.pixi.screen.width / 2;

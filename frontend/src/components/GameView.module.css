@@ -1,5 +1,6 @@
 .root { position: fixed; inset: 0; overflow: hidden; touch-action: none; }
 .canvas { position: absolute; inset: 0; }
+.fullscreenButton { position: absolute; left: 52px; bottom: 190px; z-index: 12; padding: 5px 9px; color: #f1f0e6; font-size: 12px; background: rgba(12, 15, 10, .85); border: 1px solid #a8e05f; border-radius: 7px; cursor: pointer; }
 .center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 
 .board { position: absolute; top: 12px; right: 12px; width: 260px; padding: 10px; background: rgba(12, 15, 10, 0.78); border: 1px solid #39442b; border-radius: 10px; }
@@ -108,7 +109,7 @@
 .invite { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 10px 14px; background: rgba(12, 15, 10, 0.95); border: 2px solid #a8e05f; border-radius: 10px; z-index: 5; }
 .inviteButtons { display: flex; gap: 8px; margin-top: 8px; }
 
-.overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; text-align: center; background: rgba(40, 6, 6, 0.55); pointer-events: none; }
+.overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; text-align: center; background: rgba(40, 6, 6, 0.55); cursor: default; }
 .overlay button { pointer-events: auto; }
 .overlay h2 { font-size: 36px; font-weight: 800; }
 
@@ -158,6 +159,7 @@
   .barThin .barText { font-size: 8px; }
   .barSmall .barText { font-size: 9px; }
   .mute { left: 6px; top: 86px; bottom: auto; width: 30px; height: 26px; font-size: 13px; }
+  .fullscreenButton { left: 42px; top: 86px; bottom: auto; font-size: 11px; }
   .barText { font-size: 10px; }
   .protect { display: none; }
   .zone { font-size: 11px; }
