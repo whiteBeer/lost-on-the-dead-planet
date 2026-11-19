@@ -202,7 +202,9 @@ export class App {
 
         // Свой персонаж движется на клиенте сразу. Сервер исправляет его, только если разница велика
         const drift = Math.hypot(me.x - this.x, me.y - this.y);
-        if (drift > 140 || wasDead !== me.dead || this.mine === null) {
+        const wrongSide = drift > this.config.playerRadius * 2
+            && this.map && !this.map.canReach(this.x, this.y, me.x, me.y);
+        if (drift > 140 || wrongSide || wasDead !== me.dead || this.mine === null) {
             this.x = me.x;
             this.y = me.y;
         }
@@ -381,16 +383,13 @@ export class App {
 
     private moveSelf(me:MeState, dt:number) {
         const { x: dx, y: dy } = this.control!.moveVector();
-        if (dx === 0 && dy === 0) {
-            return;
-        }
         // Бег и рывок: те же множители, что на сервере
         const dashing = performance.now() < this.dashUntil;
         const aiming = this.control!.aimDown;
         const sprint = this.control!.sprinting && me.stamina > 0 && !aiming;
         const speed = me.speed * (dashing ? DASH_MUL : sprint ? SPRINT_MUL : 1) * (aiming && !dashing ? 0.7 : 1);
         // Те же столкновения, что и на сервере, иначе персонаж дёргался бы у препятствий
-        const moved = this.map!.resolve(this.x + dx * speed * dt, this.y + dy * speed * dt, this.config!.playerRadius);
+        const moved = this.map!.move(this.x, this.y, this.x + dx * speed * dt, this.y + dy * speed * dt, this.config!.playerRadius);
         this.x = moved.x;
         this.y = moved.y;
     }

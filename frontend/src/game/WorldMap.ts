@@ -449,18 +449,37 @@ export class WorldMap {
         return true;
     }
 
-    /** Те же столкновения, что и на сервере. */
-    resolve(x:number, y:number, radius:number) {
-        let px = x;
-        let py = y;
-        const cx = Math.floor(px / COLLISION_CELL);
-        const cy = Math.floor(py / COLLISION_CELL);
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                for (const el of this.collision.get((cx + dx) * 100000 + cy + dy) || []) {
-                    if (!el.alive) {
-                        continue;
-                    }
+    private nearby(x:number, y:number, radius:number) {
+        const found = new Set<MapObstacle>();
+        for (let cx = Math.floor((x - radius) / COLLISION_CELL); cx <= Math.floor((x + radius) / COLLISION_CELL); cx++) {
+            for (let cy = Math.floor((y - radius) / COLLISION_CELL); cy <= Math.floor((y + radius) / COLLISION_CELL); cy++) {
+                for (const el of this.collision.get(cx * 100000 + cy) || []) {
+                    if (el.alive) found.add(el);
+                }
+            }
+        }
+        return found;
+    }
+
+    isBlocked(x:number, y:number, radius:number) {
+        for (const el of this.nearby(x, y, radius)) {
+            const nx = el.shape === "r" ? Math.max(el.x - el.w / 2, Math.min(el.x + el.w / 2, x)) : el.x;
+            const ny = el.shape === "r" ? Math.max(el.y - el.h / 2, Math.min(el.y + el.h / 2, y)) : el.y;
+            const reach = radius + (el.shape === "c" ? el.r : 0);
+            if ((x - nx) ** 2 + (y - ny) ** 2 < reach ** 2 - 0.00001) return true;
+        }
+        return false;
+    }
+
+    /** Resolve overlapping obstacles repeatedly, including an exact circle centre. */
+    resolve(x:number, y:number, radius:number, recover = true) {
+        const bounded = (value:number) => Math.max(radius, Math.min(this.config.size - radius, value));
+        let px = bounded(x);
+        let py = bounded(y);
+        for (let pass = 0; pass < 4; pass++) {
+            const beforeX = px;
+            const beforeY = py;
+            for (const el of this.nearby(px, py, radius)) {
                     if (el.shape === "r") {
                         const nx = Math.max(el.x - el.w / 2, Math.min(el.x + el.w / 2, px));
                         const ny = Math.max(el.y - el.h / 2, Math.min(el.y + el.h / 2, py));
@@ -489,15 +508,43 @@ export class WorldMap {
                     const oy = py - el.y;
                     const min = el.r + radius;
                     const dist = Math.hypot(ox, oy);
-                    if (dist < min && dist > 0.001) {
-                        px = el.x + ox / dist * min;
-                        py = el.y + oy / dist * min;
+                    if (dist < min) {
+                        px = el.x + (dist > 0.001 ? ox / dist : 1) * min;
+                        py = el.y + (dist > 0.001 ? oy / dist : 0) * min;
                     }
+            }
+            px = bounded(px);
+            py = bounded(py);
+            if (px === beforeX && py === beforeY) break;
+        }
+        // A resource may respawn around an idle player. Find the nearest free point
+        // only for this initial recovery; moving into a tight gap must never teleport.
+        if (recover && this.isBlocked(px, py, radius)) {
+            for (let distance = 4; distance <= 128; distance += 4) {
+                for (let angle = 0; angle < 16; angle++) {
+                    const rx = bounded(px + Math.cos(angle * Math.PI / 8) * distance);
+                    const ry = bounded(py + Math.sin(angle * Math.PI / 8) * distance);
+                    if (!this.isBlocked(rx, ry, radius)) return { x: rx, y: ry };
                 }
             }
         }
-        const size = this.config.size;
-        return { x: Math.max(radius, Math.min(size - radius, px)), y: Math.max(radius, Math.min(size - radius, py)) };
+        return { x: px, y: py };
+    }
+
+    /** Sweep in small steps: a low-FPS dash cannot skip a thin wall. */
+    move(x:number, y:number, targetX:number, targetY:number, radius:number) {
+        let current = this.resolve(x, y, radius);
+        const dx = Math.max(radius, Math.min(this.config.size - radius, targetX)) - x;
+        const dy = Math.max(radius, Math.min(this.config.size - radius, targetY)) - y;
+        const distance = Math.hypot(dx, dy);
+        if (!distance) return current;
+        const steps = Math.ceil(distance / Math.max(2, radius / 2));
+        for (let step = 0; step < steps; step++) {
+            const next = this.resolve(current.x + dx / steps, current.y + dy / steps, radius, false);
+            if (this.isBlocked(next.x, next.y, radius)) break;
+            current = next;
+        }
+        return current;
     }
 
     private buildMinimap() {

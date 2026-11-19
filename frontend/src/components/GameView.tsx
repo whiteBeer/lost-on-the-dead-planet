@@ -44,9 +44,16 @@ function GameView({ name }:{ name:string }) {
         setPerksOpen(false);
     }, []);
 
+    const toggleTeam = useCallback(() => {
+        setTeamOpen(value => !value);
+        setInvOpen(false);
+        setTradeOpen(false);
+        setPerksOpen(false);
+    }, []);
+
     const onUiKey = useCallback((code:string) => {
         if (code === "KeyT") {
-            setTeamOpen(value => !value);
+            toggleTeam();
         } else if (code === "KeyP") {
             setPerksOpen(value => !value);
         } else if (code === "KeyI" || code === "Tab") {
@@ -56,7 +63,7 @@ function GameView({ name }:{ name:string }) {
         } else if (code === "Escape") {
             closePanels();
         }
-    }, [closePanels]);
+    }, [closePanels, toggleTeam]);
 
     useEffect(() => {
         setFullscreenAvailable(supportsFullscreen());
@@ -240,6 +247,9 @@ function GameView({ name }:{ name:string }) {
                                 );
                             })}
                         </div>
+                        <button className={styles.desktopTeam} onClick={toggleTeam} aria-expanded={teamOpen} aria-controls="team-panel">
+                            Команда (T)
+                        </button>
                     </section>
 
                     <div className={styles.feed}>
@@ -451,7 +461,7 @@ function GameView({ name }:{ name:string }) {
                             <button onClick={() => setInvOpen(value => !value)}>Рюкзак</button>
                             <button onClick={() => app?.heal()}>Лечиться</button>
                             <button onClick={() => app?.reload()}>Перезарядка</button>
-                            <button onClick={() => setTeamOpen(value => !value)}>Команда</button>
+                            <button onClick={toggleTeam}>Команда</button>
                             <button onClick={() => setPerksOpen(value => !value)}>Перки</button>
                         </div>
                     )}
@@ -507,7 +517,7 @@ function GameView({ name }:{ name:string }) {
                     )}
 
                     {teamOpen && (
-                        <section className={styles.side}>
+                        <section className={styles.side} id="team-panel">
                             <h3>{myTeam ? myTeam.name : "Команда"}</h3>
                             {myTeam ? (
                                 <>
@@ -519,7 +529,7 @@ function GameView({ name }:{ name:string }) {
                             ) : <p className={styles.muted}>Союзники не ранят друг друга и получают часть опыта за убийства рядом.</p>}
                             <h4 className={styles.subhead}>Игроки в мире</h4>
                             <ul className={styles.teamList}>
-                                {rows.filter(row => row.id !== hud?.myId && (!me.teamId || row.teamId !== me.teamId)).slice(0, 40).map(row => (
+                                {rows.filter(row => row.id !== hud?.myId && (!me.teamId || row.teamId !== me.teamId)).map(row => (
                                     <li key={row.id} className={styles.teamRow}>
                                         <span className={styles.boardName}>{row.name}</span>
                                         <button className={styles.small} onClick={() => app?.invite(row.id)}>Позвать</button>
