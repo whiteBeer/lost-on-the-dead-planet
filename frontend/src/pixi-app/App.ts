@@ -3,7 +3,7 @@ import axios from "axios";
 import { Scene } from "./classes/Scene";
 import { Control } from "./classes/Control";
 import { io, Socket } from "socket.io-client";
-import { BackendPerkOffer, BackendPlayer, BackendWeaponsConfig } from "./Types";
+import { BackendPerkOffer, BackendPlayer, BackendWeaponState, BackendWeaponsConfig } from "./Types";
 import { getRoomId } from "../utils/getRoomId";
 import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
@@ -47,6 +47,7 @@ export class App {
     private joinRejectedListener:JoinRejectedListener | null = null;
     private pauseListener:PauseListener | null = null;
     private playerStateListener:PlayerStateListener | null = null;
+    private latestPlayerState:BackendPlayer | null = null;
     private inventoryToggleListener:(open?:boolean) => void = () => undefined;
     private victoryListener:VictoryListener | null = null;
     private uiBlocked = false;
@@ -144,6 +145,21 @@ export class App {
 
     public onPlayerState(listener:PlayerStateListener) {
         this.playerStateListener = listener;
+    }
+
+    private notifyPlayerState(player:BackendPlayer) {
+        this.latestPlayerState = player;
+        this.playerStateListener?.(player);
+    }
+
+    private patchWeaponState(patch:Partial<BackendWeaponState>) {
+        const player = this.latestPlayerState;
+        if (!player) return;
+        this.notifyPlayerState({
+            ...player,
+            weapon: { ...player.weapon, ...patch },
+            inventory: player.inventory?.map((item, slot) => item && slot === player.equippedSlot ? { ...item, ...patch } : item)
+        });
     }
 
     public onInventoryToggle(listener:(open?:boolean) => void) {
@@ -283,8 +299,14 @@ export class App {
             this.socket?.on("playerStats", (data:{ player?:BackendPlayer }) => {
                 const player = data.player;
                 if (player && player.socketId === this.socket?.id) {
-                    this.playerStateListener?.(player);
+                    this.notifyPlayerState(player);
                 }
+            });
+            this.socket?.on("playersReloadStarted", (data:{ socketId:string }) => {
+                if (data.socketId === this.socket?.id) this.patchWeaponState({ isReloading: true });
+            });
+            this.socket?.on("playersReloadFinished", (data:{ socketId:string; newAmmo:number }) => {
+                if (data.socketId === this.socket?.id) this.patchWeaponState({ isReloading: false, ammo: data.newAmmo });
             });
             this.socket?.on("lobbyUpdated", (data:{
                 phase?: "lobby" | "playing" | "won",
@@ -344,7 +366,7 @@ export class App {
 
             this.loadPlayer();
             const initialMe = backendScene.players?.find((p:BackendPlayer) => p.socketId === this.socket?.id);
-            if (initialMe) this.playerStateListener?.(initialMe);
+            if (initialMe) this.notifyPlayerState(initialMe);
             this.notifyLobby(
                 backendScene.phase === "playing" ? "playing" : "lobby",
                 backendScene.players || [],

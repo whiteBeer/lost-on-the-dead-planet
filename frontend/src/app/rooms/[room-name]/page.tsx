@@ -5,6 +5,7 @@ import { App as PixiAPP } from "../../../pixi-app/App";
 import axios from "axios";
 import styles from "./index.module.css";
 import { useParams, useRouter } from "next/navigation";
+import WeaponHud from "../../../components/WeaponHud";
 
 import { BackendInventoryWeapon, BackendPerkOffer, BackendPlayer } from "../../../pixi-app/Types";
 
@@ -189,6 +190,10 @@ function Room() {
     return (
         <div className={styles.wrap}>
             <div id="game" className={styles.game}></div>
+
+            {phase === "playing" && playerState && !dead && (
+                <WeaponHud weapon={playerState.weapon} name={appRef.current?.getWeaponName(playerState.weapon.id) || playerState.weapon.id} basePath={publicBasePath} />
+            )}
 
             {phase === "playing" && playerState && !dead && (
                 <div className={styles.vitals}>

@@ -19,6 +19,7 @@ export class Hud {
     private readonly statusText:PIXI.Text;
     private readonly hintText:PIXI.Text;
     private wave = 0;
+    private readonly isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
     private banner:WaveBanner | null = null;
 
     constructor(app:App, mePlayer:Player) {
@@ -163,24 +164,20 @@ export class Hud {
             this.waveText.text = `ВОЛНА ${this.wave}`;
         }
 
-        const weaponId = this.mePlayer.weapon.id || "?";
-        const weaponName = this.app.getWeaponName(weaponId);
-        const level = this.mePlayer.level;
-        const exp = this.mePlayer.exp;
-        const ammo = Math.max(0, this.mePlayer.weapon.ammo);
-        const clip = Math.max(1, this.mePlayer.weapon.clipSize || 1);
-        const reloading = this.mePlayer.weapon.isReloading ? " · перезарядка" : "";
-        this.statusText.text =
-            `${weaponName} ${"I".repeat(this.mePlayer.weapon.level)}: ${ammo}/${clip}${reloading} · ` +
-            `Lv ${level} · xp ${exp}` +
-            (this.mePlayer.combo > 1 ? ` · COMBO ×${this.mePlayer.combo}` : "");
+        this.statusText.text = this.mePlayer.combo > 1 ? `COMBO ×${this.mePlayer.combo}` : "";
+        const width = this.app.getScreenWidth();
+        const touch = this.isTouch;
+        this.waveText.style.fontSize = touch || width <= 820 ? 18 : 28;
+        this.waveText.position.set(width / 2, width < 600 ? 112 : 12);
+        this.hintText.style.wordWrap = true;
+        this.hintText.style.wordWrapWidth = Math.max(100, width - 32);
 
         const nearby = this.app.scene?.pickupsCollection.nearestTo(this.mePlayer.x, this.mePlayer.y, 70);
         if (nearby) {
             this.hintText.text = `E · подобрать ${this.app.getWeaponName(nearby.weaponId)} ${"I".repeat(nearby.weaponLevel)}`;
             this.hintText.style.fill = 0xffdc73;
         } else {
-            this.hintText.text = this.app.scene?.phase === "playing"
+            this.hintText.text = this.app.scene?.phase === "playing" && !touch
                 ? "WASD · Shift бег · Space рывок · I/Tab рюкзак · Стрелки прицел · F огонь"
                 : "";
             this.hintText.style.fill = 0xdddddd;

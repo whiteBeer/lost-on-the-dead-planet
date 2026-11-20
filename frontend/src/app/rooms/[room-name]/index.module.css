@@ -369,7 +369,7 @@
   }
   .mobileActions button:nth-child(1) { right: 82px; bottom: 76px; border-color: #e1c657; }
   .mobileActions button:nth-child(2) { right: 16px; bottom: 76px; }
-  .mobileActions button:nth-child(3) { right: 16px; top: 16px; width: 62px; height: 42px; border-radius: 9px; }
+  .mobileActions button:nth-child(3) { right: 16px; top: 140px; width: 62px; height: 42px; border-radius: 9px; }
   .mobileActions .dashAction { right: 16px; bottom: 142px; border-color: #d47555; }
   .mobileActions button:nth-child(5) { right: 82px; bottom: 142px; }
   .mobileActions .sprintActive { color: #17200e; background: #bce477; border-color: white; }
@@ -389,7 +389,7 @@
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
   .vitals { width: 205px; }
-  .mobileActions button:nth-child(3) { top: 66px; }
+  .mobileActions button:nth-child(3) { top: 12px; right: 166px; }
   .inventoryPanel { width: min(700px, calc(100vw - 20px)); }
   .inventoryPanel header { margin-bottom: 8px; }
   .inventoryPanel header p, .inventoryHint { display: none; }
