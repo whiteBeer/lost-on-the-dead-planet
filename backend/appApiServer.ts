@@ -7,6 +7,7 @@ import errorHandlerMiddleware from "./middleware/errorHandler";
 import notFoundMiddleware from "./middleware/notFound";
 
 import cors from "cors";
+import { ProfileStore, ShopError } from "./classes/ProfileStore";
 
 export class AppApiServer {
     private readonly app:Express;
@@ -28,6 +29,9 @@ export class AppApiServer {
     }
 
     private setupRoutes():void {
+        this.app.get("/api/profile", (req, res) => { this.profileRequest(req, res, (store, key) => store.view(key)); });
+        this.app.post("/api/profile/buy", (req, res) => { this.profileRequest(req, res, (store, key) => store.buy(key, req.body?.itemId)); });
+        this.app.post("/api/profile/equip", (req, res) => { this.profileRequest(req, res, (store, key) => store.equip(key, req.body?.itemId)); });
         this.app.get("/", (req:Request, res:Response) => {
             res.json({ msg: "Lost on the dead planet." });
         });
@@ -36,6 +40,22 @@ export class AppApiServer {
         this.app.put("/api/rooms/:roomId/new-game", this.newGame.bind(this));
         this.app.put("/api/sandbox/rooms/:roomId/add-zombie", this.addZombie.bind(this));
         this.app.put("/api/sandbox/rooms/:roomId/add-spider", this.addSpider.bind(this));
+    }
+
+    private profileRequest(req:Request, res:Response, action:(store:ProfileStore, key:string) => unknown) {
+        const store = this.roomsManager.profileStore;
+        if (!store) return res.status(503).json({ message: "Профили недоступны" });
+        const auth = req.get("authorization") || "";
+        const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+        if (!/^[a-f0-9]{64}$/.test(token)) return res.status(401).json({ message: "Нужен профиль браузера" });
+        try {
+            const key = store.ensureToken(token);
+            return res.json(action(store, key));
+        } catch (error) {
+            if (error instanceof ShopError) return res.status(400).json({ message: error.message });
+            console.error("Profile persistence operation failed");
+            return res.status(500).json({ message: "Не удалось сохранить профиль. Попробуй снова." });
+        }
     }
 
     private setupErrorHandling():void {
@@ -74,7 +94,8 @@ export class AppApiServer {
                 "gameWon",
                 "lobbyUpdated",
                 "gameStarted",
-                "gamePaused"
+                "gamePaused",
+                "playersRevived"
             ];
             sceneEvents.forEach((sceneEvent) => {
                 scene.on(sceneEvent, (data) => {

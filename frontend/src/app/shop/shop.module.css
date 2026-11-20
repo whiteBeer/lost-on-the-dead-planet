@@ -1,0 +1,23 @@
+.shop { min-height: 100dvh; padding: 28px max(16px, calc((100vw - 1150px) / 2)); color: #f1f0e6; background: radial-gradient(ellipse at top, #2c3c22, #10150d 75%); }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #4b573a; padding-bottom: 18px; }
+.heading p { color: #a8e05f; letter-spacing: .15em; font-size: 11px; }
+.heading h1 { margin-top: 6px; font-size: 30px; font-weight: 800; }
+.wallet { flex: none; color: #ffe08a; font-size: 30px; font-weight: 800; text-align: right; }
+.wallet small { display: block; color: #b6bba9; font-size: 11px; font-weight: 400; }
+.intro { margin: 18px 0; color: #bec7b1; font-size: 13px; line-height: 1.6; }
+.secondary, .error button { margin-top: 12px; border: 1px solid #687b4b; border-radius: 7px; padding: 7px 14px; color: #e5f0d5; background: #303d25; cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.item { display: flex; flex-direction: column; padding: 14px; border: 1px solid #465735; border-radius: 12px; background: rgba(12, 15, 10, .8); }
+.selected { border-color: #bce477; box-shadow: 0 0 0 1px #7f9e51; }
+.portrait { height: 175px; margin-bottom: 12px; border-radius: 9px; overflow: hidden; background: radial-gradient(ellipse, #3d4932, #191f14); }
+.portrait img { width: 100%; height: 100%; object-fit: contain; }
+.portrait .sheet { object-fit: cover; object-position: top; }
+.item h2 { color: #bce477; font-size: 18px; font-weight: 700; }
+.item p { flex: 1; margin: 8px 0 12px; color: #aeb8a1; line-height: 1.4; font-size: 12px; }
+.price { color: #ffe08a; font-size: 13px; margin-bottom: 10px; }
+.item button { padding: 9px; border-radius: 7px; color: #17200e; background: #bce477; font-weight: 800; cursor: pointer; }
+.item button:disabled { opacity: .45; cursor: default; }
+.message { min-height: 24px; color: #bce477; font-size: 13px; }
+.error { padding: 10px; border: 1px solid #b76145; border-radius: 8px; color: #ffad8b; }
+.note { margin-top: 24px; max-width: 760px; color: #8d9a7d; font-size: 12px; line-height: 1.6; }
+@media (max-width: 600px) { .shop { padding: 16px 12px; } .heading h1 { font-size: 23px; } .wallet { font-size: 24px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .item { padding: 9px; } .portrait { height: 138px; } .item h2 { font-size: 15px; } }

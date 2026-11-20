@@ -8,9 +8,10 @@ import { getRoomId } from "../utils/getRoomId";
 import { Cursor } from "./classes/Cursor";
 import { Hud } from "./classes/Hud";
 import { ResourcesLoader } from "./classes/ResourcesLoader";
+import { profileRequest, profileToken } from "../utils/profile";
 
 export type PerkOfferListener = (perks:BackendPerkOffer[] | null) => void;
-export type DeathListener = (info:{ level:number, exp:number }) => void;
+export type DeathListener = (info:{ level:number, exp:number } | null) => void;
 export type ArenaOverListener = (info:{ reason:string }) => void;
 export type LobbyListener = (state:{
     phase:"lobby" | "playing" | "won",
@@ -73,7 +74,14 @@ export class App {
 
         await ResourcesLoader.loadAssets();
 
+        try {
+            await profileRequest();
+        } catch {
+            this.joinRejectedListener?.({ reason: "profile", message: "Не удалось открыть профиль. Проверь связь и разреши хранение данных сайта." });
+            return;
+        }
         this.socket = io(this.backendUrl, {
+            auth: { profileToken: profileToken() },
             path: this.apiBasePath + "/socket.io",
             extraHeaders: { "room-id": roomId },
             autoConnect: false
@@ -270,6 +278,9 @@ export class App {
     }
 
     public meRespawn() {
+        this.deathListener?.(null);
+        this.lastMoveState = "";
+        this.notifyPerkOffer(this.latestPlayerState?.perkOffer?.length ? this.latestPlayerState.perkOffer : null);
         this.scene?.mePlayer?.show();
         if (!this.control) {
             this.loadPlayer();
@@ -300,6 +311,16 @@ export class App {
                 const player = data.player;
                 if (player && player.socketId === this.socket?.id) {
                     this.notifyPlayerState(player);
+                }
+            });
+            this.socket?.on("playersRevived", (data:{ players:BackendPlayer[] }) => {
+                this.scene?.playersCollection.updatePlayers(data.players, { syncTransform: true });
+                data.players.forEach(player => this.scene?.playersCollection.findPlayer(player.socketId)?.show());
+                const me = data.players.find(player => player.socketId === this.socket?.id);
+                if (me) {
+                    this.notifyPlayerState(me);
+                    this.scene?.centerScene();
+                    this.meRespawn();
                 }
             });
             this.socket?.on("playersReloadStarted", (data:{ socketId:string }) => {
@@ -483,13 +504,19 @@ export class App {
 
     destroy() {
         this.control?.destroy();
+        this.hud?.destroy();
+        this.cursor?.destroy();
+        this.hud = null;
+        this.cursor = null;
+        this.control = null;
         if (this.socket) {
+            this.socket.removeAllListeners();
             this.socket.disconnect();
             this.socket = null;
         }
         // 3. Останавливаем Pixi (освобождаем WebGL контекст)
         // true = удалить canvas из DOM
-        // { children: true } = удалить все спрайты и текстуры
-        this.pixiApp.destroy(true, { children: true, texture: true });
+        // Shared asset textures remain cached for the next match after visiting the shop.
+        this.pixiApp.destroy(true, { children: true, texture: false, textureSource: false });
     }
 }

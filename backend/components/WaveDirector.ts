@@ -148,11 +148,19 @@ export class WaveDirector {
             return;
         }
         this.active = false;
+        const survivors = this.scene.playersCollection.getLivePlayers();
+        if (survivors.length === 0) return;
         this.scene.emit("waveCleared", { wave: this.wave });
-        this.scene.playersCollection.getLivePlayers().forEach(player => player.rewardWaveClear());
-        if (this.scene.playersCollection.getLivePlayers().length === 0) {
-            return;
-        }
+        survivors.forEach(player => player.rewardWaveClear());
+        const fallen = this.scene.playersCollection.getPlayers().filter(player => player.isDead);
+        fallen.forEach((player, index) => {
+            const anchor = survivors[index % survivors.length];
+            const margin = player.radius + Math.max(this.scene.getEdgePadX(), this.scene.getEdgePadY());
+            const x = Math.max(margin, Math.min(this.scene.getWidth() - margin, anchor.pageX + 40 * Math.cos(index * 2.4)));
+            const y = Math.max(margin, Math.min(this.scene.getHeight() - margin, anchor.pageY + 40 * Math.sin(index * 2.4)));
+            player.reviveAtWaveEnd(x, y);
+        });
+        if (fallen.length) this.scene.emit("playersRevived", { players: fallen.map(player => player.toJSON()) });
         if (this.wave >= WAVES_CONFIG.finalWave) {
             this.scene.finishVictory(this.wave);
             return;

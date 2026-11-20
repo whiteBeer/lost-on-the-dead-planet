@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import { App } from "../App";
 import Player from "./players/Player";
-import { BackendPerkOffer } from "../Types";
+import { BackendPerkOffer, BackendPlayer } from "../Types";
 
 interface WaveBanner {
     root:PIXI.Container;
@@ -20,6 +20,12 @@ export class Hud {
     private readonly hintText:PIXI.Text;
     private wave = 0;
     private readonly isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+    private cleanups:Array<() => void> = [];
+
+    private listen<T>(event:string, handler:(data:T) => void) {
+        this.app.socket?.on(event, handler);
+        this.cleanups.push(() => { this.app.socket?.off(event, handler); });
+    }
     private banner:WaveBanner | null = null;
 
     constructor(app:App, mePlayer:Player) {
@@ -76,17 +82,17 @@ export class Hud {
         this.pixiObj.addChild(this.statusText);
         this.pixiObj.addChild(this.hintText);
 
-        this.app.socket?.on("waveStarted", (data:{ wave:number, isBoss?:boolean }) => {
+        this.listen("waveStarted", (data:{ wave:number, isBoss?:boolean }) => {
             this.wave = data.wave;
             this.waveText.text = data.isBoss ? `БОСС · ВОЛНА ${this.wave}` : `ВОЛНА ${this.wave}`;
             this.showWaveBanner(this.wave, !!data.isBoss);
         });
 
-        this.app.socket?.on("waveCleared", (data:{ wave:number }) => {
+        this.listen("waveCleared", (data:{ wave:number }) => {
             this.wave = data.wave;
         });
 
-        this.app.socket?.on("perkOffer", (data:{
+        this.listen("perkOffer", (data:{
             socketId:string,
             level:number,
             perks:BackendPerkOffer[]
@@ -96,7 +102,7 @@ export class Hud {
             }
         });
 
-        this.app.socket?.on("playerStats", (data:{ player:any }) => {
+        this.listen("playerStats", (data:{ player:BackendPlayer }) => {
             if (data.player?.socketId === this.app.socket?.id) {
                 this.mePlayer.update(data.player);
                 if (!data.player.perkOffer?.length) {
@@ -165,6 +171,7 @@ export class Hud {
         }
 
         this.statusText.text = this.mePlayer.combo > 1 ? `COMBO ×${this.mePlayer.combo}` : "";
+        this.statusText.position.y = 120;
         const width = this.app.getScreenWidth();
         const touch = this.isTouch;
         const fontSize = touch || width <= 820 ? 18 : 28;
@@ -225,6 +232,8 @@ export class Hud {
     }
 
     public destroy() {
+        this.cleanups.forEach(cleanup => cleanup());
+        this.cleanups = [];
         if (this.banner) {
             this.banner.root.destroy({ children: true });
             this.banner = null;

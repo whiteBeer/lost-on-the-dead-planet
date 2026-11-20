@@ -6,6 +6,7 @@ import { AppApiServer } from "./appApiServer";
 import { AppSocketServer } from "./appSocketServer";
 import { RoomsManager } from "./classes/RoomsManager";
 import { EmitManager } from "./classes/EmitManager";
+import { ProfileStore } from "./classes/ProfileStore";
 
 dotenv.config();
 
@@ -26,7 +27,7 @@ class Server {
             cors: { origin: "*" }
         });
 
-        this.roomsManager = new RoomsManager();
+        this.roomsManager = new RoomsManager(new ProfileStore());
         this.emitManager = new EmitManager(this.io);
 
         this.apiService = new AppApiServer(this.app, this.roomsManager, this.emitManager);
@@ -63,6 +64,7 @@ class Server {
             console.log("Server closed");
             process.exit(0);
         });
+        this.io.disconnectSockets(true);
     }
 }
 

@@ -7,6 +7,7 @@ import { WEAPONS } from "./configs/Weapons";
 export class AppSocketServer {
     private io:SocketIOServer;
     private roomsManager:RoomsManager;
+    private activeProfiles = new Map<string, string>();
 
     constructor(io:SocketIOServer, roomsManager:RoomsManager, emitManager:EmitManager) {
         this.io = io;
@@ -57,10 +58,32 @@ export class AppSocketServer {
 
         socket.join(roomId);
         const scenePlayers = roomScene.playersCollection;
+        let profileKey:string | null = null;
+        if (socket.handshake.auth?.profileToken && this.roomsManager.profileStore) {
+            try {
+                profileKey = this.roomsManager.profileStore.ensureToken(socket.handshake.auth.profileToken);
+            } catch {
+                socket.emit("joinRejected", { reason: "profile", message: "Не удалось открыть профиль. Обнови страницу." });
+                socket.disconnect(true);
+                return;
+            }
+            if (this.activeProfiles.has(profileKey)) {
+                socket.emit("joinRejected", { reason: "profileInUse", message: "Этот профиль уже играет в другой вкладке. Закрой её перед входом." });
+                socket.disconnect(true);
+                return;
+            }
+        }
         const newPlayer = scenePlayers.addPlayer(socket.id);
 
         if (newPlayer) {
-            console.log("Connected: " + socket.id, newPlayer.toJSON());
+            if (profileKey) {
+                newPlayer.bindProfile(profileKey);
+                this.activeProfiles.set(profileKey, socket.id);
+                socket.once("disconnect", () => {
+                    if (this.activeProfiles.get(profileKey as string) === socket.id) this.activeProfiles.delete(profileKey as string);
+                });
+            }
+            console.log("Player connected to arena");
 
             socket.on("playerReady", (params:{ ready?:boolean } = {}) => {
                 const ready = params?.ready !== false;
@@ -226,13 +249,8 @@ export class AppSocketServer {
         console.log("Disconnected ", socket.id);
 
         if (scenePlayers.getPlayers().length === 0) {
-            setTimeout(() => {
-                const room = this.roomsManager.getRoomScene(roomId);
-                if (room && room.playersCollection.getPlayers().length === 0) {
-                    console.log("Room removed: ", roomId);
-                    this.roomsManager.removeRoom(roomId);
-                }
-            }, 60000);
+            // Leaving for the shop must not block the same room for another minute.
+            this.roomsManager.removeRoom(roomId);
         }
     }
 

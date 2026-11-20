@@ -38,12 +38,14 @@ const WALK_FRAME_COUNT = 8;
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export class ResourcesLoader {
+    private static loaded = false;
 
     public static enemies:Record<string, PIXI.Texture[]> = {};
     public static players:Record<string, PIXI.Texture[]> = {};
     public static textures:Record<string, PIXI.Texture> = {};
 
     public static async loadAssets():Promise<void> {
+        if (this.loaded) return;
         PIXI.Assets.add({ alias: "playerTex", src: `${BASE_PATH}/img/player_body_sprite.png` });
         PIXI.Assets.add({ alias: "enemyZombieTex", src: `${BASE_PATH}/img/zombie_sprite.png` });
         PIXI.Assets.add({ alias: "ground", src: `${BASE_PATH}/img/ground.png` });
@@ -78,6 +80,21 @@ export class ResourcesLoader {
         }
 
         this.players["player1"] = this.initPlayerTextures();
+        await Promise.all(["ember", "frost", "viper", "spectre"].map(async (skin) => {
+            const image = new Image();
+            image.src = `${BASE_PATH}/img/skins/${skin}.png`;
+            await image.decode();
+            // Downsample for the game renderer before creating walk frames. The shop
+            // uses the original PNG; mobile GPU memory must not grow with 1280px frames.
+            const canvas = document.createElement("canvas");
+            canvas.width = 150;
+            canvas.height = 150;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("Skin canvas unavailable");
+            ctx.drawImage(image, 0, 0, 150, 150);
+            this.players[skin] = this.createWalkFrames(PIXI.Texture.from(canvas), WALK_FRAME_COUNT);
+        }));
+        this.loaded = true;
     }
 
     public static getTexture(key:string):PIXI.Texture | null {
@@ -106,8 +123,8 @@ export class ResourcesLoader {
         return playerFrames;
     }
 
-    public static getPlayerTextures():PIXI.Texture[] {
-        return this.players["player1"];
+    public static getPlayerTextures(skin = "default"):PIXI.Texture[] {
+        return this.players[skin] || this.players["player1"];
     }
 
     public static initZombieTextures():PIXI.Texture[] {

@@ -39,6 +39,14 @@ export class Player {
     public perkOffer:Perk[] = [];
     public combo = 0;
     public bestCombo = 0;
+    public profileKey:string | null = null;
+    public skinId = "default";
+    public runCoins = 0;
+
+    public bindProfile(key:string) {
+        this.profileKey = key;
+        this.skinId = this.scene?.profileStore?.view(key).selected || "default";
+    }
 
     private scene:Scene | null = null;
     private regenAcc = 0;
@@ -216,6 +224,9 @@ export class Player {
         while (this.exp >= expForLevel(this.level)) {
             this.exp -= expForLevel(this.level);
             this.level += 1;
+            if (this.profileKey && this.scene?.profileStore) {
+                this.runCoins += this.scene.profileStore.rewardLevel(this.profileKey, this.scene.runId, this.level);
+            }
             this.offerPerks();
         }
     }
@@ -347,6 +358,20 @@ export class Player {
         this.emitStats();
     }
 
+    public reviveAtWaveEnd(x:number, y:number) {
+        if (!this.isDead) return;
+        this.pageX = x;
+        this.pageY = y;
+        this.isDead = false;
+        this.health = this.maxHealth;
+        this.stamina = this.maxStamina;
+        this.sprinting = false;
+        this.aiming = false;
+        this.weapon.refill();
+        this.grantSpawnProtection();
+        this.emitStats();
+    }
+
     public refreshStats() {
         this.stats = computeStats(this.perks);
         this.maxHealth = Math.round(this.stats.maxHp);
@@ -361,6 +386,8 @@ export class Player {
     }
 
     public respawn() {
+        this.runCoins = 0;
+        if (this.profileKey && this.scene?.profileStore) this.skinId = this.scene.profileStore.view(this.profileKey).selected;
         this.exp = 0;
         this.level = 1;
         this.perks = [];
@@ -398,6 +425,9 @@ export class Player {
     public toJSON() {
         return {
             socketId: this.socketId,
+            skinId: this.skinId,
+            coins: this.profileKey ? this.scene?.profileStore?.view(this.profileKey).coins || 0 : 0,
+            runCoins: this.runCoins,
             color: this.color,
             pageX: this.pageX,
             pageY: this.pageY,

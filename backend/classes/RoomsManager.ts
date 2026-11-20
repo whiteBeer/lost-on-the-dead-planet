@@ -1,15 +1,17 @@
 import { Scene } from "../components/Scene";
+import { ProfileStore } from "./ProfileStore";
 
 export class RoomsManager {
 
     private rooms:Map<string, Scene> = new Map();
+    constructor(public readonly profileStore:ProfileStore | null = null) {}
 
     public createRoom(roomId:string) {
         if (this.rooms.has(roomId)) {
             return null;
         }
 
-        const newScene = new Scene(roomId);
+        const newScene = new Scene(roomId, this.profileStore);
         this.rooms.set(roomId, newScene);
 
         console.log(`Room created: ${roomId}. Total rooms: ${this.rooms.size}`);

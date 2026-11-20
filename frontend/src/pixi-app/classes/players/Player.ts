@@ -28,6 +28,7 @@ export class Player {
     public inventory = paramsInventoryFallback();
     public equippedSlot = 0;
     public combo = 0;
+    public skinId = "default";
 
     private bodySprite:PIXI.AnimatedSprite|null = null;
     private legsSprite:PIXI.AnimatedSprite|null = null;
@@ -78,6 +79,14 @@ export class Player {
             }
         }
         this.health = params.health;
+        this.pixiObj.visible = !params.isDead;
+        const skin = params.skinId || "default";
+        if (skin !== this.skinId && this.bodySprite) {
+            this.bodySprite.textures = ResourcesLoader.getPlayerTextures(skin);
+            this.bodySprite.width = this.radius * (skin === "default" ? 2.5 : 3.2);
+            this.bodySprite.height = this.radius * (skin === "default" ? 3 : 3.8);
+        }
+        this.skinId = skin;
         this.maxHealth = params.maxHealth;
         this.radius = params.radius;
         this.level = params.level || this.level;
@@ -201,12 +210,12 @@ export class Player {
 
     private initGraphics(params:BackendPlayer) {
         const container = new PIXI.Container();
-        const playerFrames = ResourcesLoader.getPlayerTextures();
+        const playerFrames = ResourcesLoader.getPlayerTextures(this.skinId);
         this.bodySprite = new PIXI.AnimatedSprite(playerFrames);
         this.bodySprite.animationSpeed = 0.5;
         this.bodySprite.anchor.set(0.5);
-        this.bodySprite.width = this.radius * 2.5;
-        this.bodySprite.height = this.radius * 3;
+        this.bodySprite.width = this.radius * (this.skinId === "default" ? 2.5 : 3.2);
+        this.bodySprite.height = this.radius * (this.skinId === "default" ? 3 : 3.8);
 
         this.bodySprite.rotation = -Math.PI / 2;
 

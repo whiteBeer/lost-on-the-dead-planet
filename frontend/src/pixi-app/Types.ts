@@ -39,6 +39,9 @@ export interface BackendPerkOffer {
 }
 
 export interface BackendPlayer {
+    skinId?:string;
+    coins?:number;
+    runCoins?:number;
     socketId:string;
     color:string;
     radius:number,

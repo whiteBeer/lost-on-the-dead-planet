@@ -61,6 +61,7 @@ function Main() {
                         Создать
                     </button>
                 </div>
+                <button type="button" className={styles.secondary} onClick={() => router.push("/shop")}>Магазин скинов</button>
 
                 {error ? <p className={styles.error}>{error}</p> : null}
 

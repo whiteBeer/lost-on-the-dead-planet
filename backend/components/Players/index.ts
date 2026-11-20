@@ -87,6 +87,7 @@ export class Players {
         if (index !== -1) {
             this.players[index].destroy();
             this.players.splice(index, 1);
+            this.scene.reassignHostIfNeeded();
             if (this.scene.isLobby()) {
                 this.scene.reassignHostIfNeeded();
                 this.scene.emitLobbyState();

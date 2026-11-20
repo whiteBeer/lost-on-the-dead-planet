@@ -17,6 +17,8 @@ import { PLAYER_CONFIG } from "../configs/Players";
 import { SCENE_CONFIG } from "../configs/Scene";
 import { ENEMIES } from "../configs/Enemies";
 import { PERKS } from "../configs/Perks";
+import { randomUUID } from "crypto";
+import { ProfileStore } from "../classes/ProfileStore";
 interface CachedEnemy {
     original:BaseEnemy;
     x:number;
@@ -43,7 +45,9 @@ export class Scene extends EventEmitter {
     pickupsCollection:Pickups;
     waveDirector:WaveDirector;
 
-    constructor(roomId:string) {
+    public runId = randomUUID();
+
+    constructor(roomId:string, public readonly profileStore:ProfileStore | null = null) {
         super();
         this.roomId = roomId;
 
@@ -211,6 +215,7 @@ export class Scene extends EventEmitter {
             };
         });
         this.verifyEnemyMissileCollisions(cachedEnemies);
+        if (this.phase !== "playing") return;
         this.verifyEnemyProjectilePlayerCollisions();
         this.verifyPlayerEnemyCollisions(cachedEnemies);
     }
@@ -244,6 +249,7 @@ export class Scene extends EventEmitter {
 
     /** После смерти всех / паузы — снова лобби, ждут «Я готов». */
     newGame() {
+        this.runId = randomUUID();
         this.phase = "lobby";
         this.paused = false;
         this.waveDirector.reset();
@@ -257,6 +263,7 @@ export class Scene extends EventEmitter {
         this.pickupsCollection.removeAll();
         this.startGameLoop();
         this.emit("sceneReset", this.getScene());
+        this.reassignHostIfNeeded();
         this.emitLobbyState();
     }
 
@@ -484,7 +491,7 @@ export class Scene extends EventEmitter {
         const playerRadius = PLAYER_CONFIG.radius;
         for (const cachedEnemy of cachedEnemies) {
             const enemy = cachedEnemy.original;
-            if (!enemy.canAttack()) {
+            if (enemy.health <= 0 || !enemy.canAttack()) {
                 continue;
             }
             const enemyRect = enemy.getPlayerTouchRect(cachedEnemy.x, cachedEnemy.y);

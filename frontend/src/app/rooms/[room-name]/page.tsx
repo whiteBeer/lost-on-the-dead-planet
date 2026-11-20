@@ -194,6 +194,7 @@ function Room() {
             {phase === "playing" && playerState && !dead && (
                 <WeaponHud weapon={playerState.weapon} name={appRef.current?.getWeaponName(playerState.weapon.id) || playerState.weapon.id} basePath={publicBasePath} />
             )}
+            {playerState && <div className={styles.coins} aria-label="Монеты">◉ {playerState.coins || 0} <small>+{playerState.runCoins || 0} за матч</small></div>}
 
             {phase === "playing" && playerState && !dead && (
                 <div className={styles.vitals}>
@@ -387,15 +388,17 @@ function Room() {
                 <div className={styles.overlay}>
                     <h2>Ты погиб</h2>
                     <p>Опыт за эту жизнь: {dead.exp}, уровень {dead.level}</p>
+                    <p>Заработано за матч: {playerState?.runCoins || 0} монет. Они уже на счету.</p>
                     {arenaOver ? (
                         <>
                             <p className={styles.deathHint}>Все погибли — волны сброшены.</p>
                             <button className={styles.primary} onClick={newGame}>
                                 Начать заново
                             </button>
+                            <button className={styles.secondary} onClick={() => router.push("/shop")}>В магазин</button>
                         </>
                     ) : (
-                        <p className={styles.deathHint}>Жди команду… бой ещё идёт.</p>
+                        <p className={styles.deathHint}>Если команда зачистит волну, ты вернёшься в бой с тем же оружием и уровнем.</p>
                     )}
                     <button className={styles.secondary} onClick={mainMenu}>
                         В меню
@@ -420,6 +423,8 @@ function Room() {
                 <div className={`${styles.overlay} ${styles.victoryOverlay}`}>
                     <h2>Победа!</h2>
                     <p>Ты пережил все {victoryWave} волн и зачистил арену.</p>
+                    <p>Заработано за матч: {playerState?.runCoins || 0} монет. На счету: {playerState?.coins || 0}.</p>
+                    <button className={styles.primary} onClick={() => router.push("/shop")}>В магазин</button>
                     <button className={styles.primary} onClick={newGame}>Сыграть ещё</button>
                     <button className={styles.secondary} onClick={mainMenu}>В меню</button>
                 </div>
