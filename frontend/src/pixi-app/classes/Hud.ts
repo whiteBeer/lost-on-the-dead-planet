@@ -167,10 +167,12 @@ export class Hud {
         this.statusText.text = this.mePlayer.combo > 1 ? `COMBO ×${this.mePlayer.combo}` : "";
         const width = this.app.getScreenWidth();
         const touch = this.isTouch;
-        this.waveText.style.fontSize = touch || width <= 820 ? 18 : 28;
+        const fontSize = touch || width <= 820 ? 18 : 28;
+        if (this.waveText.style.fontSize !== fontSize) this.waveText.style.fontSize = fontSize;
         this.waveText.position.set(width / 2, width < 600 ? 112 : 12);
-        this.hintText.style.wordWrap = true;
-        this.hintText.style.wordWrapWidth = Math.max(100, width - 32);
+        if (!this.hintText.style.wordWrap) this.hintText.style.wordWrap = true;
+        const wrapWidth = Math.max(100, width - 32);
+        if (this.hintText.style.wordWrapWidth !== wrapWidth) this.hintText.style.wordWrapWidth = wrapWidth;
 
         const nearby = this.app.scene?.pickupsCollection.nearestTo(this.mePlayer.x, this.mePlayer.y, 70);
         if (nearby) {
